@@ -44,6 +44,7 @@ enum class GraphicsOption {
     InternalResolution,
     ShadowResolution,
     Resampler,
+    CameraFOV,
     BloomMode,
     BloomMultiplier,
     DepthOfFieldMode,
