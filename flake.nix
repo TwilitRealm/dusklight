@@ -17,37 +17,45 @@
       ];
       forAllSystems = lib.genAttrs supportedSystems;
 
-      dawnVersion = "v20260618.032059";
-      nodVersion = "v2.0.0-alpha.10";
+      dawnVersion = "v20260807.225922";
+      nodVersion = "v2.0.0-alpha.12";
       versionSuffix = "nix-" + (self.shortRev or self.dirtyShortRev or "dirty");
 
       dawnInfo = {
         "x86_64-linux" = {
           triple = "linux-x86_64";
-          hash = "sha256-GFSd573b+VQx/VmFdNQgWDd0V9ayQlcw0Zuopke12ak=";
+          hash = "sha256-deRtiZ221q6PO9zejJBwa56fCM63KEh6y2p7nM+MOYU=";
         };
         "aarch64-linux" = {
           triple = "linux-aarch64";
-          hash = "sha256-ZaoP7BAjBMnfAv2/AMRi3FNH2ZtyqASCSFyU/oB2Mzg=";
+          hash = "sha256-WUs7dDxNbQtt5x8AIDmVuFWhcZVgSyUUuRJvr5yrREo=";
         };
         "aarch64-darwin" = {
           triple = "darwin-arm64";
-          hash = "sha256-HT+qtlLaSHyoXPrUcXgcTGa877X5YfzbxRD4bJb7i1Y=";
+          hash = "sha256-pM15OoUdHZ84Y9iORsvgahE6FzvQFOtjry0nNWvIqHo=";
         };
         "x86_64-darwin" = {
           triple = "darwin-x86_64";
-          hash = "sha256-cUNaCbA7rlKSukDVKGaVEVw0Zt1+mSbaHbmUCMvMVWc=";
+          hash = "sha256-4qDs7eeEw89oEr37H5/vpjLHWaZf8216flaLmhyx5GY=";
         };
       };
 
       nodPrebuiltInfo = {
         "x86_64-linux" = {
           triple = "linux-x86_64";
-          hash = "sha256-FVQWECVA2gWdc+n5OQ/Tvwn8z0qdgjSd1WlFt5HKOec=";
+          hash = "sha256-UepkfyagQmv2DGt4BOkl8g4xX+TxGNd0IXV93Xbmca4=";
+        };
+        "aarch64-linux" = {
+          triple = "linux-aarch64";
+          hash = "sha256-UDmGNlaYjTmaGMJRuZMiZ4sNm6HBvsKVAiEF7bJJTVg=";
         };
         "aarch64-darwin" = {
           triple = "macos-arm64";
-          hash = "sha256-8ZEejxksVgShNKUVRCBYaLOp9x/qOC9pAeVrElQUGUk=";
+          hash = "sha256-drh+u90TCMNzHbFOzjFW44+uPH5WRE+flvW0nW5rdwM=";
+        };
+        "x86_64-darwin" = {
+          triple = "macos-x86_64";
+          hash = "sha256-GXgGLvIMc+a5AeslvdqWMWlIBRH/mR0mTxOOA2urfQE=";
         };
       };
 
@@ -80,9 +88,8 @@
               owner = "encounter";
               repo = "nod";
               rev = nodVersion;
-              hash = "sha256-r8qDlOVxv5iKiFjJQrcBuL9HVoOM3yEjRVnQIMqaICs=";
+              hash = "sha256-15gAlOCYgT7sNKG0FQHh/YnFLi/7YA5wtXGagh/5i/Y=";
             };
-            patches = [ ./fix-cmake-paths.patch ];
             cargoDeps = pkgs.rustPlatform.importCargoLock {
               lockFile = "${finalAttrs.src}/Cargo.lock";
             };
@@ -99,10 +106,10 @@
             ];
             CARGO_NET_OFFLINE = "true";
             cmakeFlags = [
-              "-DFETCHCONTENT_FULLY_DISCONNECTED=ON"
-              "-DFETCHCONTENT_SOURCE_DIR_CORROSION=${corrosion}"
-              "-DNOD_ENABLE_INSTALL=ON"
-              "-DBUILD_SHARED_LIBS=OFF"
+              (lib.cmakeBool "FETCHCONTENT_FULLY_DISCONNECTED" true)
+              (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_CORROSION" "${corrosion}")
+              (lib.cmakeBool "NOD_ENABLE_INSTALL" true)
+              (lib.cmakeBool "BUILD_SHARED_LIBS" false)
             ];
             doCheck = false;
           });
@@ -122,10 +129,6 @@
           fetchContentDirs = {
             DAWN_PREBUILT = dawn;
             NOD_PREBUILT = nod;
-            CXXOPTS = pkgs.cxxopts.src;
-            JSON = pkgs.nlohmann_json.src;
-            XXHASH = pkgs.xxhash.src;
-            ZSTD = pkgs.zstd.src;
 
             MINIZ = pkgs.fetchzip {
               url = "https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip";
@@ -138,8 +141,8 @@
               hash = "sha256-ZmI1Dv0ZabPlxa02OpERI47jp7zFfjpeWCy1WyuPYZ0=";
             };
             TRACY = pkgs.fetchzip {
-              url = "https://github.com/wolfpld/tracy/archive/6789e7d6f9a65ec98926b602097a33a9676d2606.tar.gz";
-              hash = "sha256-Xxyd7G/mnXEPpN+ehmwl0AkAhS3CwObpJNDgcqbdUJg=";
+              url = "https://github.com/wolfpld/tracy/archive/refs/tags/v0.14.1.zip";
+              hash = "sha256-vcLI9jb7eYcR162LgBQ2P4A0oiZuYRfYRQiDhlAk5TI=";
             };
             IMGUI = pkgs.fetchFromGitHub {
               owner = "ocornut";
@@ -152,8 +155,12 @@
               hash = "sha256-pNMR8zxaaqfAzQ0AQBOXMct4usdjey1Q0Gnitg06UhM=";
             };
             RMLUI = pkgs.fetchzip {
-              url = "https://github.com/mikke89/RmlUi/archive/f9b8c9e2935d5df2c7dff2c190d3968e99b0c3dc.tar.gz";
-              hash = "sha256-g4O/JZUrrcseOz8o2QJRt+2CeuiLnVeuDJc906xvuIg=";
+              url = "https://github.com/encounter/RmlUi/archive/339cd6475b7fdbe06f17c0d4d3f2a34c424ead4f.tar.gz";
+              hash = "sha256-mQNdUPjB/dC66Nz9WNRtsylC0GEkYAXGCeq+QgVlIz4=";
+            };
+            PICOSHA2 = pkgs.fetchzip {
+              url = "https://github.com/okdshin/PicoSHA2/archive/refs/tags/v1.0.1.tar.gz";
+              hash = "sha256-3psCzbrwR+vO9TyTKOx+gEaWuHDx6pSgLOQ3DqrJsnI=";
             };
           };
 
@@ -226,13 +233,13 @@
             ninjaFlags = [ "dusklight" ];
 
             cmakeFlags = [
-              "-DBOREALIS_APP_VERSION_OVERRIDE=${versionSuffix}"
-              "-DFETCHCONTENT_FULLY_DISCONNECTED=ON"
-              "-DAURORA_DAWN_PROVIDER=package"
-              "-DAURORA_DAWN_LINKAGE=static"
-              "-DAURORA_NOD_PROVIDER=system"
-              "-DAURORA_SDL3_PROVIDER=system"
-              "-DBUILD_SHARED_LIBS=OFF"
+              (lib.cmakeFeature "BOREALIS_APP_VERSION_OVERRIDE" versionSuffix)
+              (lib.cmakeBool "FETCHCONTENT_FULLY_DISCONNECTED" true)
+              (lib.cmakeFeature "AURORA_DAWN_PROVIDER" "package")
+              (lib.cmakeFeature "AURORA_DAWN_LINKAGE" "static")
+              (lib.cmakeFeature "AURORA_NOD_PROVIDER" "system")
+              (lib.cmakeFeature "AURORA_SDL3_PROVIDER" "system")
+              (lib.cmakeBool "BUILD_SHARED_LIBS" false)
             ]
             ++ lib.mapAttrsToList (key: src: "-DFETCHCONTENT_SOURCE_DIR_${key}=${src}") fetchContentDirs;
 
