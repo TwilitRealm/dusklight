@@ -112,6 +112,15 @@ void dusk::audio::Reinitialize() {
     }
 }
 
+void dusk::audio::Shutdown() {
+    if (PlaybackStream) {
+        SDL_DestroyAudioStream(PlaybackStream);
+        PlaybackStream = nullptr;
+    }
+
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+}
+
 void dusk::audio::SetMasterVolume(const f32 value) {
     JASCriticalSection section;
 
