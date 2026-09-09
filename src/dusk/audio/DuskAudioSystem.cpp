@@ -107,7 +107,8 @@ void dusk::audio::Initialize() {
 }
 
 void dusk::audio::Reinitialize() {
-    if (InitSDL3Output()) {
+    // don't re-init unless we've initialized first (using PlaybackStream being set as proxy)
+    if (PlaybackStream && InitSDL3Output()) {
         SDL_ResumeAudioStreamDevice(PlaybackStream);
     }
 }
