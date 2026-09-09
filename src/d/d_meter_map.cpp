@@ -17,6 +17,7 @@
 #include "m_Do/m_Do_controller_pad.h"
 #include "d/d_camera.h"
 #if TARGET_PC
+#include "JSystem/JUtility/JUTPalette.h"
 #include "dusk/settings.h"
 #include <algorithm>
 #endif
@@ -644,6 +645,11 @@ void dMeterMap_c::draw() {
         mMapJ2DPicture->setAlpha(alpha);
 
         #if TARGET_PC
+        // Ensure minimap palette gets reuploaded since it is modified for the pulsating border
+        // effect.
+        JUTPalette* pPalette = mMapJ2DPicture->getTexture(0)->getPalette();
+        pPalette->dataUploaded();
+
         // Scale the minimap with the user HUD scale and shift down so its bottom-left
         // corner stays anchored to the same screen position as at scale 1.0.
         const f32 userHudScale = dGetUserHudScale();
