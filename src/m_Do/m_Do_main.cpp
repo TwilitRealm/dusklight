@@ -975,6 +975,7 @@ int game_main(int argc, char* argv[]) {
 #if BOREALIS_HAS_DISCORD
     dusk::discord::shutdown();
 #endif
+    dusk::audio::Shutdown();
     dusk::ui::shutdown();
     dusk::texture_replacements::shutdown();
     dusk::config::shutdown();
