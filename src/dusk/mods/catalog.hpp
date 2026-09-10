@@ -92,16 +92,13 @@ struct Download {
 
 struct Detail {
     Mod mod;
-    std::string slug;
     std::string siteUrl;
     std::optional<std::string> sourceUrl;
     std::optional<std::string> license;
     std::string descriptionHtml;
     std::string changelogHtml;
-    std::string packageSha256;
     Download download;
     std::optional<uint32_t> modAbi;
-    std::optional<Image> banner;
     std::vector<Screenshot> screenshots;
     std::vector<ServiceImport> serviceImports;
 };
@@ -129,7 +126,7 @@ struct DetailFetchResult {
     std::string error;
 };
 
-/** Fetches one filtered page from the configured Dusklight catalog. */
+/** Fetches one filtered page from the Dusklight catalog. */
 borealis::Task<FetchResult> fetch_page(Query query);
 
 /** Fetches the full catalog record for one mod. */

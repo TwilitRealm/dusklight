@@ -75,13 +75,13 @@ struct RemoteSource {
 };
 
 std::unordered_map<std::string, Entry>& image_cache() {
-    static auto* cache = new std::unordered_map<std::string, Entry>();
-    return *cache;
+    static std::unordered_map<std::string, Entry> cache;
+    return cache;
 }
 
 uint64_t& use_counter() {
-    static auto* counter = new uint64_t{};
-    return *counter;
+    static uint64_t counter = 0;
+    return counter;
 }
 
 RemoteSource parse_remote_source(std::string_view source) noexcept {

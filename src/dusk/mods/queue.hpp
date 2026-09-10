@@ -60,7 +60,7 @@ struct Request {
 };
 
 struct Item {
-    // Queue key. URL installs use their mod ID; local installs receive a generated key.
+    // Queue key, independent of the mod ID.
     std::string id;
     std::string modId;
     std::string name;

@@ -55,7 +55,7 @@ struct QueueItem {
 };
 
 std::vector<QueueItem> queueItems;
-uint64_t nextLocalKey = 1;
+uint64_t nextQueueKey = 1;
 
 QueueItem* find_queue_item(std::string_view key) {
     const auto item = std::ranges::find(queueItems, key,
@@ -161,9 +161,9 @@ bool copy_to_staging(const std::filesystem::path& source, const std::filesystem:
             context.report_progress(completed, total);
         }
     }
+    output.close();
     if (!input.eof() || !output) {
         error = "Could not copy the local package";
-        output.close();
         std::filesystem::remove(destination, filesystemError);
         return false;
     }
@@ -227,14 +227,16 @@ VerifyResult verify_local_package(const LocalFile& source, const std::filesystem
         return {.error = fmt::format("Could not read the local package: {}", ec.message())};
     }
     context.report_progress(0, size);
-    ModMetadata metadata;
+    const auto stagedPath = stagingDir / fmt::format("{}.dusk.part", key);
     std::string error;
-    if (!inspect_mod_bundle(source.path, metadata, error)) {
-        return {.error = fmt::format("Invalid mod package: {}", error)};
-    }
-    const auto stagedPath = staging_path(stagingDir, metadata.id, key);
     if (!copy_to_staging(source.path, stagedPath, size, context, error)) {
         return {.error = std::move(error), .canceled = context.cancel_requested()};
+    }
+    // Validate the bytes handed to the loader; the source may change during copying.
+    ModMetadata metadata;
+    if (!inspect_mod_bundle(stagedPath, metadata, error)) {
+        std::filesystem::remove(stagedPath, ec);
+        return {.error = fmt::format("Invalid mod package: {}", error)};
     }
     return {.metadata = std::move(metadata), .stagedPath = stagedPath};
 }
@@ -446,6 +448,8 @@ void finish_verification(QueueItem& item) {
         fail(item, std::move(result.error), true);
         return;
     }
+    remove_partial(item);
+    item.partialPath = result.stagedPath;
     if (const auto duplicate = find_queue_item_by_mod_id(result.metadata.id);
         duplicate != nullptr && duplicate != &item && !is_terminal(duplicate->state))
     {
@@ -535,7 +539,7 @@ bool enqueue(Request request, std::string* keyOut) {
         return true;
     }
 
-    const auto key = source != nullptr ? request.id : fmt::format("local-{}", nextLocalKey++);
+    const auto key = fmt::format("queue-{}", nextQueueKey++);
     if (keyOut != nullptr) {
         *keyOut = key;
     }

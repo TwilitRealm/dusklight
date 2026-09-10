@@ -574,8 +574,8 @@ DetailContent::DetailContent(
                          .verticalBoundary = Boundary::Stop,
                      }} {
     auto* hero = append(mRoot, "catalog-detail-hero");
-    if (detail.banner) {
-        set_image(hero, *detail.banner, 1280);
+    if (detail.mod.banner) {
+        set_image(hero, *detail.mod.banner, 1280);
     } else if (detail.mod.icon) {
         set_image(hero, *detail.mod.icon, 512);
     }
@@ -627,15 +627,6 @@ DetailContent::DetailContent(
     append_stat(stats, "\uF090", format_count(detail.mod.downloads), " downloads");
     append_stat(stats, "\uE87D", format_count(detail.mod.endorsements), " endorsements");
     append_stat(stats, "", format_bytes(detail.mod.packageSize), " package");
-    // TODO replace with common banner component
-    // if (detail.mod.containsNativeCode) {
-    //     auto* warning = append(mRoot, "catalog-native-warning");
-    //     append_text(append(warning, "icon"), "\uE002");
-    //     auto* copy = append(warning, "catalog-warning-copy");
-    //     append_text_element(copy, "catalog-warning-title", "Contains native code");
-    //     append_text_element(
-    //         copy, "catalog-warning-message", "Review the source and author before installing.");
-    // }
 
     auto* body = append(mRoot, "catalog-detail-body");
     auto* main = append(body, "main");

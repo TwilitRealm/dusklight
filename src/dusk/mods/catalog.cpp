@@ -297,13 +297,11 @@ Detail parse_detail(std::string_view body) {
     const json root = json::parse(body);
     Detail detail{
         .mod = parse_mod(root),
-        .slug = required_string(root, "slug"),
         .siteUrl = required_string(root, "site_url"),
         .sourceUrl = optional_string(root, "source_url"),
         .license = optional_string(root, "license"),
         .descriptionHtml = required_string(root, "description_html"),
         .changelogHtml = required_string(root, "changelog_html"),
-        .packageSha256 = required_string(root, "package_sha256"),
     };
 
     const auto& download = required_field(root, "download");
@@ -323,11 +321,6 @@ Detail parse_detail(std::string_view body) {
             throw std::runtime_error{"field 'mod_abi' is too large"};
         }
         detail.modAbi = static_cast<uint32_t>(value);
-    }
-
-    const auto& banner = required_field(root, "banner");
-    if (!banner.is_null()) {
-        detail.banner = parse_image(banner);
     }
 
     const auto& screenshots = required_field(root, "screenshots");
