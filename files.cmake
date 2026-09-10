@@ -1434,7 +1434,6 @@ set(DUSK_FILES
         src/dusk/dvd_asset.cpp
         src/dusk/dvd_asset.hpp
         src/dusk/extras.c
-        src/dusk/frame_interpolation.cpp
         src/dusk/commands.cpp
         src/dusk/commands.hpp
         src/dusk/game_clock.cpp
@@ -1465,6 +1464,10 @@ set(DUSK_FILES
         src/dusk/imgui/ImGuiStateShare.cpp
         src/dusk/imgui/ImGuiStateShare.hpp
         src/dusk/imgui/ImGuiStubLog.cpp
+        src/dusk/interp/camera.cpp
+        src/dusk/interp/dual_buffer.cpp
+        src/dusk/interp/frame_interpolation.cpp
+        src/dusk/interp/line.cpp
         src/dusk/io.cpp
         src/dusk/iso_validate.cpp
         src/dusk/language.cpp
@@ -1490,12 +1493,14 @@ set(DUSK_FILES
         src/dusk/mods/queue.cpp
         src/dusk/mods/queue.hpp
         src/dusk/mods/item.hpp
+        src/dusk/mods/item_actor.cpp
         src/dusk/mods/item_checks.cpp
         src/dusk/mods/item_gives.cpp
         src/dusk/mods/log_buffer.cpp
         src/dusk/mods/log_buffer.hpp
         src/dusk/mods/manifest.cpp
         src/dusk/mods/manifest.hpp
+        src/dusk/mods/svc/actor.cpp
         src/dusk/mods/svc/camera.cpp
         src/dusk/mods/svc/config.cpp
         src/dusk/mods/svc/config.hpp
@@ -1506,6 +1511,9 @@ set(DUSK_FILES
         src/dusk/mods/svc/hook.cpp
         src/dusk/mods/svc/host.cpp
         src/dusk/mods/svc/http.cpp
+        src/dusk/mods/svc/net.cpp
+        src/dusk/mods/svc/net.hpp
+        src/dusk/mods/svc/websocket.cpp
         src/dusk/mods/svc/item.cpp
         src/dusk/mods/svc/item.hpp
         src/dusk/mods/svc/log.cpp

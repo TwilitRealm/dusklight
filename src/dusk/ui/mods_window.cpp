@@ -1,10 +1,5 @@
 #include "mods_window.hpp"
 
-#include "dusk/mod_loader.hpp"
-#include "dusk/mods/queue.hpp"
-#include "dusk/mods/svc/ui.hpp"
-#include "fmt/format.h"
-#include "fmt/ranges.h"
 #include "format.hpp"
 #include "logs_window.hpp"
 #include "mod_browser.hpp"
@@ -16,11 +11,19 @@
 
 #include <borealis/http.hpp>
 
-#include "Z2AudioLib/Z2SeMgr.h"
+#include "dusk/mod_loader.hpp"
+#include "dusk/mods/queue.hpp"
+#include "dusk/mods/svc/net.hpp"
+#include "dusk/mods/svc/ui.hpp"
+
 #include "m_Do/m_Do_audio.h"
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <algorithm>
 #include <cstddef>
+
 #include <memory>
 #include <ranges>
 #include <string>
@@ -51,7 +54,7 @@ ModStatus mod_status(const mods::LoadedMod& mod) {
 bool mod_uses_network(const mods::LoadedMod& mod) {
     return std::ranges::any_of(
         mod.manifestInfo.imports, [](const mods::ModManifestInfo::Import& serviceImport) {
-            return serviceImport.id == HTTP_SERVICE_ID;
+            return mods::svc::is_network_service(serviceImport.id);
         });
 }
 

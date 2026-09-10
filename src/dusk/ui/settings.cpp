@@ -1,25 +1,8 @@
 #include "settings.hpp"
 
-#include <borealis/file_select.hpp>
-#include <borealis/io.hpp>
-#include "aurora/gfx.h"
 #include "bool_button.hpp"
 #include "controller_config.hpp"
-#include "dusk/app_info.hpp"
-#include "dusk/audio/DuskAudioSystem.h"
-#include "dusk/audio/DuskDsp.hpp"
-#include "dusk/config.hpp"
-#include "dusk/data.hpp"
-#include "dusk/discord_presence.hpp"
-#include "dusk/hotkeys.h"
-#include "dusk/imgui/ImGuiEngine.hpp"
-#include "dusk/io.hpp"
-#include "dusk/language.hpp"
-#include "dusk/livesplit.h"
-#include "dusk/presentation.hpp"
-#include "dusk/speedrun.h"
 #include "graphics_tuner.hpp"
-#include "m_Do/m_Do_main.h"
 #include "menu_bar.hpp"
 #include "modal.hpp"
 #include "number_button.hpp"
@@ -28,13 +11,28 @@
 #include "touch_controls_editor.hpp"
 #include "ui.hpp"
 
-#include <SDL3/SDL_filesystem.h>
-#include <aurora/lib/window.hpp>
-#include <fmt/format.h>
+#include "dusk/app_info.hpp"
+#include "dusk/audio/DuskAudioSystem.h"
+#include "dusk/audio/DuskDsp.hpp"
+#include "dusk/config.hpp"
+#include "dusk/data.hpp"
+#include "dusk/discord_presence.hpp"
+#include "dusk/hotkeys.h"
+#include "dusk/imgui/ImGuiEngine.hpp"
+#include "dusk/language.hpp"
+#include "dusk/livesplit.h"
+#include "dusk/presentation.hpp"
+#include "dusk/speedrun.h"
 
+#include <aurora/gfx.h>
+#include <aurora/lib/window.hpp>
+#include <borealis/file_select.hpp>
+#include <borealis/io.hpp>
 #if BOREALIS_HAS_SENTRY
 #include <borealis/sentry.hpp>
 #endif
+#include <fmt/format.h>
+#include <SDL3/SDL_filesystem.h>
 
 #include <algorithm>
 #include <filesystem>
@@ -69,6 +67,13 @@ constexpr std::array kInterpolationModes = {
     "Off",
     "Capped",
     "Unlimited",
+};
+
+constexpr std::array kAudioOutputModeNames = {
+    "Stereo (Speakers)",
+    "Stereo (Headphones)",
+    "5.1 Surround",
+    "7.1 Surround",
 };
 
 constexpr std::array kTouchTargetingLabels = {
@@ -1049,6 +1054,35 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
         auto& leftPane = add_child<Pane>(content, Pane::Type::Controlled);
         auto& rightPane = add_child<Pane>(content, Pane::Type::Uncontrolled);
 
+        leftPane.add_section("Output");
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Output Mode",
+                .getValue = [] {
+                    const auto idx = static_cast<int>(getSettings().audio.outputMode.getValue());
+                    return Rml::String{kAudioOutputModeNames[idx]};
+                },
+                .isModified = [] {
+                    const auto& setting = getSettings().audio.outputMode;
+                    return setting.getValue() != setting.getDefaultValue();
+                },
+            }), rightPane, [](Pane& pane) {
+                for (int i = 0; i < static_cast<int>(kAudioOutputModeNames.size()); ++i) {
+                    pane.add_button({
+                        .text = kAudioOutputModeNames[i],
+                        .isSelected = [i] {
+                            const auto& setting = getSettings().audio.outputMode;
+                            return setting.getValue() == static_cast<AudioOutputMode>(i);
+                        },
+                    }).on_pressed([i] {
+                        mDoAud_seStartMenu(kSoundItemChange);
+                        getSettings().audio.outputMode.setValue(static_cast<AudioOutputMode>(i));
+                        config::save();
+                        audio::Reinitialize();
+                    });
+                }
+            });
+
         // TODO: Individual sliders for Main Music, Sub Music, Sound Effects, and Fanfare.
         leftPane.add_section("Volume");
         leftPane.register_control(
@@ -1080,13 +1114,6 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                 .key = "Enable Reverb",
                 .helpText = "Enables the reverb effect in game audio.",
                 .onChange = [](bool value) { audio::SetEnableReverb(value); },
-            });
-        config_bool_select(leftPane, rightPane, getSettings().audio.enableHrtf,
-            {
-                .key = "Enable Spatial Sound",
-                .helpText =
-                    "Emulate surround sound via HRTF. Recommended only for use with headphones!",
-                .onChange = [](bool value) { audio::EnableHrtf = value; },
             });
         config_bool_select(leftPane, rightPane, getSettings().audio.menuSounds,
             {

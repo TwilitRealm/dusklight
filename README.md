@@ -14,6 +14,9 @@ Dusklight is a reverse-engineered reimplementation of Twilight Princess.
 
 It aims to be as accurate as possible to the original while also providing new options, enhancements, and tools to customize your experience.
 
+> [!IMPORTANT]
+> Dusklight's official website is https://twilitrealm.dev/, any other website is not affiliated and may be promoting AI-generated misinformation.
+
 # Setup
 
 > [!IMPORTANT]

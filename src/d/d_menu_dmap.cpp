@@ -21,16 +21,15 @@
 #include "d/d_msg_string.h"
 #include "d/d_meter_haihai.h"
 #include "d/d_menu_window.h"
-#include "dusk/settings.h"
 #include "f_op/f_op_msg_mng.h"
 #include "m_Do/m_Do_graphic.h"
 #include <cstring>
 
+#if TARGET_PC
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/settings.h"
 #include "dusk/version.hpp"
 #include "helpers/string.hpp"
-
-#if TARGET_PC
-#include "dusk/frame_interpolation.h"
 #endif
 
 #if (PLATFORM_WII || PLATFORM_SHIELD)
@@ -1113,7 +1112,7 @@ void dMenu_DmapBg_c::draw() {
             -35.0f + (local_224.x - local_218.x),
             -35.0f + (local_224.y - local_218.y));
 #if TARGET_PC
-        if (!dusk::frame_interp::is_enabled()) {
+        if (!dusk::interp::is_enabled()) {
             field_0xdda = 0;
         }
 #else
@@ -2775,7 +2774,7 @@ void dMenu_Dmap_c::zoomIn_proc() {
 
 void dMenu_Dmap_c::zoomOut_init_proc() {
 #if TARGET_PC
-    if (dusk::frame_interp::is_enabled()) {
+    if (dusk::interp::is_enabled()) {
         mpDrawBg->resetScrollArrowMask();
     }
 #endif

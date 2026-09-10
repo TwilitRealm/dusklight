@@ -20,14 +20,14 @@
 #include "d/d_msg_class.h"
 #include "d/d_msg_object.h"
 #include "d/d_pane_class.h"
-#include "dusk/frame_interpolation.h"
 #include <cstring>
 
-#include "dusk/version.hpp"
-
 #if TARGET_PC
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/settings.h"
 #include "dusk/ui/icon_provider.hpp"
+#include "dusk/version.hpp"
+
 #include <algorithm>
 
 namespace {
@@ -196,6 +196,20 @@ dMeter2Draw_c::dMeter2Draw_c(JKRExpHeap* mp_heap) {
         static_cast<J2DTextBox*>(mpXYText[i][2]->getPanePtr())->setFontSize(font_size);
     }
     IF_DUSK_BLOCK_END
+#endif
+
+#if TARGET_PC
+    if (dusk::version::isLessThanWiiJpn()) {
+        if (J2DPicture* b_btn = static_cast<J2DPicture*>(mpScreen->search(MULTI_CHAR('b_btn')))) {
+            b_btn->setAlpha(255);
+            b_btn->setWhite(JUtility::TColor(195, 63, 63, 255));
+        }
+
+        for (int i = 0; i < 5; i++) {
+            static_cast<J2DTextBox*>(mpXYText[i][0]->getPanePtr())->setCharSpace(0.0f);
+            static_cast<J2DTextBox*>(mpXYText[i][1]->getPanePtr())->setCharSpace(0.0f);
+        }
+    }
 #endif
 
     init();
@@ -755,42 +769,38 @@ void dMeter2Draw_c::draw() {
         if (field_0x756 >= 0) {
             var_f29 = g_drawHIO.mLightDrop.mDropPikariAnimSpeed_Completed;
             int temp_r5_2 = g_drawHIO.mLightDrop.mPikariInterval * 15;
-#ifdef TARGET_PC
-            // FRAME INTERP NOTE: Set even if not advancing
-            var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
-            if (dusk::frame_interp::get_ui_tick_pending())
-#endif
-            {
-                if (field_0x756 <= temp_r5_2) {
-                    int temp_r4 = (field_0x756 % g_drawHIO.mLightDrop.mPikariInterval);
-                    int temp_r3_5 = field_0x756 / g_drawHIO.mLightDrop.mPikariInterval;
+            IF_DUSK(var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete);  // FRAME INTERP NOTE: Set even if not advancing
+            IF_DUSK_BLOCK(dusk::interp::get_ui_tick_pending())
+            if (field_0x756 <= temp_r5_2) {
+                int temp_r4 = (field_0x756 % g_drawHIO.mLightDrop.mPikariInterval);
+                int temp_r3_5 = field_0x756 / g_drawHIO.mLightDrop.mPikariInterval;
 
-                    if (temp_r4 == 0 && field_0x62c[temp_r3_5] == 0.0f) {
-                        field_0x62c[temp_r3_5] = 18.0f;
-                    }
+                if (temp_r4 == 0 && field_0x62c[temp_r3_5] == 0.0f) {
+                    field_0x62c[temp_r3_5] = 18.0f;
+                }
 
-                    var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
-                    field_0x756++;
-                } else {
-                    int temp_r5_3 = temp_r5_2 + 1;
+                var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
+                field_0x756++;
+            } else {
+                int temp_r5_3 = temp_r5_2 + 1;
 
-                    if (field_0x756 == temp_r5_3) {
-                        if (field_0x62c[15] == 0.0f) {
-                            field_0x756++;
-                        }
-                        var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
-                    } else if (field_0x756 >= g_drawHIO.mLightDrop.field_0x54 + temp_r5_3) {
-                        for (int i = 0; i < 16; i++) {
-                            field_0x62c[i] = 18.0f - var_f29;
-                            field_0x66c[i] = 18.0f - g_drawHIO.mLightDrop.mPikariLoopAnimSpeed;
-                        }
-
-                        field_0x756 = -1;
-                    } else {
+                if (field_0x756 == temp_r5_3) {
+                    if (field_0x62c[15] == 0.0f) {
                         field_0x756++;
                     }
+                    var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
+                } else if (field_0x756 >= g_drawHIO.mLightDrop.field_0x54 + temp_r5_3) {
+                    for (int i = 0; i < 16; i++) {
+                        field_0x62c[i] = 18.0f - var_f29;
+                        field_0x66c[i] = 18.0f - g_drawHIO.mLightDrop.mPikariLoopAnimSpeed;
+                    }
+
+                    field_0x756 = -1;
+                } else {
+                    field_0x756++;
                 }
             }
+            IF_DUSK_BLOCK_END
         }
 
         for (int i = 0; i < 16; i++) {
@@ -1480,25 +1490,22 @@ void dMeter2Draw_c::drawPikari(f32 i_posX, f32 i_posY, f32* i_framep, f32 i_scal
     if (param_9 != 3 && param_9 != 4 && param_9 != 5 && dMsgObject_isTalkNowCheck()) {
         *i_framep = 0.0f;
     } else {
-#ifdef TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
-#endif
-        {
-            *i_framep += param_8;
-            if (*i_framep > var_f31) {
-                if (param_9 == 1 || param_9 == 2 || param_9 == 3) {
-                    *i_framep = 18.0f;
-                } else {
-                    *i_framep = 0.0f;
-                }
-            }
-
-            if (*i_framep == 18.0f && param_9 == 1) {
-                mDoAud_seStart(Z2SE_NAVI_BLINK, NULL, 0, 0);
-            } else if (*i_framep == 18.0f && param_9 == 2) {
-                mDoAud_seStart(Z2SE_SY_ITEM_COMBINE_ICON, NULL, 0, 0);
+        IF_DUSK_BLOCK(dusk::interp::get_ui_tick_pending())
+        *i_framep += param_8;
+        if (*i_framep > var_f31) {
+            if (param_9 == 1 || param_9 == 2 || param_9 == 3) {
+                *i_framep = 18.0f;
+            } else {
+                *i_framep = 0.0f;
             }
         }
+
+        if (*i_framep == 18.0f && param_9 == 1) {
+            mDoAud_seStart(Z2SE_NAVI_BLINK, NULL, 0, 0);
+        } else if (*i_framep == 18.0f && param_9 == 2) {
+            mDoAud_seStart(Z2SE_SY_ITEM_COMBINE_ICON, NULL, 0, 0);
+        }
+        IF_DUSK_BLOCK_END
 
         playPikariBckAnimation(*i_framep);
         playPikariBpkAnimation(*i_framep);
@@ -2460,7 +2467,7 @@ void dMeter2Draw_c::drawButtonA(u8 i_action, f32 i_posX, f32 i_posY, f32 i_textP
     mpButtonA->paneTrans(i_posX, i_posY);
     mpTextA->scale(var_f30 * i_scale, var_f30 * i_scale);
     mpTextA->paneTrans(g_drawHIO.mButtonATextPosX + i_textPosX,
-                       g_drawHIO.mButtonATextPosY + i_textPosY);
+                       g_drawHIO.mButtonATextPosY + i_textPosY IF_DUSK(+ (dusk::version::isLessThanWiiJpn() ? 6.0f : 0.0f)));
 }
 
 void dMeter2Draw_c::drawButtonB(u8 i_action, bool param_1, f32 i_posX, f32 i_posY, f32 i_textPosX,
@@ -2658,6 +2665,11 @@ void dMeter2Draw_c::drawButtonXY(int i_no, u8 i_itemNo, u8 i_action, bool param_
 
     static u64 const tag[] = {MULTI_CHAR('item_x_n'), MULTI_CHAR('item_y_n')};
 
+#if TARGET_PC
+    const float btnXOffsetX = dusk::version::isLessThanWiiJpn() ? 2.0f : 0.0f;
+    const float btnXOffsetY = dusk::version::isLessThanWiiJpn() ? 38.0f : 0.0f;
+#endif
+
     if (!param_3) {
         mpScreen->search(tag[i_no])->hide();
 
@@ -2704,7 +2716,8 @@ void dMeter2Draw_c::drawButtonXY(int i_no, u8 i_itemNo, u8 i_action, bool param_
 
         if (i_no == SELECT_X_e) {
             mpTextXY[i_no]->scale(g_drawHIO.mButtonXYTextScale, g_drawHIO.mButtonXYTextScale);
-            mpTextXY[i_no]->paneTrans(g_drawHIO.mButtonXYTextPosX, g_drawHIO.mButtonXYTextPosY);
+            mpTextXY[i_no]->paneTrans(g_drawHIO.mButtonXYTextPosX IF_DUSK(- btnXOffsetX),
+                                      g_drawHIO.mButtonXYTextPosY IF_DUSK(+ btnXOffsetY));
         } else if (i_no == SELECT_Y_e) {
             mpTextXY[i_no]->scale(g_drawHIO.mButtonXYTextScale, g_drawHIO.mButtonXYTextScale);
             mpTextXY[i_no]->paneTrans(g_drawHIO.mButtonXYTextPosX, g_drawHIO.mButtonXYTextPosY);
@@ -2766,7 +2779,8 @@ void dMeter2Draw_c::drawButtonXY(int i_no, u8 i_itemNo, u8 i_action, bool param_
             mpLightXY[0]->setAlphaRate(mButtonXItemBaseAlpha[var_r29] * field_0x7f0);
 
             mpTextXY[i_no]->scale(g_drawHIO.mButtonXYTextScale, g_drawHIO.mButtonXYTextScale);
-            mpTextXY[i_no]->paneTrans(g_drawHIO.mButtonXYTextPosX, g_drawHIO.mButtonXYTextPosY);
+            mpTextXY[i_no]->paneTrans(g_drawHIO.mButtonXYTextPosX IF_DUSK(- btnXOffsetX),
+                                      g_drawHIO.mButtonXYTextPosY IF_DUSK(+ btnXOffsetY));
         } else if (i_no == SELECT_Y_e) {
             mpButtonXY[1]->scale(g_drawHIO.mButtonYScale, g_drawHIO.mButtonYScale);
             mpButtonXY[1]->paneTrans(g_drawHIO.mButtonYPosX, g_drawHIO.mButtonYPosY);

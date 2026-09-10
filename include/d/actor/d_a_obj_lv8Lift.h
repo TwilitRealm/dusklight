@@ -59,7 +59,7 @@ public:
     int Draw();
     int Delete();
 #if TARGET_PC
-    friend void daL8Lift_interp_callback(bool isSimFrame, void* pUserWork);
+    friend void daL8Lift_interp_callback(void* pUserWork);
 #endif
 
     u8 getPthID() { return fopAcM_GetParamBit(this, 0, 8); }
@@ -68,7 +68,6 @@ public:
 
     static DUSK_GAME_DATA f32 const mSpeed[16];
 
-private:
     /* 0x5A0 */ request_of_phase_process_class mPhase;
     /* 0x5A8 */ J3DModel* mpModel;
     /* 0x5AC */ mDoExt_btkAnm mBtk;

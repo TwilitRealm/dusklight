@@ -1,15 +1,18 @@
 #include "JSystem/JSystem.h" // IWYU pragma: keep
 
-#include <cstring>
-#include <os.h>
+#include "JSystem/J3DGraphBase/J3DPacket.h"
 #include "JSystem/J3DGraphAnimator/J3DModel.h"
 #include "JSystem/J3DGraphBase/J3DDrawBuffer.h"
 #include "JSystem/J3DGraphBase/J3DMaterial.h"
-#include "JSystem/J3DGraphBase/J3DPacket.h"
 #include "JSystem/J3DGraphBase/J3DShapeMtx.h"
 #include "JSystem/JKernel/JKRHeap.h"
+#include <os.h>
+#include <cstring>
 #include "global.h"
-#include "tracy/Tracy.hpp"
+
+#if TARGET_PC
+#include <tracy/Tracy.hpp>
+#endif
 
 J3DError J3DDisplayListObj::newDisplayList(u32 maxSize) {
     mMaxSize = ALIGN_NEXT(maxSize, 0x20);
@@ -339,6 +342,11 @@ int J3DShapePacket::newDifferedDisplayList(u32 diffFlags) {
 void J3DShapePacket::prepareDraw() const {
     mpModel->getVertexBuffer()->setArray();
     j3dSys.setModel(mpModel);
+#if TARGET_PC
+    if (mpModel->getMtxCalcMode() == 2) {
+        mpModel->prepare_presentation_view();
+    }
+#endif
     j3dSys.setShapePacket((J3DShapePacket*)this);
 
     J3DShapeMtx::setLODFlag(mpModel->checkFlag(J3DMdlFlag_EnableLOD) != 0);

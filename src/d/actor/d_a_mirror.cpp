@@ -13,13 +13,6 @@
 #include <gf/GFGeometry.h>
 #include <gf/GFLight.h>
 #include "m_Do/m_Do_lib.h"
-#if TARGET_PC
-#include "dusk/frame_interpolation.h"
-#endif
-
-#ifndef __MWERKS__
-#include "helpers/math.h"
-#endif
 
 static BOOL daMirror_c_createHeap(fopAc_ac_c* i_this) {
     return ((daMirror_c*)i_this)->createHeap();
@@ -30,7 +23,7 @@ static DUSK_CONSTEXPR char DUSK_CONST* l_arcName = "Mirror";
 static DUSK_CONSTEXPR char DUSK_CONST* l_arcName2 = "MR-Table";
 
 dMirror_packet_c::dMirror_packet_c() {
-#ifdef TARGET_PC
+#if TARGET_PC
     GXInitTexObj(&mTexObj, nullptr, 0, 0, static_cast<GXTexFmt>(-1), GX_MAX_TEXWRAPMODE,
                  GX_MAX_TEXWRAPMODE, GX_FALSE);
 #endif

@@ -1,10 +1,6 @@
 #include "JSystem/JSystem.h" // IWYU pragma: keep
 
 #include "JSystem/JParticle/JPAResource.h"
-
-#include <cstring>
-
-#include <gx.h>
 #include "JSystem/JKernel/JKRHeap.h"
 #include "JSystem/JParticle/JPABaseShape.h"
 #include "JSystem/JParticle/JPAChildShape.h"
@@ -15,11 +11,13 @@
 #include "JSystem/JParticle/JPAKeyBlock.h"
 #include "JSystem/JParticle/JPAParticle.h"
 #include "JSystem/JParticle/JPAResourceManager.h"
+#include <gx.h>
 #include "global.h"
-#include "tracy/Tracy.hpp"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
+
+#include <tracy/Tracy.hpp>
 
 #define JPA_DRAW_CTX_ARG , &ctx
 #else
@@ -841,7 +839,7 @@ bool JPAResource::calc(JPAEmitterWorkData* work, JPABaseEmitter* emtr) {
 
 #ifdef TARGET_PC
         if (((pBsp && pBsp->getDirType() == 3) || (pCsp && pCsp->getDirType() == 3)) &&
-            dusk::frame_interp::is_enabled())
+            dusk::interp::is_enabled())
         {
             // ensure mGlobalEmtrDir is valid
             calcWorkData_d(work);
