@@ -31,7 +31,7 @@
  * should be released in mod_shutdown. The device outlives all mods.
  */
 
-#define GFX_SERVICE_ID "dev.twilitrealm.dusklight.gfx"
+#define GFX_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "gfx"
 #define GFX_SERVICE_MAJOR 1u
 #define GFX_SERVICE_MINOR 2u
 

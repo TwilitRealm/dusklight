@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define FLOW_SERVICE_ID "dev.twilitrealm.dusklight.flow"
+#define FLOW_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "flow"
 #define FLOW_SERVICE_MAJOR 1u
 #define FLOW_SERVICE_MINOR 0u
 

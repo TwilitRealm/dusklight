@@ -11,7 +11,7 @@
  * Always available; every other service can be reached from it.
  */
 
-#define HOST_SERVICE_ID "dev.twilitrealm.dusklight.host"
+#define HOST_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "host"
 #define HOST_SERVICE_MAJOR 2u
 #define HOST_SERVICE_MINOR 2u
 

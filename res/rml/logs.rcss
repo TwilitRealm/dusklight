@@ -2,19 +2,20 @@ window.logs content {
     flex-flow: column;
 }
 
-window.logs .log-toolbar {
+window.logs log-toolbar {
     display: flex;
     flex-flow: row;
-    flex: 0 0 64dp;
-    height: 64dp;
+    flex: 0 0 var(--toolbar-height);
+    height: var(--toolbar-height);
     align-items: center;
-    gap: 8dp;
+    gap: var(--space-sm);
     padding-right: 72dp;
-    background-color: rgba(217, 217, 217, 10%);
-    border-bottom: 2dp #92875B;
-    font-family: "Fira Sans Condensed";
+    background-color: rgba(var(--color-neutral-rgb), 10%);
+    border-bottom-width: 2dp;
+    border-bottom-color: var(--color-border);
+    font-family: var(--font-family-heading);
     font-weight: bold;
-    font-size: 18dp;
+    font-size: var(--font-size-xl);
 }
 
 window.logs > close {
@@ -22,76 +23,77 @@ window.logs > close {
     right: 8dp;
 }
 
-window.logs .log-title {
+window.logs log-title {
     align-self: stretch;
     flex: 0 0 auto;
-    padding: 0 24dp;
-    line-height: 64dp;
+    padding: 0 var(--space-xl);
+    line-height: var(--toolbar-height);
     text-transform: uppercase;
-    border-bottom: 4dp #C2A42D;
+    border-bottom-width: 4dp;
+    border-bottom-color: var(--color-accent);
     font-effect: glow(0dp 4dp 0dp 4dp black);
 }
 
-window.logs .log-title-mod {
+window.logs log-title-mod {
     flex: 0 1 auto;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
-    font-family: "Fira Sans";
+    font-family: var(--font-family-body);
     font-weight: normal;
-    font-size: 15dp;
-    color: rgba(224, 219, 200, 55%);
+    font-size: var(--font-size-base);
+    color: rgba(var(--color-text-rgb), 55%);
 }
 
-.log-toolbar-spacer {
+log-toolbar-spacer {
     flex: 1 1 0;
 }
 
-.log-toolbar button {
+log-toolbar button {
     flex: 0 0 auto;
-    font-family: "Fira Sans";
+    font-family: var(--font-family-body);
     font-weight: normal;
-    font-size: 15dp;
-    padding: 5dp 12dp;
+    font-size: var(--font-size-base);
+    padding: 5dp var(--space-md);
 }
 
 window.logs content pane.log-view {
     flex: 1 1 0;
-    padding: 12dp 16dp;
+    padding: var(--space-md) var(--space-lg);
     padding-bottom: 0dp;
     gap: 0dp;
 }
 
-.log-lines {
+log-lines {
     display: block;
 }
 
-.log-line {
+log-line {
     display: block;
-    font-family: "Noto Mono";
-    font-size: 13dp;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-xs);
     line-height: 1.5;
     word-break: break-word;
     white-space: pre-wrap;
 }
 
-.log-line .log-time {
-    color: rgba(224, 219, 200, 45%);
+log-line log-time {
+    color: rgba(var(--color-text-rgb), 45%);
 }
 
-.log-line .log-mod {
-    color: rgba(194, 164, 45, 80%);
+log-line log-mod {
+    color: rgba(var(--color-accent-rgb), 80%);
 }
 
-.log-line.lvl-trace,
-.log-line.lvl-debug {
+log-line.lvl-trace,
+log-line.lvl-debug {
     opacity: 0.55;
 }
 
-.log-line.lvl-warn .log-msg {
-    color: #ffa826;
+log-line.lvl-warn log-msg {
+    color: var(--color-warning);
 }
 
-.log-line.lvl-error .log-msg {
-    color: #cc4444;
+log-line.lvl-error log-msg {
+    color: var(--color-error);
 }

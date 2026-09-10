@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define CAMERA_SERVICE_ID "dev.twilitrealm.dusklight.camera"
+#define CAMERA_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "camera"
 #define CAMERA_SERVICE_MAJOR 1u
 #define CAMERA_SERVICE_MINOR 1u
 

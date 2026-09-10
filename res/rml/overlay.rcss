@@ -8,10 +8,10 @@ body {
     height: 100%;
     margin: 0;
     padding: 0;
-    font-family: "Fira Sans";
+    font-family: var(--font-family-body);
     font-weight: normal;
-    font-size: 20dp;
-    color: #E0DBC8;
+    font-size: var(--font-size-2xl);
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -24,16 +24,22 @@ fps,
 pipeline-progress,
 toast {
     position: absolute;
-    border: 1dp #92875B;
-    background-color: rgba(21, 22, 16, 80%);
+    border-width: 1dp;
+    background-color: rgba(var(--color-surface-rgb), 80%);
+}
+
+fps,
+pipeline-progress {
+    border-color: var(--color-border);
 }
 
 toast {
+    border-color: var(--toast-border-color);
     top: 40dp;
     right: 40dp;
     display: flex;
     flex-flow: column;
-    border-radius: 14dp;
+    border-radius: var(--radius-window);
     overflow: hidden;
     backdrop-filter: blur(5dp);
     box-shadow: 0 0 15dp 3dp;
@@ -41,23 +47,14 @@ toast {
     transform: scale(0.9);
     transform-origin: center;
     transition: filter transform 0.2s cubic-in-out;
-    padding: 18dp 24dp;
-    gap: 8dp;
+    padding: 18dp var(--space-xl);
+    gap: var(--space-sm);
 }
 
 toast[open] {
     filter: opacity(1);
     transform: scale(1);
 }
-
-/*toast:hover {
-    cursor: pointer;
-    background-color: rgba(61, 59, 36, 80%);
-}
-
-toast:active {
-    background-color: rgba(45, 43, 26, 80%);
-}*/
 
 b {
     font-weight: bold;
@@ -67,14 +64,14 @@ toast heading {
     display: flex;
     gap: 18dp;
     align-items: center;
-    font-family: "Fira Sans Condensed";
-    font-size: 18dp;
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
     font-weight: bold;
     text-transform: uppercase;
-    color: #92875B;
+    color: var(--toast-heading-color);
 }
 
-toast heading > span {
+toast heading > toast-title {
     flex: 1 0 auto;
 }
 
@@ -82,13 +79,13 @@ toast heading > row {
     flex: 1 0 auto;
     display: flex;
     align-items: center;
-    gap: 4dp;
+    gap: var(--space-xs);
 }
 
 toast message {
     display: flex;
     flex-flow: column;
-    gap: 8dp;
+    gap: var(--space-sm);
 }
 
 toast message row {
@@ -97,6 +94,50 @@ toast message row {
 
 toast message row.muted {
     opacity: 0.5;
+}
+
+toast.mod-installed row {
+    align-items: center;
+    gap: var(--space-md);
+}
+
+mod-icon {
+    flex: 0 0 42dp;
+    width: 42dp;
+    height: 42dp;
+    overflow: hidden;
+    border-radius: var(--radius-panel);
+    background-color: rgba(var(--color-control-rgb), 45%);
+    color: rgba(var(--color-text-rgb), 45%);
+    font-family: var(--font-family-icons);
+    font-size: var(--font-size-4xl);
+    decorator: text("&#xe87b;" center center);
+}
+
+mod-icon img {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-panel);
+}
+
+mod-info {
+    display: flex;
+    flex-flow: column;
+    min-width: 0;
+    gap: var(--space-xs);
+}
+
+mod-name {
+    color: var(--color-white);
+}
+
+toast.mod-installed small {
+    font-size: var(--font-size-sm);
+    color: rgba(var(--color-text-rgb), 55%);
+}
+
+toast.mod-installed small.version {
+    margin-left: var(--space-sm);
 }
 
 progress {
@@ -108,7 +149,7 @@ progress {
 }
 
 progress fill {
-    background-color: rgba(194, 164, 45, 80%);
+    background-color: rgba(var(--color-accent-rgb), 80%);
 }
 
 pipeline-progress {
@@ -119,8 +160,8 @@ pipeline-progress {
     z-index: 100;
     min-width: 260dp;
     max-width: 90%;
-    padding: 10dp 16dp 12dp;
-    border-radius: 7dp;
+    padding: 10dp var(--space-lg) var(--space-md);
+    border-radius: var(--radius-control);
     overflow: hidden;
     filter: opacity(0);
     transition: filter 0.2s linear-in-out;
@@ -134,8 +175,8 @@ pipeline-progress[open] {
 pipeline-status {
     display: flex;
     align-items: center;
-    gap: 8dp;
-    font-size: 18dp;
+    gap: var(--space-sm);
+    font-size: var(--font-size-xl);
     font-weight: normal;
     white-space: nowrap;
 }
@@ -145,26 +186,16 @@ icon.pipeline-spinner {
     height: 1.2em;
     line-height: 1.2em;
     font-size: 1.2em;
-    color: #C2A42D;
+    color: var(--color-accent);
     text-align: center;
     transform-origin: center;
     animation: 1s linear infinite pipeline-spinner-spin;
 }
 
-toast.achievement {
-    border: 1dp #C2A42D;
-}
-
-toast.achievement heading {
-    color: #C2A42D;
-}
-
+toast.achievement,
 toast.warning {
-    border: 1dp #C2A42D;
-}
-
-toast.warning heading {
-    color: #C2A42D;
+    --toast-border-color: var(--color-accent);
+    --toast-heading-color: var(--color-accent);
 }
 
 toast.controller-warning {
@@ -181,8 +212,8 @@ toast.controller-warning[open] {
     transform: translateX(-50%) scale(1);
 }
 
-toast.controller-warning heading {
-    color: #C2A42D;
+toast.controller-warning {
+    --toast-heading-color: var(--color-accent);
 }
 
 toast.menu-notification {
@@ -209,7 +240,7 @@ toast.menu-notification message row {
 }
 
 icon {
-    font-family: "Material Symbols Rounded";
+    font-family: var(--font-family-icons);
     font-weight: normal;
     display: inline-block;
     vertical-align: middle;
@@ -243,13 +274,20 @@ icon.warning {
     decorator: text("&#xe002;" center center);
 }
 
+icon.download-done {
+    width: 1.2em;
+    height: 1.2em;
+    font-size: 1.2em;
+    decorator: text("&#xf091;" center center);
+}
+
 fps {
     display: none;
     z-index: 99;
-    font-size: 18dp;
+    font-size: var(--font-size-xl);
     font-weight: bold;
-    padding: 9dp 12dp;
-    border-radius: 7dp;
+    padding: 9dp var(--space-md);
+    border-radius: var(--radius-control);
     pointer-events: none;
     white-space: nowrap;
 }
@@ -260,12 +298,12 @@ speedrun-timer {
     bottom: 0;
     right: 0;
     z-index: 99;
-    background-color: rgba(0, 0, 0, 65%);
-    padding: 2dp 4dp;
+    background-color: rgba(var(--color-black-rgb), 65%);
+    padding: var(--space-2xs) var(--space-xs);
     pointer-events: none;
-    font-family: "Noto Mono";
-    font-size: 16dp;
-    color: #ffffff;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-md);
+    color: var(--color-white);
     white-space: nowrap;
 }
 
@@ -329,7 +367,7 @@ logo img {
     left: 0;
     width: 100%;
     height: 100%;
-    filter: drop-shadow(#0008 0 0 14dp);
+    filter: drop-shadow(rgba(var(--color-black-rgb), 53.333333%) 0 0 14dp);
     transform-origin: center;
 }
 

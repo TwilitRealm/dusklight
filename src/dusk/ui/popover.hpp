@@ -2,6 +2,8 @@
 
 #include "document.hpp"
 
+#include <optional>
+
 namespace dusk::ui {
 
 class Popover : public Document {
@@ -24,6 +26,8 @@ public:
 
     Rml::Element* body() const { return mBody; }
 
+    void set_position(Rml::Vector2f position) { mPosition = position; }
+
     void dismiss();
     void on_close(std::function<void()> callback) { mOnClose = std::move(callback); }
     void on_focus(std::function<bool()> callback) { mOnFocus = std::move(callback); }
@@ -35,7 +39,8 @@ private:
     void reposition();
     void notify_close(bool restoreFocus);
 
-    Rml::Element* mAnchor = nullptr;
+    Rml::ObserverPtr<Rml::Element> mAnchor;
+    std::optional<Rml::Vector2f> mPosition;
     Side mSide;
     Rml::Element* mBody = nullptr;
     std::function<void()> mOnClose;

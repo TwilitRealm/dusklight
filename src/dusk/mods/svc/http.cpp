@@ -179,7 +179,7 @@ borealis::http::Result publish_download(borealis::http::Result result,
         }
 
         std::filesystem::path temporary = destination;
-        temporary += "." + borealis::io::fs_path_to_string(staging.filename()) + ".part";
+        temporary += fmt::format(".{}.part", borealis::io::fs_path_to_string(staging.filename()));
         std::error_code ec;
         std::filesystem::copy_file(
             staging, temporary, std::filesystem::copy_options::overwrite_existing, ec);
@@ -188,7 +188,7 @@ borealis::http::Result publish_download(borealis::http::Result result,
             std::error_code ignored;
             std::filesystem::remove(temporary, ignored);
             result.error = borealis::http::Error::Io;
-            result.message = "Failed to publish download: " + copyError;
+            result.message = fmt::format("Failed to publish download: {}", copyError);
             return result;
         }
 
@@ -196,14 +196,14 @@ borealis::http::Result publish_download(borealis::http::Result result,
         if (!borealis::io::atomic_replace(temporary, destination, replaceError)) {
             std::filesystem::remove(temporary, ec);
             result.error = borealis::http::Error::Io;
-            result.message = "Failed to publish download: " + replaceError;
+            result.message = fmt::format("Failed to publish download: {}", replaceError);
             return result;
         }
         std::filesystem::remove(staging, ec);
         return result;
     } catch (const std::exception& exception) {
         result.error = borealis::http::Error::Io;
-        result.message = std::string{"Failed to publish download: "} + exception.what();
+        result.message = fmt::format("Failed to publish download: {}", exception.what());
         return result;
     } catch (...) {
         result.error = borealis::http::Error::Io;

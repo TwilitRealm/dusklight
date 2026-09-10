@@ -100,7 +100,7 @@ private:
     Rml::Element* mControlStick = nullptr;
     Rml::Element* mControlKnob = nullptr;
     Rml::Element* mActionBar = nullptr;
-    std::array<ControlElements, static_cast<std::size_t>(Control::COUNT)> mControlElements{};
+    std::array<ControlElements, static_cast<size_t>(Control::COUNT)> mControlElements{};
     std::string mButtonBIconSource;
     std::string mButtonXIconSource;
     std::string mButtonYIconSource;
@@ -112,9 +112,9 @@ private:
     StickTouch mCameraTouch;
     SDL_FingerID mMenuPointerTouch = 0;
     int mMenuPointerMouseSuppressions = 0;
-    std::array<ControlTouch, static_cast<std::size_t>(Control::COUNT)> mControlTouches{};
-    std::array<bool, static_cast<std::size_t>(Control::COUNT)> mControlVisualPressed{};
-    std::bitset<static_cast<std::size_t>(ActionBinds::COUNT)> mQueuedActions;
+    std::array<ControlTouch, static_cast<size_t>(Control::COUNT)> mControlTouches{};
+    std::array<bool, static_cast<size_t>(Control::COUNT)> mControlVisualPressed{};
+    std::bitset<static_cast<size_t>(ActionBinds::COUNT)> mQueuedActions;
     LayoutState mActionBarLayout;
     Insets mSafeInsets;
     u16 mButtonMask = 0;

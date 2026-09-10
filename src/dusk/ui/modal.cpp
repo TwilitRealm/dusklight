@@ -1,37 +1,37 @@
 #include "modal.hpp"
 
 #include <algorithm>
+#include <utility>
 
 namespace dusk::ui {
 
-Modal::Modal(Props props) : WindowSmall("modal", "modal-dialog"), mProps(std::move(props)) {
+Modal::Modal(Props props) : WindowSmall("modal"), mProps(std::move(props)) {
     if (!mProps.variant.empty()) {
         mRoot->SetClass(mProps.variant, true);
     }
 
-    auto* header = append(mDialog, "div");
-    header->SetClass("modal-header", true);
+    auto* header = append(mDialog, "modal-header");
 
-    auto* title = append(header, "div");
-    title->SetClass("modal-title", true);
-    title->SetInnerRML(mProps.title);
+    auto* title = append(header, "modal-title");
+    append_text(title, mProps.title);
 
     if (!mProps.icon.empty()) {
         auto* icon = append(header, "icon");
         icon->SetClass(mProps.icon, true);
     }
 
-    auto* body = append(mDialog, "div");
-    body->SetClass("modal-body", true);
-    body->SetInnerRML(mProps.bodyRml);
+    auto* body = append(mDialog, "modal-body");
+    if (mProps.bodyText) {
+        append_text(body, *mProps.bodyText);
+    } else {
+        body->SetInnerRML(mProps.bodyRml);
+    }
 
-    mContentRoot = append(mDialog, "div");
-    mContentRoot->SetClass("modal-content", true);
+    mContentRoot = append(mDialog, "modal-content");
 
-    auto* actions = append(mDialog, "div");
-    actions->SetClass("modal-actions", true);
+    auto* actions = append(mDialog, "modal-actions");
     if (props.isVertical) {
-        actions->SetClass("modal-actions-vertical", true);
+        actions->SetClass("vertical", true);
     }
 
     for (auto& action : mProps.actions) {
@@ -49,7 +49,7 @@ void Modal::update() {
         button->update();
     }
     if (mPendingAction) {
-        auto action = std::move(mPendingAction);
+        auto action = std::exchange(mPendingAction, {});
         action(*this);
     }
     WindowSmall::update();
@@ -64,7 +64,7 @@ Pane& Modal::content_pane() {
 }
 
 void Modal::add_action(ModalAction action) {
-    auto* actions = mDialog->QuerySelector(".modal-actions");
+    auto* actions = mDialog->QuerySelector("modal-actions");
     auto btn =
         std::make_unique<ControlledButton>(actions, ControlledButton::Props{
                                                         .text = std::move(action.label),
@@ -85,7 +85,11 @@ void Modal::add_action(ModalAction action) {
 }
 
 void Modal::set_body(const Rml::String& bodyRml) {
-    mDialog->QuerySelector(".modal-body")->SetInnerRML(bodyRml);
+    mDialog->QuerySelector("modal-body")->SetInnerRML(bodyRml);
+}
+
+void Modal::set_body_text(const Rml::String& bodyText) {
+    set_text_content(mDialog->QuerySelector("modal-body"), bodyText);
 }
 
 void Modal::set_icon(const Rml::String& icon) {
@@ -98,7 +102,7 @@ void Modal::set_icon(const Rml::String& icon) {
     }
     if (iconElem == nullptr) {
         // The constructor only creates the icon element when Props.icon is set.
-        iconElem = append(mDialog->QuerySelector(".modal-header"), "icon");
+        iconElem = append(mDialog->QuerySelector("modal-header"), "icon");
     }
     iconElem->SetClassNames(icon);
 }

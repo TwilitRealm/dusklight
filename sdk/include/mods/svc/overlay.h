@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define OVERLAY_SERVICE_ID "dev.twilitrealm.dusklight.overlay"
+#define OVERLAY_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "overlay"
 #define OVERLAY_SERVICE_MAJOR 1u
 #define OVERLAY_SERVICE_MINOR 0u
 

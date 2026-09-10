@@ -180,8 +180,15 @@ FetchContent_Declare(miniz
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     EXCLUDE_FROM_ALL
 )
+message(STATUS "dusklight: Fetching PicoSHA2")
+FetchContent_Declare(picosha2
+    URL https://github.com/okdshin/PicoSHA2/archive/refs/tags/v1.0.1.tar.gz
+    URL_HASH SHA256=9983136544234e573fe07cc1a22fdf978ad7979043e7be2e9082f6d4991ff8a8
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    EXCLUDE_FROM_ALL
+)
 
-set(_fetch_content_deps miniz)
+set(_fetch_content_deps miniz picosha2)
 if (DUSK_HAS_FUNCHOOK)
     message(STATUS "dusklight: Fetching funchook")
     # cmake/PatchFunchook.cmake patches funchook's cmake/capstone.cmake.in to inject a
@@ -216,6 +223,14 @@ if (DUSK_HAS_FUNCHOOK)
 endif ()
 FetchContent_MakeAvailable(${_fetch_content_deps})
 
+if (DUSK_HAS_FUNCHOOK AND APPLE)
+    target_sources(funchook-static PRIVATE src/dusk/mods/loader/code_patch_macos.cpp)
+    target_include_directories(funchook-static PRIVATE src/dusk/mods/loader)
+    set_source_files_properties(src/dusk/mods/loader/code_patch_macos.cpp
+            TARGET_DIRECTORY funchook-static PROPERTIES
+            COMPILE_OPTIONS "-O2;-fno-sanitize=all;-fno-stack-protector")
+endif ()
+
 # Use signed char on ARM to match the original game (and x86)
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _arch)
 if(_arch MATCHES "^(arm|aarch64)" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU")
@@ -241,8 +256,8 @@ include(cmake/GameABIConfig.cmake)
 find_package(Threads REQUIRED)
 set(GAME_COMPILE_DEFS DUSK_BUILDING_GAME=1)
 set(GAME_LIBS aurora::core aurora::gx aurora::gd aurora::si aurora::vi aurora::pad aurora::mtx aurora::os aurora::dvd aurora::thp
-    aurora::card borealis::cli borealis::crash borealis::data borealis::disc borealis::discord borealis::file_select borealis::io borealis::log borealis::net borealis::presentation borealis::sentry borealis::update borealis::ws freeverb cxxopts::cxxopts absl::flat_hash_map nlohmann_json::nlohmann_json TracyClient fmt::fmt
-    Threads::Threads zstd::libzstd dusklight_game_headers)
+    aurora::card borealis::http borealis::cli borealis::crash borealis::data borealis::disc borealis::discord borealis::file_select borealis::io borealis::log borealis::net borealis::presentation borealis::sentry borealis::update borealis::ws freeverb cxxopts::cxxopts absl::flat_hash_map nlohmann_json::nlohmann_json TracyClient fmt::fmt
+    Threads::Threads zstd::libzstd dusklight_game_headers picosha2 PNG::PNG)
 if (DUSK_HAS_FUNCHOOK)
     list(APPEND GAME_LIBS funchook-static)
 endif ()

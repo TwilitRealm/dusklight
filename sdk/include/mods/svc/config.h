@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define CONFIG_SERVICE_ID "dev.twilitrealm.dusklight.config"
+#define CONFIG_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "config"
 #define CONFIG_SERVICE_MAJOR 1u
 #define CONFIG_SERVICE_MINOR 0u
 

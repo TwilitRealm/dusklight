@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define HTTP_SERVICE_ID "dev.twilitrealm.dusklight.http"
+#define HTTP_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "http"
 #define HTTP_SERVICE_MAJOR 1u
 #define HTTP_SERVICE_MINOR 0u
 

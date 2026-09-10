@@ -45,7 +45,7 @@ private:
     };
 
     struct PointerEdit {
-        std::size_t index = kTouchLayoutControlCount;
+        size_t index = kTouchLayoutControlCount;
         SDL_FingerID touchId = 0;
         Rml::Vector2f startPointerDp;
         ControlRect startVisual;
@@ -64,19 +64,19 @@ private:
         Rml::Element* element, void (TouchControlsEditor::*callback)()) noexcept;
     void sync_control_layouts() noexcept;
     void sync_selection_frame() noexcept;
-    void set_selected_control(std::size_t index) noexcept;
+    void set_selected_control(size_t index) noexcept;
     void clear_selected_control() noexcept;
-    ControlProps props_for(std::size_t index) const;
-    void store_props(std::size_t index, ControlRect visual, ControlProps props) noexcept;
+    ControlProps props_for(size_t index) const;
+    void store_props(size_t index, ControlRect visual, ControlProps props) noexcept;
     void restore_active_control() noexcept;
-    bool begin_edit(std::size_t index, EditHandle handle, Rml::Vector2f positionPx, bool touch,
+    bool begin_edit(size_t index, EditHandle handle, Rml::Vector2f positionPx, bool touch,
         SDL_FingerID touchId = 0) noexcept;
     bool continue_edit(Rml::Vector2f positionPx) noexcept;
     bool end_edit(bool touch, SDL_FingerID touchId, bool cancelled) noexcept;
     Rml::Vector2f pointer_position_dp(Rml::Vector2f positionPx) const noexcept;
     ControlRect rect_for_edit(Rml::Vector2f pointerDp, ControlProps& props) const noexcept;
-    ControlRect clamp_visual_rect(std::size_t index, ControlRect rect) const noexcept;
-    Rml::Vector2f min_visual_size(std::size_t index) const noexcept;
+    ControlRect clamp_visual_rect(size_t index, ControlRect rect) const noexcept;
+    Rml::Vector2f min_visual_size(size_t index) const noexcept;
     bool handle_nav_command(Rml::Event& event, NavCommand cmd) override;
     void save_layout();
     void request_reset();
@@ -92,7 +92,7 @@ private:
     ControlLayout mWorkingLayout;
     PointerEdit mPointerEdit;
     std::optional<ControlRect> mAppliedSelectionFrame;
-    std::size_t mSelectedIndex = kTouchLayoutControlCount;
+    size_t mSelectedIndex = kTouchLayoutControlCount;
 };
 
 }  // namespace dusk::ui

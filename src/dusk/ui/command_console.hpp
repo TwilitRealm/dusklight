@@ -39,8 +39,8 @@ private:
 
     static constexpr auto kMessageDuration = std::chrono::seconds{6};
     static constexpr auto kFadeDuration = std::chrono::milliseconds{800};
-    static constexpr std::size_t kMaxVisibleLines = 24;
-    static constexpr std::size_t kMaxMessageHistory = 500;
+    static constexpr size_t kMaxVisibleLines = 24;
+    static constexpr size_t kMaxMessageHistory = 500;
 
     Rml::Element* mConsole = nullptr;
     Rml::Element* mOutput = nullptr;

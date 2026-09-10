@@ -1,10 +1,9 @@
 #pragma once
 
 #include <filesystem>
-#include <mutex>
 #include <string_view>
-#include "miniz.h"
 
+#include "dusk/archive.hpp"
 #include "dusk/mod_loader.hpp"
 
 namespace dusk::mods {
@@ -28,17 +27,14 @@ public:
 
 class ModBundleZip final : public ModBundle {
 public:
-    explicit ModBundleZip(std::vector<u8>&& data);
-    ~ModBundleZip() override;
+    explicit ModBundleZip(const std::filesystem::path& path);
+    ~ModBundleZip() override = default;
     std::vector<u8> readFile(const std::string& fileName) override;
     std::vector<std::string> getFileNames() override;
     size_t getFileSize(const std::string& fileName) override;
 
 private:
-    std::vector<uint8_t> zip_data;
-    mz_zip_archive res_zip{};
-    bool res_zip_open = false;
-    std::mutex m_mutex;
+    archive::ZipArchive m_archive;
 };
 
 class ModBundleDisk final : public ModBundle {

@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define STAGE_SERVICE_ID "dev.twilitrealm.dusklight.stage"
+#define STAGE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "stage"
 #define STAGE_SERVICE_MAJOR 1u
 #define STAGE_SERVICE_MINOR 0u
 

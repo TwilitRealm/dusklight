@@ -168,8 +168,7 @@ bool Pane::focus_last() {
 }
 
 Rml::Element* Pane::add_section(const Rml::String& text) {
-    auto* elem = append(mRoot, "div");
-    elem->SetClass("section-heading", true);
+    auto* elem = append(mRoot, "section-heading");
     append_text(elem, text);
     return elem;
 }

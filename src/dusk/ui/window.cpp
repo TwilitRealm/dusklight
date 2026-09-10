@@ -33,6 +33,7 @@ Rml::String window_document_source(const std::vector<Rml::String>& styleSheets) 
     return fmt::format(R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/tabbing.rcss" />
     <link type="text/rcss" href="res/rml/window.rcss" />
 {}</head>
@@ -47,11 +48,12 @@ Rml::String window_document_source(const std::vector<Rml::String>& styleSheets) 
 const Rml::String kDocumentSourceSmall = R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/window.rcss" />
 </head>
 <body>
     <window id="window" class="small">
-        <div id="dialog"/>
+        <modal-dialog id="dialog"/>
     </window>
 </body>
 </rml>
@@ -330,7 +332,7 @@ bool Window::handle_content_nav(Rml::Event& event, NavCommand cmd) noexcept {
     return false;
 }
 
-WindowSmall::WindowSmall(const Rml::String& windowClass, const Rml::String& dialogClass)
+WindowSmall::WindowSmall(const Rml::String& windowClass)
     : Document(kDocumentSourceSmall, false, DocumentScope::Window),
       mRoot(mDocument->GetElementById("window")), mDialog(mDocument->GetElementById("dialog")) {
     listen(mRoot, Rml::EventId::Transitionend, [this](Rml::Event& event) {
@@ -342,7 +344,6 @@ WindowSmall::WindowSmall(const Rml::String& windowClass, const Rml::String& dial
     });
 
     mRoot->SetClass(windowClass, true);
-    mDialog->SetClass(dialogClass, true);
 }
 
 void WindowSmall::show() {

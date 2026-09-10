@@ -546,7 +546,7 @@ void ColorInput::add_history(NavGroup& navigation) {
 void ColorInput::add_swatch_button(NavGroup& navigation, const Rml::String& value) {
     auto& button = navigation.add_item<Button>("");
     button.root()->SetClass("color-swatch-button", true);
-    button.root()->SetInnerRML("");
+    dusk::ui::clear_children(button.root());
     auto* chip = append(button.root(), "color-chip");
     apply_swatch(chip, value, mProps.alpha);
     Rml::String title = value == "rainbow" ? "Rainbow" : value;
@@ -734,7 +734,7 @@ void ColorInput::refresh_picker() {
                              opaque.green, opaque.blue, css_color(opaque)));
         place(mAlphaCursor, mAlpha * kSvWidthDp, kBarHeightDp / 2.0f);
     }
-    mPickerValue->SetInnerRML(format_color(color, mHexFormat, mProps.alpha));
+    set_text_content(mPickerValue, format_color(color, mHexFormat, mProps.alpha));
 }
 
 Rml::Colourb ColorInput::current_color() const {

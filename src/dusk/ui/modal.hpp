@@ -4,6 +4,8 @@
 #include "pane.hpp"
 #include "window.hpp"
 
+#include <optional>
+
 namespace dusk::ui {
 class Modal;
 
@@ -17,6 +19,7 @@ class Modal : public WindowSmall {
 public:
     struct Props {
         Rml::String title;
+        std::optional<Rml::String> bodyText;
         Rml::String bodyRml;
         std::vector<ModalAction> actions;
         std::function<void(Modal&)> onDismiss;
@@ -32,6 +35,7 @@ public:
 
     Pane& content_pane();
     void set_body(const Rml::String& bodyRml);
+    void set_body_text(const Rml::String& bodyText);
     void set_icon(const Rml::String& icon);
 
 protected:
