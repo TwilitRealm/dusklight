@@ -1,4 +1,14 @@
 body {
+    --color-oil-border: rgba(42, 32, 18, 82%);
+    --color-oil-background: rgba(18, 14, 10, 70%);
+    --color-oil-fill: rgb(255, 232, 74);
+    --color-button-a: rgba(34, 112, 123, 62%);
+    --color-button-b: rgba(161, 61, 66, 58%);
+    --color-button-x: rgba(83, 115, 151, 56%);
+    --color-button-y: rgba(113, 91, 150, 54%);
+    --color-stick-background: rgba(18, 20, 24, 35%);
+    --color-stick-knob: rgba(238, 236, 226, 55%);
+
     --button-color: rgba(248, 244, 232, 90%);
     --button-background: rgba(22, 24, 28, 48%);
     --button-background-active: rgba(63, 78, 90, 68%);
@@ -37,8 +47,6 @@ button {
     background-color: var(--button-background);
     color: var(--button-color);
     text-align: center;
-    /* backdrop-filter: blur(7dp); */
-    /* box-shadow: 0 6dp 18dp rgba(0, 0, 0, 28%); */
     transform-origin: center;
     transition: background-color border-color filter transform 0.08s linear-in-out,
                 opacity 0.2s linear-in-out;
@@ -143,8 +151,6 @@ action-bar {
     border-color: var(--button-border-color);
     border-radius: 23dp;
     background-color: var(--button-background);
-    /* backdrop-filter: blur(7dp); */
-    /* box-shadow: 0 -6dp 18dp rgba(0, 0, 0, 28%); */
     overflow: hidden;
     opacity: 1;
     transform-origin: center;
@@ -235,10 +241,9 @@ separator {
     width: 34dp;
     height: 8dp;
     padding: var(--space-2xs);
-    border: 1dp rgba(42, 32, 18, 82%);
+    border: 1dp var(--color-oil-border);
     border-radius: var(--radius-small);
-    background-color: rgba(18, 14, 10, 70%);
-    /* box-shadow: 0 2dp 6dp rgba(0, 0, 0, 35%); */
+    background-color: var(--color-oil-background);
 }
 
 oil-fill {
@@ -246,7 +251,7 @@ oil-fill {
     width: 0%;
     height: 100%;
     border-radius: 2dp;
-    background-color: rgb(255, 232, 74);
+    background-color: var(--color-oil-fill);
 }
 
 .face.has-item span {
@@ -258,19 +263,19 @@ oil-fill {
 .face.a {
     border-radius: 37dp;
     font-size: 31dp;
-    background-color: rgba(34, 112, 123, 62%);
+    background-color: var(--color-button-a);
 }
 
 .face.b {
-    background-color: rgba(161, 61, 66, 58%);
+    background-color: var(--color-button-b);
 }
 
 .face.x {
-    background-color: rgba(83, 115, 151, 56%);
+    background-color: var(--color-button-x);
 }
 
 .face.y {
-    background-color: rgba(113, 91, 150, 54%);
+    background-color: var(--color-button-y);
 }
 
 button.control.docked-top,
@@ -307,11 +312,9 @@ touch-stick {
     width: 124dp;
     height: 124dp;
     border-radius: 62dp;
-    background-color: rgba(18, 20, 24, 35%);
+    background-color: var(--color-stick-background);
     border-width: 1dp;
     border-color: rgba(var(--color-white-rgb), 20%);
-    /* backdrop-filter: blur(7dp); */
-    /* box-shadow: 0 8dp 24dp rgba(0, 0, 0, 24%); */
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.18s linear-in-out;
@@ -337,7 +340,7 @@ stick-knob {
     width: 48dp;
     height: 48dp;
     border-radius: 24dp;
-    background-color: rgba(238, 236, 226, 55%);
+    background-color: var(--color-stick-knob);
     border-width: 1dp;
     border-color: rgba(var(--color-white-rgb), 45%);
 }

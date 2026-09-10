@@ -64,6 +64,11 @@ body {
     --color-error-rgb: 204, 68, 68;
     --color-error: rgb(var(--color-error-rgb));
 
+    --color-progress-done: #44AA22;
+    --color-progress-ongoing: #2255BB;
+    --color-danger-border: #852221;
+    --color-danger-heading: #B3261E;
+
     --button-color: var(--color-text);
     --button-background: rgba(var(--color-control-rgb), 20%);
     --button-background-hover: rgba(var(--color-interactive-rgb), 20%);

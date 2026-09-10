@@ -22,7 +22,7 @@ popover {
     border-color: var(--color-border);
     background-color: rgba(var(--color-surface-rgb), 96%);
     backdrop-filter: blur(5dp);
-    box-shadow: 0 6dp 24dp 2dp rgba(0, 0, 0, 55%);
+    box-shadow: 0 6dp 24dp 2dp rgba(var(--color-black-rgb), 55%);
     filter: opacity(0);
     transform: scale(0.95);
     transform-origin: center;
@@ -47,7 +47,7 @@ color-sv {
     width: 240dp;
     height: 150dp;
     border-radius: var(--radius-panel);
-    box-shadow: rgba(146, 135, 91, 50%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 50%) 0 0 0 1dp;
     drag: drag;
     focus: auto;
 }
@@ -59,7 +59,7 @@ color-alpha {
     width: 240dp;
     height: 14dp;
     border-radius: var(--radius-control);
-    box-shadow: rgba(146, 135, 91, 50%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 50%) 0 0 0 1dp;
     drag: drag;
     focus: auto;
 }
@@ -67,13 +67,13 @@ color-alpha {
 color-sv:focus-visible,
 color-hue:focus-visible,
 color-alpha:focus-visible {
-    box-shadow: #C2A42D 0 0 0 2dp;
+    box-shadow: var(--color-accent) 0 0 0 2dp;
 }
 
 color-sv.adjusting,
 color-hue.adjusting,
 color-alpha.adjusting {
-    box-shadow: #FFFFFF 0 0 0 3dp;
+    box-shadow: var(--color-white) 0 0 0 3dp;
 }
 
 color-hue {
@@ -88,7 +88,7 @@ color-cursor {
     border-radius: var(--radius-control);
     border-width: 2dp;
     border-color: var(--color-white);
-    box-shadow: 0 0 4dp 1dp rgba(0, 0, 0, 70%);
+    box-shadow: 0 0 4dp 1dp rgba(var(--color-black-rgb), 70%);
     pointer-events: none;
 }
 
@@ -127,7 +127,7 @@ color-chip {
     width: 20dp;
     height: 20dp;
     border-radius: 5dp;
-    box-shadow: rgba(255, 255, 255, 45%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-white-rgb), 45%) 0 0 0 1dp;
 }
 
 button.color-swatch-button color-chip {
@@ -155,7 +155,7 @@ button {
     background-color: var(--button-background);
     padding: var(--space-xs) var(--space-sm);
     border-radius: var(--radius-panel);
-    box-shadow: rgba(146, 135, 91, 30%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 30%) 0 0 0 1dp;
     color: var(--button-color);
     cursor: pointer;
     focus: auto;
@@ -164,7 +164,7 @@ button {
 button:hover,
 button:focus-visible {
     background-color: var(--button-background-hover);
-    box-shadow: #C2A42D 0 0 0 2dp;
+    box-shadow: var(--color-accent) 0 0 0 2dp;
 }
 
 button:active {

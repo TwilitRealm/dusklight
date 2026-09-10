@@ -1,8 +1,10 @@
 body.touch-editor {
+    --color-editor-backdrop: rgba(4, 6, 8, 34%);
+    --color-editor-handle: rgba(34, 37, 42, 86%);
     --color-editor-accent-rgb: 255, 232, 128;
     --color-editor-highlight-rgb: 255, 244, 190;
 
-    background-color: rgba(4, 6, 8, 34%);
+    background-color: var(--color-editor-backdrop);
     z-index: 8;
 }
 
@@ -48,7 +50,7 @@ resize-handle {
     border-width: 2dp;
     border-color: rgba(var(--color-editor-highlight-rgb), 96%);
     border-radius: 11dp;
-    background-color: rgba(34, 37, 42, 86%);
+    background-color: var(--color-editor-handle);
     pointer-events: auto;
 }
 

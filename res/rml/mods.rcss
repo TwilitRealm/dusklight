@@ -89,7 +89,7 @@ mod-entry {
 }
 
 mod-entry.current {
-    box-shadow: rgba(146, 135, 91, 40%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 40%) 0 0 0 1dp;
 }
 
 mod-entry:hover,
@@ -212,7 +212,7 @@ mod-actions button {
     font-size: var(--font-size-md);
     padding: 6dp 14dp;
     background-color: rgba(var(--color-surface-rgb), 80%);
-    box-shadow: rgba(146, 135, 91, 60%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 60%) 0 0 0 1dp;
 }
 
 mod-header.no-banner {

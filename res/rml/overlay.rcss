@@ -56,15 +56,6 @@ toast[open] {
     transform: scale(1);
 }
 
-/*toast:hover {
-    cursor: pointer;
-    background-color: rgba(61, 59, 36, 80%);
-}
-
-toast:active {
-    background-color: rgba(45, 43, 26, 80%);
-}*/
-
 b {
     font-weight: bold;
 }
@@ -376,7 +367,7 @@ logo img {
     left: 0;
     width: 100%;
     height: 100%;
-    filter: drop-shadow(#0008 0 0 14dp);
+    filter: drop-shadow(rgba(var(--color-black-rgb), 53.333333%) 0 0 14dp);
     transform-origin: center;
 }
 

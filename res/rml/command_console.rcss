@@ -1,8 +1,6 @@
-*, *:before, *:after {
-    box-sizing: border-box;
-}
-
 body {
+    --console-command-color: #FFD966;
+
     display: block;
     width: 100%;
     height: 100%;
@@ -19,11 +17,11 @@ console {
     width: 50%;
     display: flex;
     flex-direction: column;
-    background-color: rgba(0, 0, 0, 60%);
+    background-color: rgba(var(--color-black-rgb), 60%);
     pointer-events: auto;
-    font-family: "Noto Mono";
-    font-size: 14dp;
-    color: #FFFFFF;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    color: var(--color-white);
     transition: background-color 0.8s linear-in-out;
 }
 
@@ -31,7 +29,7 @@ output {
     display: block;
     overflow: hidden;
     max-height: 480dp;
-    padding: 4dp 8dp;
+    padding: var(--space-xs) var(--space-sm);
     line-height: 1.4em;
 }
 
@@ -46,11 +44,11 @@ console:not([open]) {
 }
 
 console:not([open])[fading] {
-    background-color: rgba(0, 0, 0, 0%);
+    background-color: rgba(var(--color-black-rgb), 0%);
 }
 
 console[open] {
-    background-color: rgba(0, 0, 0, 60%);
+    background-color: rgba(var(--color-black-rgb), 60%);
     transition: none;
 }
 
@@ -75,19 +73,19 @@ output[open] line {
 }
 
 line.cmd {
-    color: #FFD966;
+    color: var(--console-command-color);
 }
 
 console input {
     display: none;
     width: 100%;
-    background-color: rgba(0, 0, 0, 40%);
+    background-color: rgba(var(--color-black-rgb), 40%);
     border: 0dp;
-    border-top: 1dp rgba(255, 255, 255, 20%);
-    color: #FFFFFF;
-    font-family: "Noto Mono";
-    font-size: 14dp;
-    padding: 4dp 8dp;
+    border-top: 1dp rgba(var(--color-white-rgb), 20%);
+    color: var(--color-white);
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    padding: var(--space-xs) var(--space-sm);
 }
 
 console[open] input {

@@ -1,6 +1,8 @@
 body {
     --color-prelaunch-accent: #FEE685;
     --color-prelaunch-muted: #A6A09B;
+    --color-disc-error: #FFC9C9;
+    --color-disc-mismatch: #FFD6A7;
     --color-ready: #D8F999;
     --menu-button-decorator: horizontal-gradient(rgba(var(--color-black-rgb), 0%) rgba(var(--color-black-rgb), 0%));
     --menu-button-decorator-hover: horizontal-gradient(#FEE685FF #FEE68500);
@@ -281,7 +283,7 @@ body.mirrored version-info {
 }
 
 #disc-status[status=bad] {
-    color: #FFC9C9;
+    color: var(--color-disc-error);
 }
 
 #disc-status[status=verifying] {
@@ -289,7 +291,7 @@ body.mirrored version-info {
 }
 
 #disc-status[status=mismatch] {
-    color: #FFD6A7;
+    color: var(--color-disc-mismatch);
 }
 
 #disc-status[status=unknown] {

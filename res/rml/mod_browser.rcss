@@ -148,7 +148,7 @@ catalog-official-badge {
     background-color: rgba(var(--color-accent-rgb), 28%);
     color: var(--color-info);
     font-style: normal;
-    font-size: 9dp;
+    font-size: var(--font-size-3xs);
 }
 
 catalog-card-body > section > b {
@@ -290,7 +290,7 @@ catalog-detail-status h2 {
     display: block;
     margin: 0;
     font-family: var(--font-family-heading);
-    font-size: 25dp;
+    font-size: var(--font-size-4xl);
     font-weight: bold;
 }
 
@@ -394,7 +394,7 @@ catalog-source-actions button {
 
 .catalog-install-action icon {
     flex: 0 0 22dp;
-    font-size: 22dp;
+    font-size: var(--font-size-3xl);
     line-height: 1;
 }
 
@@ -621,7 +621,7 @@ catalog-detail-body h3 {
     display: block;
     margin: 0 0 10dp 0;
     font-family: var(--font-family-heading);
-    font-size: 21dp;
+    font-size: var(--font-size-2xl);
     font-weight: bold;
 }
 
@@ -816,7 +816,7 @@ catalog-screenshot-actions button {
 
     catalog-filters h1,
     catalog-results header h1 {
-        font-size: 23dp;
+        font-size: var(--font-size-4xl);
     }
 
     catalog-filters h2 {

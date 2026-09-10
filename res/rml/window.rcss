@@ -262,7 +262,7 @@ button {
     opacity: 0.9;
     padding: var(--space-sm) var(--space-lg);
     border-radius: var(--radius-window);
-    box-shadow: rgba(146, 135, 91, 25%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 25%) 0 0 0 1dp;
     font-size: var(--font-size-2xl);
     transition: background-color 0.1s linear-in-out, opacity 0.1s linear-in-out;
     cursor: pointer;
@@ -272,7 +272,7 @@ button {
 button:not(:disabled):hover,
 button:not(:disabled):focus-visible {
     background-color: var(--button-background-hover);
-    box-shadow: #C2A42D 0 0 0 2dp;
+    box-shadow: var(--color-accent) 0 0 0 2dp;
 }
 
 button:not(:disabled):selected {
@@ -283,7 +283,7 @@ button:not(:disabled):selected {
 button:not(:disabled):active {
     opacity: 1;
     background-color: var(--button-background-active);
-    box-shadow: #C2A42D 0 0 0 2dp;
+    box-shadow: var(--color-accent) 0 0 0 2dp;
 }
 
 button:disabled {
@@ -305,7 +305,7 @@ select-button {
     opacity: 0.9;
     padding: var(--space-sm) var(--space-lg);
     border-radius: var(--radius-window);
-    box-shadow: rgba(146, 135, 91, 25%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 25%) 0 0 0 1dp;
     transition: background-color 0.1s linear-in-out, opacity 0.1s linear-in-out;
     cursor: pointer;
     focus: auto;
@@ -314,7 +314,7 @@ select-button {
 select-button:not(:disabled):hover,
 select-button:not(:disabled):focus-visible {
     background-color: var(--button-background-hover);
-    box-shadow: #C2A42D 0 0 0 2dp;
+    box-shadow: var(--color-accent) 0 0 0 2dp;
 }
 
 select-button:not(:disabled):selected {
@@ -325,7 +325,7 @@ select-button:not(:disabled):selected {
 select-button:not(:disabled):active {
     opacity: 1;
     background-color: var(--button-background-active);
-    box-shadow: #C2A42D 0 0 0 2dp;
+    box-shadow: var(--color-accent) 0 0 0 2dp;
 }
 
 select-button:disabled {
@@ -362,7 +362,7 @@ select-button.group-button icon {
     width: 24dp;
     height: 24dp;
     font-size: var(--font-size-4xl);
-    color: inherit;
+    color: var(--button-color);
     decorator: text("&#xe5cc;" center center);
 }
 
@@ -382,7 +382,7 @@ select-button.color-input color-swatch {
     width: 48dp;
     height: 24dp;
     border-radius: var(--radius-control);
-    box-shadow: rgba(255, 255, 255, 45%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-white-rgb), 45%) 0 0 0 1dp;
 }
 
 select-button.color-input color-swatch.empty {
@@ -508,11 +508,11 @@ progress fill {
 }
 
 progress.progress-done fill {
-    background-color: #44aa22;
+    background-color: var(--color-progress-done);
 }
 
 progress.progress-ongoing fill {
-    background-color: #2255bb;
+    background-color: var(--color-progress-ongoing);
 }
 
 button.achievement-clear {
@@ -559,7 +559,7 @@ modal-dialog {
 }
 
 window.modal.danger {
-    border: 2dp #852221;
+    border: 2dp var(--color-danger-border);
 }
 
 modal-header {
@@ -589,7 +589,7 @@ modal-title {
 
 window.modal.danger modal-title,
 window.modal.danger modal-header icon {
-    color: #B3261E;
+    color: var(--color-danger-heading);
 }
 
 modal-body {
