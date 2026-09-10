@@ -185,7 +185,7 @@ int daAlink_c::procSumouMove() {
         return 1;
     }
 
-    IF_DUSK(const bool holdToMash = DUSK_IF_ELSE(dusk::getSettings().game.holdToMash, false));
+    IF_DUSK(const bool holdToMash = DUSK_IF_ELSE(dusk::getSettings().game.holdToMash, false);)
     daNpcWrestler_c* wrestler_p = (daNpcWrestler_c*)mCargoCarryAcKeep.getActor();
     daPy_frameCtrl_c* frameCtrl_p = mUnderFrameCtrl;
     f32 sp8;
