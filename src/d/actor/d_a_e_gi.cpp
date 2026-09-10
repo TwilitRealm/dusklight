@@ -750,7 +750,7 @@ void daE_GI_c::PushButtonCount() {
             mPushButtonCount++;
         }
 
-        IF_DUSK(const bool holdToMash = DUSK_IF_ELSE(dusk::getSettings().game.holdToMash, false));
+        IF_DUSK(const bool holdToMash = DUSK_IF_ELSE(dusk::getSettings().game.holdToMash, false);)
 
         if (holdToMash ? mDoCPd_c::getHoldA(PAD_1) : mDoCPd_c::getTrigA(PAD_1)) {
             mPushButtonCount += 2;
