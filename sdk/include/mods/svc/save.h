@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define SAVE_SERVICE_ID "dev.twilitrealm.dusklight.save"
+#define SAVE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "save"
 #define SAVE_SERVICE_MAJOR 1u
 #define SAVE_SERVICE_MINOR 0u
 

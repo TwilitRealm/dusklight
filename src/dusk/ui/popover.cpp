@@ -23,7 +23,7 @@ constexpr float kViewportMarginDp = 8.0f;
 }  // namespace
 
 Popover::Popover(Rml::Element* anchor, Side side, const Rml::String& windowClass)
-    : Document{kDocumentSource}, mAnchor{anchor}, mSide{side},
+    : Document{kDocumentSource}, mAnchor{anchor->GetObserverPtr()}, mSide{side},
       mBody{mDocument->GetElementById("popover")} {
     if (!windowClass.empty()) {
         mBody->SetClass(windowClass, true);
@@ -108,6 +108,9 @@ bool Popover::handle_nav_command(Rml::Event&, NavCommand cmd) {
 }
 
 void Popover::reposition() {
+    if (!mAnchor) {
+        return;
+    }
     auto* context = mDocument->GetContext();
     const auto dimensions = Rml::Vector2f{context->GetDimensions()};
     const float dpRatio = context->GetDensityIndependentPixelRatio();
@@ -135,6 +138,9 @@ void Popover::reposition() {
         break;
     }
 
+    if (mPosition) {
+        pos = *mPosition;
+    }
     pos.x = std::clamp(pos.x, margin, std::max(margin, dimensions.x - size.x - margin));
     pos.y = std::clamp(pos.y, margin, std::max(margin, dimensions.y - size.y - margin));
     mBody->SetProperty(Rml::PropertyId::Left, Rml::Property{pos.x, Rml::Unit::PX});

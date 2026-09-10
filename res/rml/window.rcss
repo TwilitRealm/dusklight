@@ -940,3 +940,42 @@ modal-actions.vertical button.modal-btn {
         width: 100%;
     }
 }
+
+button.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44dp;
+    height: 44dp;
+    padding: var(--space-sm);
+    box-sizing: border-box;
+    flex-shrink: 0;
+    font-size: var(--font-size-5xl);
+}
+
+button.icon-button icon {
+    display: block;
+    flex-shrink: 0;
+    line-height: 1;
+    pointer-events: none;
+}
+
+ui-tooltip {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    max-width: 240dp;
+    padding: 6dp 10dp;
+    border: 1dp var(--color-border);
+    border-radius: var(--radius-panel);
+    background-color: rgba(var(--color-surface-rgb), 96%);
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    word-break: break-word;
+    pointer-events: none;
+    focus: none;
+}
+
+ui-tooltip.visible {
+    display: block;
+}

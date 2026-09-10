@@ -1,6 +1,7 @@
 #include "mods_window.hpp"
 
 #include "format.hpp"
+#include "icon_button.hpp"
 #include "logs_window.hpp"
 #include "mod_browser.hpp"
 #include "mod_texture_provider.hpp"
@@ -11,6 +12,7 @@
 
 #include <borealis/http.hpp>
 
+#include "dusk/data.hpp"
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/queue.hpp"
 #include "dusk/mods/svc/net.hpp"
@@ -25,6 +27,7 @@
 #include <cstddef>
 
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <string>
 #include <string_view>
@@ -58,10 +61,54 @@ bool mod_uses_network(const mods::LoadedMod& mod) {
         });
 }
 
+enum class ModAction {
+    Retry,
+    Reload,
+    Enable,
+    Disable,
+    Logs,
+    OpenFolder,
+    Uninstall,
+};
+
+struct ModActionInfo {
+    ModAction action;
+    const char* text;
+    const char* icon;
+};
+
+std::vector<ModActionInfo> available_mod_actions(const mods::LoadedMod& mod) {
+    std::vector<ModActionInfo> actions;
+    if (mod.activation_failed()) {
+        actions.push_back({ModAction::Retry, "Retry", "replay"});
+        actions.push_back({ModAction::Disable, "Disable", "pause"});
+    } else if (mod.is_enabled()) {
+        if (!mod.nativeInPlace) {
+            actions.push_back({ModAction::Reload, "Reload", "refresh"});
+        }
+        actions.push_back({ModAction::Disable, "Disable", "pause"});
+    } else {
+        actions.push_back({ModAction::Enable, "Enable", "play_arrow"});
+    }
+    actions.push_back({ModAction::Logs, "Logs", "notes"});
+    if (data::manager().capabilities().canOpenFolder) {
+        actions.push_back({ModAction::OpenFolder, "Open folder", "folder_open"});
+    }
+    if (mods::ModLoader::instance().can_uninstall(mod)) {
+        actions.push_back({
+            ModAction::Uninstall,
+            mod.hasBundledCopy ? "Remove update" : "Uninstall",
+            "delete",
+        });
+    }
+    return actions;
+}
+
 class ModListEntry : public FluentComponent<ModListEntry> {
 public:
     ModListEntry(Rml::Element* parent, const mods::LoadedMod& mod)
         : FluentComponent{append(parent, "mod-entry")} {
+        mRoot->SetAttribute("mod-id", mod.metadata.id);
         auto* icon = append(mRoot, "mod-icon");
         if (!mod.metadata.iconPath.empty()) {
             auto* image = append(icon, "img");
@@ -171,42 +218,23 @@ private:
 
 class ModDetailHeader : public FluentComponent<ModDetailHeader> {
 public:
-    ModDetailHeader(Rml::Element* parent, const mods::LoadedMod& mod,
-        std::function<void()> onShowLogs, std::function<void()> onUninstall)
+    ModDetailHeader(
+        Rml::Element* parent, const mods::LoadedMod& mod, std::vector<ContextMenu::Item> items)
         : FluentComponent{append(parent, "mod-header")} {
+        mRoot->SetAttribute("mod-id", mod.metadata.id);
         const bool hasBanner = !mod.metadata.bannerPath.empty();
         mRoot->SetClass(hasBanner ? "has-banner" : "no-banner", true);
+        mRoot->SetClass("inactive", !mod.active);
         if (hasBanner) {
-            mRoot->SetProperty("decorator", fmt::format(R"(image("{}" cover center center))",
+            auto* image = append(mRoot, "mod-header-image");
+            image->SetProperty("decorator", fmt::format(R"(image("{}" cover center center))",
                                                 mod_image_source(mod, mod.metadata.bannerPath)));
         }
 
         auto* actions = append(mRoot, "mod-actions");
-        const std::string modId = mod.metadata.id;
-        if (mod.activation_failed()) {
-            make_button(actions, "Retry").on_pressed([modId] {
-                mods::ModLoader::instance().request_reactivate(modId);
-            });
-            make_button(actions, "Disable").on_pressed([modId] {
-                mods::ModLoader::instance().request_disable(modId);
-            });
-        } else if (mod.is_enabled()) {
-            if (!mod.nativeInPlace) {
-                make_button(actions, "Reload").on_pressed([modId] {
-                    mods::ModLoader::instance().request_reload(modId);
-                });
-            }
-            make_button(actions, "Disable").on_pressed([modId] {
-                mods::ModLoader::instance().request_disable(modId);
-            });
-        } else {
-            make_button(actions, "Enable").on_pressed([modId] {
-                mods::ModLoader::instance().request_enable(modId);
-            });
-        }
-        make_button(actions, "Logs").on_pressed(std::move(onShowLogs));
-        if (mods::ModLoader::instance().can_uninstall(mod)) {
-            make_button(actions, "Uninstall").on_pressed(std::move(onUninstall));
+        for (auto& item : items) {
+            auto& button = make_button(actions, item);
+            button.on_pressed(std::move(item.onPressed));
         }
 
         listen(Rml::EventId::Keydown, [this](Rml::Event& event) {
@@ -242,8 +270,9 @@ public:
     }
 
 private:
-    Button& make_button(Rml::Element* parent, Rml::String text) {
-        auto button = std::make_unique<Button>(parent, std::move(text));
+    Button& make_button(Rml::Element* parent, const ContextMenu::Item& item) {
+        auto button = std::make_unique<IconButton>(
+            parent, IconButton::Props{.icon = item.icon, .label = item.text});
         Button& ref = *button;
         mChildren.emplace_back(std::move(button));
         mButtons.push_back(&ref);
@@ -255,13 +284,118 @@ private:
 
 }  // namespace
 
-ModsWindow::ModsWindow() : Window{Props{.tabBar = false, .styleSheets = {"res/rml/mods.rcss"}}} {
+ModsWindow::ModsWindow()
+    : Window{Props{.tabBar = false, .styleSheets = {"res/rml/mods.rcss"}}},
+      mContextMenu{*this, mRoot, "mod-entry, mod-header", [this](Rml::Element* target) {
+                       const auto id = target->GetAttribute<Rml::String>("mod-id", "");
+                       auto* mod = mods::ModLoader::instance().find_mod(id);
+                       return mod != nullptr ? mod_actions(*mod, true) :
+                                               std::vector<ContextMenu::Item>{};
+                   }} {
     mRoot->SetClass("mods", true);
 
     refresh_snapshot();
     mQueueItemCount = mods::queue::item_count();
 
     set_content([this](Rml::Element* content) { build_content(content); });
+}
+
+void ModsWindow::hide(bool close) {
+    mContextMenu.dismiss();
+    Window::hide(close);
+}
+
+bool ModsWindow::select_mod(std::string_view id) {
+    if (mods::ModLoader::instance().find_mod(id) == nullptr) {
+        return false;
+    }
+    mContextMenu.dismiss();
+    mSelectedModId = id;
+    mSelectedMod = nullptr;
+    mBrowserSelected = false;
+    mFocusSelectedMod = true;
+    refresh_snapshot();
+    mQueueItemCount = mods::queue::item_count();
+    rebuild_content();
+    return true;
+}
+
+bool ModsWindow::focus() {
+    if (mFocusSelectedMod) {
+        mDocument->UpdateDocument();
+        for (size_t i = 0; i < mEntryMods.size(); ++i) {
+            if (mEntryMods[i]->metadata.id == mSelectedModId && mEntries[i]->focus()) {
+                mEntries[i]->set_selected(true);
+                mFocusSelectedMod = false;
+                return true;
+            }
+        }
+    }
+    return Window::focus();
+}
+
+std::vector<ContextMenu::Item> ModsWindow::mod_actions(
+    const mods::LoadedMod& mod, bool contextMenu) {
+    std::vector<ContextMenu::Item> items;
+    for (const auto& info : available_mod_actions(mod)) {
+        if (!contextMenu && info.action == ModAction::OpenFolder) {
+            continue;
+        }
+        items.push_back({
+            .text = info.text,
+            .icon = info.icon,
+            .onPressed =
+                [this, id = mod.metadata.id, action = info.action] {
+                    auto& loader = mods::ModLoader::instance();
+                    auto* current = loader.find_mod(id);
+                    if (current == nullptr) {
+                        return;
+                    }
+                    const auto actions = available_mod_actions(*current);
+                    if (std::ranges::none_of(
+                            actions, [action](const auto& info) { return info.action == action; }))
+                    {
+                        return;
+                    }
+                    switch (action) {
+                    case ModAction::Retry:
+                        loader.request_reactivate(id);
+                        break;
+                    case ModAction::Reload:
+                        loader.request_reload(id);
+                        break;
+                    case ModAction::Enable:
+                        loader.request_enable(id);
+                        break;
+                    case ModAction::Disable:
+                        loader.request_disable(id);
+                        break;
+                    case ModAction::Logs:
+                        push(std::make_unique<LogsWindow>(id));
+                        break;
+                    case ModAction::Uninstall:
+                        confirm_uninstall(*current);
+                        break;
+                    case ModAction::OpenFolder: {
+                        const auto folder = current->fromDirectory ? current->modPath :
+                                                                     current->modPath.parent_path();
+                        if (!data::manager().open_folder(folder)) {
+                            push(std::make_unique<Modal>(Modal::Props{
+                                .title = "Could not open folder",
+                                .bodyText =
+                                    "The mod folder could not be opened in the file browser.",
+                                .actions = {{"OK", [](Modal& modal) { modal.pop(); }, {}}},
+                            }));
+                        }
+                        break;
+                    }
+                    }
+                },
+            .destructive = info.action == ModAction::Uninstall,
+            .separatorBefore = info.action == ModAction::Uninstall,
+        });
+    }
+    return items;
 }
 
 void ModsWindow::build_content(Rml::Element* content) {
@@ -346,27 +480,25 @@ void ModsWindow::build_content(Rml::Element* content) {
 
 void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
     pane.root()->SetAttribute("mod-id", mod.metadata.id);
-    pane.add_child<ModDetailHeader>(
-        mod, [this, id = mod.metadata.id] { push(std::make_unique<LogsWindow>(id)); },
-        [this, tracked = &mod] { confirm_uninstall(*tracked); });
+    pane.add_child<ModDetailHeader>(mod, mod_actions(mod, false));
 
     auto* title = append(pane.root(), "mod-title");
     append_text(title, fmt::format("{} ", mod.metadata.name));
     append_text(append(title, "small"), fmt::format("v{}", mod.metadata.version));
-    if (mod.loadFailed || mod.suspendedByProvider) {
-        const auto status = mod_status(mod);
-        append_text(title, "\u00a0");
-        auto* badge = append(title, "status-badge");
-        badge->SetClass(status.badgeClass, true);
-        append_text(badge, status.text);
-    }
     if (mod_uses_network(mod)) {
         append_text(title, "\u00a0");
         auto* badge = append(title, "status-badge");
         badge->SetClass("network", true);
         append_text(badge, "Network");
     }
-    append_text(append(pane.root(), "mod-author"), fmt::format("by {}", mod.metadata.author));
+    auto* author = append(pane.root(), "mod-author");
+    append_text(author, fmt::format("by {}\u00a0·\u00a0", mod.metadata.author));
+    const auto status = mod_status(mod);
+    auto* badge = append(author, "status-badge");
+    if (status.badgeClass[0] != '\0') {
+        badge->SetClass(status.badgeClass, true);
+    }
+    append_text(badge, status.text);
 
     if (mod.loadFailed && !mod.failureReason.empty()) {
         auto* row = append(pane.root(), "mod-info-row");
@@ -409,7 +541,11 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
 }
 
 void ModsWindow::confirm_uninstall(const mods::LoadedMod& mod) {
-    std::string body = "The mod package will be removed. Settings and saved data are kept.";
+    const std::string action = mod.hasBundledCopy ? "Remove update" : "Uninstall";
+    std::string body = mod.hasBundledCopy ?
+                           "Installed mod will be reverted back to the bundled version. Settings "
+                           "and saved data are kept." :
+                           "Installed mod will be removed. Settings and saved data are kept.";
     std::vector<std::string_view> dependents;
     for (const auto& edge : mod.dependents) {
         if (!edge.required || edge.mod == nullptr) {
@@ -418,17 +554,17 @@ void ModsWindow::confirm_uninstall(const mods::LoadedMod& mod) {
         dependents.push_back(edge.mod->metadata.name);
     }
     if (!dependents.empty()) {
-        body = fmt::format(
-            "{} Required dependents will be suspended: {}.", body, fmt::join(dependents, ", "));
+        body = fmt::format("{} Required dependents: {}.", body, fmt::join(dependents, ", "));
     }
 
     push(std::make_unique<Modal>(Modal::Props{
-        .title = fmt::format("Uninstall {}?", mod.metadata.name),
+        .title = mod.hasBundledCopy ? fmt::format("Revert {}?", mod.metadata.name) :
+                                      fmt::format("Uninstall {}?", mod.metadata.name),
         .bodyText = std::move(body),
         .actions =
             {
                 ModalAction{"Cancel", [](Modal& modal) { modal.pop(); }, {}},
-                ModalAction{"Uninstall",
+                ModalAction{action,
                     [id = mod.metadata.id](Modal& modal) {
                         mods::ModLoader::instance().request_uninstall(id);
                         modal.pop();
@@ -494,6 +630,14 @@ void ModsWindow::update() {
         dirty = true;
     }
     if (dirty) {
+        mContextMenu.dismiss();
+        const auto previousModId = mSelectedModId;
+        std::optional<Rml::Property> previousBannerFilter;
+        if (auto* image = mContentRoot->QuerySelector("mod-header-image")) {
+            previousBannerFilter = *image->GetProperty(Rml::PropertyId::Filter);
+        }
+        auto* list = mContentRoot->QuerySelector("pane.mod-list");
+        const float listScrollTop = list != nullptr ? list->GetScrollTop() : 0.0f;
         auto* focused = mDocument != nullptr ? mDocument->GetFocusLeafNode() : nullptr;
         bool hadContentFocus = false;
         for (auto* node = focused; node != nullptr; node = node->GetParentNode()) {
@@ -503,17 +647,32 @@ void ModsWindow::update() {
             }
         }
         rebuild_content();
+        mDocument->UpdateDocument();
         if (hadContentFocus) {
             if (mBrowserSelected && mBrowserEntry != nullptr) {
-                mBrowserEntry->focus();
+                mBrowserEntry->root()->Focus(true);
             } else {
                 for (size_t i = 0; i < mEntryMods.size(); ++i) {
                     if (mEntryMods[i] == mSelectedMod) {
-                        mEntries[i]->focus();
+                        mEntries[i]->root()->Focus(true);
                         break;
                     }
                 }
             }
+        }
+        if (previousBannerFilter && previousModId == mSelectedModId) {
+            mDocument->UpdateDocument();
+            if (auto* image = mContentRoot->QuerySelector("mod-header-image")) {
+                const auto target = *image->GetProperty(Rml::PropertyId::Filter);
+                if (*previousBannerFilter != target) {
+                    image->SetProperty(Rml::PropertyId::Filter, *previousBannerFilter);
+                    image->Animate(Rml::PropertyId::Filter, target, 0.2f,
+                        Rml::Tween{Rml::Tween::Cubic, Rml::Tween::InOut}, 1, false);
+                }
+            }
+        }
+        if (auto* refreshedList = mContentRoot->QuerySelector("pane.mod-list")) {
+            refreshedList->SetScrollTop(listScrollTop);
         }
     }
 

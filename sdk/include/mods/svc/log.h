@@ -11,7 +11,7 @@
  * (prefixed with its ID).
  */
 
-#define LOG_SERVICE_ID "dev.twilitrealm.dusklight.log"
+#define LOG_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "log"
 #define LOG_SERVICE_MAJOR 1u
 #define LOG_SERVICE_MINOR 0u
 

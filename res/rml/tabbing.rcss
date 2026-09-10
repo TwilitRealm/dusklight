@@ -57,7 +57,7 @@ window > close {
     position: fixed;
     top: 8dp;
     right: 8dp;
-    z-index: 1;
+    z-index: 2;
     width: 48dp;
     height: 48dp;
     font-family: var(--font-family-icons);

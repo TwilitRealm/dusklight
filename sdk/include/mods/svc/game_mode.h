@@ -3,7 +3,7 @@
 #include <mods/api.h>
 #include <mods/svc/config.h>
 
-#define GAME_MODE_SERVICE_ID "dev.twilitrealm.dusklight.gamemode"
+#define GAME_MODE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "gamemode"
 #define GAME_MODE_SERVICE_MAJOR 1u
 #define GAME_MODE_SERVICE_MINOR 0u
 

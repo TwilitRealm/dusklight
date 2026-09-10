@@ -15,6 +15,7 @@ std::string mod_image_source(const mods::LoadedMod& mod, std::string_view bundle
 
 #ifdef AURORA_ENABLE_RMLUI
 
+#include <RmlUi/Core.h>
 #include <aurora/rmlui.hpp>
 #include <borealis/log.hpp>
 
@@ -33,14 +34,15 @@ namespace dusk::ui {
 namespace {
 
 constexpr borealis::Log Log{"dusk::ui::modTexture"};
-
 constexpr std::string_view kScheme = "mod";
 constexpr std::string_view kSourcePrefix = "mod://";
 constexpr size_t kMaxCachedImages = 64;
+constexpr size_t kMaxCachedImageBytes = 64 * 1024 * 1024;
 constexpr size_t kMaxImageFileSize = 16 * 1024 * 1024;
+
 std::unordered_map<std::string, DecodedImage>& image_cache() {
-    static auto* cache = new std::unordered_map<std::string, DecodedImage>();
-    return *cache;
+    static std::unordered_map<std::string, DecodedImage> cache;
+    return cache;
 }
 
 std::string_view strip_query(std::string_view path) noexcept {
@@ -104,8 +106,20 @@ std::optional<aurora::rmlui::RuntimeTexture> mod_texture_provider(std::string_vi
         if (!image) {
             return std::nullopt;
         }
-        if (cache.size() >= kMaxCachedImages) {
-            cache.erase(cache.begin());
+        if (image->pixels.size() > kMaxCachedImageBytes) {
+            return std::nullopt;
+        }
+        size_t cachedBytes = 0;
+        for (const auto& [source, cached] : cache) {
+            cachedBytes += cached.pixels.size();
+        }
+        while (cache.size() >= kMaxCachedImages ||
+               cachedBytes > kMaxCachedImageBytes - image->pixels.size())
+        {
+            const auto victim = cache.begin();
+            cachedBytes -= victim->second.pixels.size();
+            Rml::ReleaseTexture(victim->first);
+            cache.erase(victim);
         }
         it = cache.emplace(key, std::move(*image)).first;
     }
@@ -129,6 +143,9 @@ void register_mod_texture_provider() noexcept {
 
 void unregister_mod_texture_provider() noexcept {
     aurora::rmlui::unregister_texture_provider(kScheme);
+    for (const auto& [source, image] : image_cache()) {
+        Rml::ReleaseTexture(source);
+    }
     image_cache().clear();
 }
 

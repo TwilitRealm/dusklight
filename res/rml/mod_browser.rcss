@@ -118,10 +118,9 @@ catalog-card-art {
     position: relative;
     flex: 0 0 118dp;
     min-height: 118dp;
-    background-color: rgba(var(--color-border-rgb), 12%);
 }
 
-catalog-card-art-shadow {
+catalog-card-art-image {
     display: block;
     position: absolute;
     top: 0;
@@ -129,7 +128,7 @@ catalog-card-art-shadow {
     bottom: 0;
     left: 0;
     pointer-events: none;
-    decorator: linear-gradient(180deg, rgba(var(--color-surface-rgb), 0%) 45%, rgba(var(--color-surface-rgb), 85%));
+    mask-image: linear-gradient(180deg, #fff 45%, transparent);
 }
 
 catalog-card-body {
@@ -182,7 +181,6 @@ catalog-card-body > small {
     height: 56dp;
     border-radius: var(--radius-panel);
     overflow: hidden;
-    background-color: rgba(var(--color-border-rgb), 18%);
     box-shadow: rgba(var(--color-black-rgb), 60%) 0 6dp 16dp;
 }
 
@@ -235,8 +233,10 @@ catalog-card-body > footer {
 
 catalog-card-body > footer stat {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 3dp;
+    white-space: nowrap;
 }
 
 catalog-card-body > footer icon {
@@ -329,10 +329,9 @@ catalog-detail-hero {
     flex: 0 0 220dp;
     min-height: 220dp;
     padding: 18dp var(--space-xl) 20dp var(--space-xl);
-    background-color: rgba(var(--color-control-rgb), 75%);
 }
 
-catalog-detail-hero-shadow {
+catalog-detail-hero-image {
     display: block;
     position: absolute;
     top: 0;
@@ -340,7 +339,7 @@ catalog-detail-hero-shadow {
     bottom: 0;
     left: 0;
     pointer-events: none;
-    decorator: linear-gradient(180deg, rgba(var(--color-surface-rgb), 25%) 40%, rgba(var(--color-surface-rgb), 92%));
+    mask-image: linear-gradient(180deg, #fff 40%, transparent);
 }
 
 catalog-detail-actions {
@@ -403,10 +402,11 @@ catalog-source-actions button {
 }
 
 .catalog-install-action.idle {
-    --button-background: rgba(var(--color-interactive-rgb), 40%);
-    --button-background-hover: rgba(var(--color-interactive-rgb), 55%);
-    --button-background-selected: rgba(var(--color-interactive-rgb), 55%);
-    --button-background-active: rgba(var(--color-interactive-rgb), 55%);
+    --button-background: rgba(var(--color-interactive-rgb), 18%);
+    --button-background-hover: rgba(var(--color-interactive-rgb), 42%);
+    --button-background-selected: rgba(var(--color-interactive-rgb), 42%);
+    --button-background-active: rgba(var(--color-interactive-rgb), 65%);
+    box-shadow: rgba(var(--color-accent-rgb), 65%) 0 0 0 1dp;
 }
 
 .catalog-install-action.paused {
@@ -467,10 +467,6 @@ catalog-source-actions button {
     box-shadow: rgba(var(--color-success-rgb), 50%) 0 0 0 2dp;
 }
 
-.catalog-install-action.installed:disabled {
-    opacity: 1;
-}
-
 .catalog-install-action.installing progress fill {
     background-color: rgba(var(--color-info-rgb), 80%);
 }
@@ -513,7 +509,6 @@ catalog-detail-identity mod-icon {
     height: 70dp;
     border-radius: var(--radius-panel);
     overflow: hidden;
-    background-color: rgba(var(--color-border-rgb), 25%);
     box-shadow: rgba(var(--color-black-rgb), 65%) 0 8dp 20dp;
 }
 
@@ -561,11 +556,7 @@ catalog-detail-stats {
     flex-flow: row;
     align-items: center;
     gap: 28dp;
-    padding: 13dp 28dp;
-    border-top-width: 1dp;
-    border-top-color: rgba(var(--color-border-rgb), 30%);
-    border-bottom-width: 1dp;
-    border-bottom-color: rgba(var(--color-border-rgb), 30%);
+    margin: 0 var(--space-xl);
     font-size: var(--font-size-2xs);
     color: rgba(var(--color-text-rgb), 58%);
 }
@@ -580,11 +571,6 @@ catalog-detail-stats icon {
     flex: 0 0 17dp;
     font-size: var(--font-size-lg);
     line-height: 1;
-}
-
-catalog-detail-stats > stat > b {
-    color: var(--color-text);
-    font-weight: bold;
 }
 
 catalog-detail-body {
@@ -705,6 +691,8 @@ catalog-gallery {
 }
 
 .catalog-screenshot {
+    position: relative;
+    overflow: hidden;
     flex: 1 1 0;
     height: 100%;
     min-width: 0;
@@ -716,6 +704,25 @@ catalog-gallery {
 
 .catalog-screenshot.primary {
     flex: 2 1 0;
+}
+
+catalog-screenshot-image,
+catalog-screenshot-more {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+catalog-screenshot-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(var(--color-black-rgb), 60%);
+    color: var(--color-white);
 }
 
 catalog-dependencies {
@@ -759,13 +766,14 @@ catalog-detail-body dl {
     display: flex;
     flex-flow: row wrap;
     margin: 0;
-    font-size: var(--font-size-2xs);
+    font-size: var(--font-size-sm);
 }
 
 catalog-detail-body dt {
     flex: 0 0 42%;
     padding: 5dp 0;
-    opacity: 0.5;
+    font-weight: bold;
+    opacity: 0.8;
 }
 
 catalog-detail-body dd {
@@ -773,11 +781,6 @@ catalog-detail-body dd {
     margin: 0;
     padding: 5dp 0;
     text-align: right;
-}
-
-catalog-source-actions {
-    display: flex;
-    flex-flow: column;
 }
 
 window.screenshot-viewer > content {

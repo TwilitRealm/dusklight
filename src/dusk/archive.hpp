@@ -13,9 +13,9 @@ namespace dusk::archive {
 enum class PackageFormat {
     Unknown,
     Mod,
+    // Save,
 };
 
-/** File-backed ZIP reader shared by Dusklight package formats. */
 class ZipArchive {
 public:
     explicit ZipArchive(const std::filesystem::path& path);

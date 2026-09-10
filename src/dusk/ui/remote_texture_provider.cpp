@@ -45,6 +45,8 @@ constexpr borealis::Log Log{"dusk::ui"};
 constexpr std::string_view kScheme = "https";
 constexpr std::string_view kAllowedPrefix = "https://staging.twilitrealm.workers.dev/images/v1/";
 constexpr size_t kMaxCachedImages = 64;
+constexpr size_t kMaxCachedImageBytes = 64 * 1024 * 1024;
+constexpr size_t kMaxPendingRequests = 4;
 constexpr size_t kMaxImageFileSize = 16 * 1024 * 1024;
 // RmlUi caches the first texture dimensions in image decorators, so the async
 // placeholder must preserve the final image's aspect ratio.
@@ -126,19 +128,29 @@ RemoteSource parse_remote_source(std::string_view source) noexcept {
     return result;
 }
 
-bool make_cache_room() {
+bool make_cache_room(size_t incomingBytes = 0, bool addingEntry = true) {
     auto& cache = image_cache();
-    if (cache.size() < kMaxCachedImages) {
-        return true;
+    size_t cachedBytes = 0;
+    for (const auto& [source, entry] : cache) {
+        cachedBytes += entry.image.pixels.size();
     }
-    const auto victim = std::ranges::min_element(cache, {}, [](const auto& pair) {
-        return pair.second.state == State::Pending ? std::numeric_limits<uint64_t>::max() :
-                                                     pair.second.lastUsed;
-    });
-    if (victim == cache.end() || victim->second.state == State::Pending) {
+    if (incomingBytes > kMaxCachedImageBytes) {
         return false;
     }
-    cache.erase(victim);
+    while (cachedBytes > kMaxCachedImageBytes - incomingBytes ||
+           (addingEntry && cache.size() >= kMaxCachedImages))
+    {
+        const auto victim = std::ranges::min_element(cache, {}, [](const auto& pair) {
+            return pair.second.state == State::Pending ? std::numeric_limits<uint64_t>::max() :
+                                                         pair.second.lastUsed;
+        });
+        if (victim == cache.end() || victim->second.state == State::Pending) {
+            return false;
+        }
+        cachedBytes -= victim->second.image.pixels.size();
+        Rml::ReleaseTexture(victim->first);
+        cache.erase(victim);
+    }
     return true;
 }
 
@@ -193,10 +205,6 @@ std::optional<aurora::rmlui::RuntimeTexture> remote_texture_provider(std::string
                        })
                    .first;
     }
-    if (iter->second.state == State::Unrequested) {
-        iter->second.request = start_request(std::string{parsed.requestUrl});
-        iter->second.state = State::Pending;
-    }
     iter->second.lastUsed = ++use_counter();
     if (iter->second.state != State::Ready) {
         return transparent_texture(iter->second);
@@ -229,6 +237,11 @@ void finish_request(const std::string& source, Entry& entry, borealis::http::Res
         entry.state = State::Failed;
         return;
     }
+    if (!make_cache_room(image->pixels.size(), false)) {
+        entry.state = State::Failed;
+        Log.warn("Image '{}' exceeds the decoded image cache budget", source);
+        return;
+    }
     entry.image = std::move(*image);
     entry.state = State::Ready;
 
@@ -244,6 +257,10 @@ void register_remote_texture_provider() noexcept {
 
 void unregister_remote_texture_provider() noexcept {
     aurora::rmlui::unregister_texture_provider(kScheme);
+    for (auto& [source, entry] : image_cache()) {
+        entry.request.cancel();
+        Rml::ReleaseTexture(source);
+    }
     image_cache().clear();
     use_counter() = 0;
 }
@@ -265,6 +282,27 @@ void update_remote_texture_provider() noexcept {
             Log.warn("Failed to fetch image '{}'", source);
         }
         entry.request = {};
+    }
+
+    size_t pending = std::ranges::count_if(
+        image_cache(), [](const auto& pair) { return pair.second.state == State::Pending; });
+    for (auto& [source, entry] : image_cache()) {
+        if (pending >= kMaxPendingRequests) {
+            break;
+        }
+        if (entry.state == State::Unrequested) {
+            try {
+                entry.request = start_request(std::string{parse_remote_source(source).requestUrl});
+                entry.state = State::Pending;
+                ++pending;
+            } catch (const std::exception& exception) {
+                entry.state = State::Failed;
+                Log.warn("Failed to request image '{}': {}", source, exception.what());
+            } catch (...) {
+                entry.state = State::Failed;
+                Log.warn("Failed to request image '{}'", source);
+            }
+        }
     }
 }
 

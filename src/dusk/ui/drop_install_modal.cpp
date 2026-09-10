@@ -1,12 +1,14 @@
 #include "drop_install_modal.hpp"
 
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/mods/loader/packages.hpp"
 #include "dusk/mods/queue.hpp"
 #include "format.hpp"
 #include "package_row.hpp"
 #include "queue_window.hpp"
 
 #include <borealis/io.hpp>
+#include <borealis/update.hpp>
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -25,6 +27,8 @@ std::vector<DropPackage> prepare_packages(std::vector<DropPackage> packages) {
             package.status = package.error;
         } else if (std::ranges::find(batchIds, package.metadata.id) != batchIds.end()) {
             package.status = "Duplicate package in this drop";
+        } else if (!borealis::update::parse_version(package.metadata.version)) {
+            package.status = "Invalid package version";
         } else if (package.hasNative && !mods::EnableCodeMods) {
             package.status = "Native mods cannot be installed on this platform";
         } else if (const auto queued = mods::queue::find_by_mod_id(package.metadata.id);
@@ -34,9 +38,13 @@ std::vector<DropPackage> prepare_packages(std::vector<DropPackage> packages) {
         } else if (const auto* installed =
                        mods::ModLoader::instance().find_mod(package.metadata.id))
         {
-            if (!mods::ModLoader::instance().can_uninstall(*installed)) {
-                package.status = "Bundled mods cannot be updated in-game";
-            } else if (installed->metadata.version == package.metadata.version) {
+            if (!mods::ModLoader::instance().can_update(*installed)) {
+                package.status = "A development directory cannot be replaced";
+            } else if (mods::compare_package_versions(
+                           package.metadata.version, installed->metadata.version) < 0) {
+                package.status = "A newer version is already installed";
+            } else if (mods::compare_package_versions(
+                           package.metadata.version, installed->metadata.version) == 0) {
                 package.status = fmt::format("Reinstall {}", package.metadata.version);
                 package.valid = true;
             } else {

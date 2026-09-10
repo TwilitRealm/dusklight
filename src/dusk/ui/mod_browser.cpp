@@ -3,10 +3,13 @@
 #include "bool_button.hpp"
 #include "button.hpp"
 #include "dusk/mod_loader.hpp"
+#include "dusk/mods/loader/packages.hpp"
 #include "dusk/mods/queue.hpp"
 #include "dusk/mods/svc/registry.hpp"
 #include "fmt/format.h"
 #include "format.hpp"
+#include "icon_button.hpp"
+#include "mods_window.hpp"
 #include "nav_group.hpp"
 #include "package_row.hpp"
 #include "queue_window.hpp"
@@ -125,9 +128,9 @@ void open_web_url(const std::string& url) {
     }
 }
 
-void set_icon_button_content(Button& button, const Rml::String& glyph, const Rml::String& label) {
+void set_icon_button_content(Button& button, std::string_view icon, const Rml::String& label) {
     clear_children(button.root());
-    append_text(append(button.root(), "icon"), glyph);
+    append_text(append(button.root(), "icon"), material_icon(icon));
     append_text_element(button.root(), "span", label);
 }
 
@@ -136,14 +139,13 @@ void append_status(Rml::Element* parent, const Rml::String& title, const Rml::St
     append_text_element(parent, "p", message);
 }
 
-void append_stat(Rml::Element* parent, const Rml::String& glyph, const Rml::String& value,
+void append_stat(Rml::Element* parent, std::string_view icon, const Rml::String& value,
     const Rml::String& suffix) {
     auto* stat = append(parent, "stat");
-    if (!glyph.empty()) {
-        append_text(append(stat, "icon"), glyph);
+    if (!icon.empty()) {
+        append_text(append(stat, "icon"), material_icon(icon));
     }
-    append_text_element(stat, "b", value);
-    append_text(stat, suffix);
+    append_text_element(stat, "span", value + suffix);
 }
 
 void append_detail_field(Rml::Element* list, const Rml::String& label, const Rml::String& value) {
@@ -163,7 +165,7 @@ public:
         const auto installedLabel = isInstalled ? "Installed" : format_bytes(mod.packageSize);
 
         auto* art = append(mRoot, "catalog-card-art");
-        append(art, "catalog-card-art-shadow");
+        auto* artImage = append(art, "catalog-card-art-image");
         auto* icon = append(art, "mod-icon");
         auto* iconImage = append(icon, "mod-icon-image");
 
@@ -176,11 +178,11 @@ public:
         append_text_element(body, "p", snippet(mod.summary, 126));
         auto* meta = append(body, "footer");
         auto* downloads = append(meta, "stat");
-        append_text(append(downloads, "icon"), "\uF090");
-        append_text(downloads, format_count(mod.downloads));
+        append_text(append(downloads, "icon"), material_icon("download"));
+        append_text_element(downloads, "span", format_count(mod.downloads));
         auto* endorsements = append(meta, "stat");
-        append_text(append(endorsements, "icon"), "\uE87D");
-        append_text(endorsements, format_count(mod.endorsements));
+        append_text(append(endorsements, "icon"), material_icon("favorite"));
+        append_text_element(endorsements, "span", format_count(mod.endorsements));
         auto* size = append_text_element(meta, "small", installedLabel);
         size->SetClass("size", true);
         if (isInstalled) {
@@ -188,9 +190,9 @@ public:
         }
 
         if (mod.banner) {
-            set_image(art, *mod.banner, 640);
+            set_image(artImage, *mod.banner, 640);
         } else if (mod.icon) {
-            set_image(art, *mod.icon, 256);
+            set_image(artImage, *mod.icon, 256);
         }
         if (mod.icon) {
             set_image(iconImage, *mod.icon, 128);
@@ -235,7 +237,7 @@ private:
                                              });
         auto& back = actions.add_item<Button>("Back");
         back.root()->SetClass("catalog-icon-action", true);
-        set_icon_button_content(back, "\uE5C4", "Back");
+        set_icon_button_content(back, "arrow_back", "Back");
         back.on_pressed([this] { pop(); });
         auto& previous = actions.add_item<ControlledButton>(ControlledButton::Props{
             .text = "Previous",
@@ -402,15 +404,18 @@ public:
         if (mActivationOperation != nullptr && !activationPending) {
             mActivationOperation.reset();
         }
-        std::string glyph = "\uE2C4";
+        std::string_view icon = "file_download";
         std::string label;
         std::string caption = format_bytes(package_size());
         std::string state = "idle";
         float progress = 0.0f;
         bool disabled = false;
+        mAction = Action::Install;
 
         if (queued && queued->state != mods::queue::State::Canceled) {
             using enum mods::queue::State;
+            mAction = Action::OpenQueue;
+            mQueueId = queued->id;
             state = queue_state_class(queued->state);
             progress = queued->total == 0 ? 0.0f :
                                             std::clamp(static_cast<float>(queued->completed) /
@@ -418,7 +423,7 @@ public:
                                                 0.0f, 1.0f);
             switch (queued->state) {
             case Queued:
-                glyph = "\uE8B5";
+                icon = "schedule";
                 label = "Queued";
                 if (const auto ahead = mods::queue::active_items_ahead(mRequest.id); ahead != 0) {
                     caption = fmt::format("{} ahead · opens the queue", ahead);
@@ -432,22 +437,22 @@ public:
                 caption = "Tap to open the queue";
                 break;
             case Paused:
-                glyph = "\uE037";
+                icon = "play_arrow";
                 label = "Resume";
                 caption = fmt::format("{} kept on disk", format_bytes(queued->completed));
                 break;
             case Retrying:
-                glyph = "\uE002";
+                icon = "warning";
                 label = fmt::format("Retrying in {}s", queued->retrySeconds);
                 caption = "Network error · keeps retrying itself";
                 break;
             case Verifying:
-                glyph = "\uE8B5";
+                icon = "schedule";
                 label = "Verifying…";
                 caption = "Checking package integrity";
                 break;
             case Handoff:
-                glyph = "\uE8B5";
+                icon = "schedule";
                 label = "Installing…";
                 caption = "Applying package";
                 progress = 1.0f;
@@ -457,7 +462,7 @@ public:
             case InstallFailed:
                 break;
             case Failed:
-                glyph = "\uE5D5";
+                icon = "refresh";
                 label = queued->local ? "Retry package" : "Retry download";
                 caption = queued->message.empty() ? "Package preparation failed" : queued->message;
                 progress = 1.0f;
@@ -468,42 +473,50 @@ public:
         }
 
         if (label.empty()) {
-            const bool current = local != nullptr && local->metadata.version == mRequest.version;
+            mAction = Action::Install;
+            const int versionOrder = local != nullptr ?
+                mods::compare_package_versions(mRequest.version, local->metadata.version) : 1;
+            const bool current = local != nullptr && versionOrder == 0;
             const bool updateable =
-                local != nullptr && !current && mods::ModLoader::instance().can_uninstall(*local);
+                local != nullptr && versionOrder > 0 &&
+                mods::ModLoader::instance().can_update(*local);
             if (activationPending) {
-                glyph = "\uE8B5";
+                icon = "schedule";
                 label = "Activating…";
                 caption = "Retrying mod activation";
                 state = "installing";
                 progress = 1.0f;
                 disabled = true;
             } else if (current && local->activation_failed()) {
-                glyph = "\uE5D5";
+                mAction = Action::RetryActivation;
+                icon = "refresh";
                 label = "Retry activation";
                 caption = activation_failure(*local);
                 state = "failed";
                 progress = 1.0f;
             } else if (current || (local != nullptr && !updateable)) {
-                glyph = "\uE86C";
+                mAction = Action::OpenManager;
+                icon = "check_circle";
                 label = "Installed";
                 caption = fmt::format("Installed · {} · {}", format_bytes(package_size()),
                     local != nullptr && local->active ? "enabled" : "disabled");
                 state = "installed";
                 progress = 1.0f;
-                disabled = true;
             } else {
                 label = updateable ? "Update" : "Install";
             }
         }
+        if (disabled) {
+            mAction = Action::None;
+        }
 
-        if (mLabel != label || mGlyph != glyph) {
+        if (mLabel != label || mIcon != icon) {
             ui::clear_children(mRoot);
-            append_text(append(mRoot, "icon"), glyph);
+            append_text(append(mRoot, "icon"), material_icon(icon));
             append_text_element(mRoot, "span", label);
             mProgress = append(mRoot, "progress");
             mLabel = std::move(label);
-            mGlyph = std::move(glyph);
+            mIcon = icon;
         }
         set_text_content(mCaption, caption);
         for (const auto* candidate : {"idle", "queued", "downloading", "paused", "retrying",
@@ -522,6 +535,8 @@ public:
     }
 
 private:
+    enum class Action { Install, OpenQueue, RetryActivation, OpenManager, None };
+
     std::optional<mods::queue::Item> matching_queue_item() const {
         auto item = mods::queue::find_by_mod_id(mRequest.id);
         if (!item || item->version != mRequest.version ||
@@ -533,17 +548,23 @@ private:
     }
 
     void press() {
-        auto queued = matching_queue_item();
-        const auto* local = mods::ModLoader::instance().find_mod(mRequest.id);
-        if (queued && queued->state != mods::queue::State::Canceled) {
-            mWindow.show_downloads(queued->id);
+        update();
+        switch (mAction) {
+        case Action::OpenQueue:
+            mWindow.show_downloads(mQueueId);
             return;
-        }
-        if (local != nullptr && local->metadata.version == mRequest.version &&
-            local->activation_failed())
-        {
+        case Action::RetryActivation:
             mActivationOperation = mods::ModLoader::instance().request_reactivate(mRequest.id);
             return;
+        case Action::OpenManager:
+            pop_to_or_push<ModsWindow>([id = mRequest.id](ModsWindow& window) {
+                window.select_mod(id);
+            });
+            return;
+        case Action::None:
+            return;
+        case Action::Install:
+            break;
         }
         if (!mods::queue::enqueue(mRequest)) {
             push_toast({
@@ -560,7 +581,9 @@ private:
     Rml::Element* mCaption = nullptr;
     Rml::Element* mProgress = nullptr;
     std::string mLabel;
-    std::string mGlyph;
+    std::string mIcon;
+    std::string mQueueId;
+    Action mAction = Action::None;
     mods::ModOperationHandle mActivationOperation;
 
     uint64_t package_size() const { return std::get<mods::queue::Url>(mRequest.source).size; }
@@ -574,12 +597,12 @@ DetailContent::DetailContent(
                          .verticalBoundary = Boundary::Stop,
                      }} {
     auto* hero = append(mRoot, "catalog-detail-hero");
+    auto* heroImage = append(hero, "catalog-detail-hero-image");
     if (detail.mod.banner) {
-        set_image(hero, *detail.mod.banner, 1280);
+        set_image(heroImage, *detail.mod.banner, 1280);
     } else if (detail.mod.icon) {
-        set_image(hero, *detail.mod.icon, 512);
+        set_image(heroImage, *detail.mod.icon, 512);
     }
-    append(hero, "catalog-detail-hero-shadow");
 
     auto* actionsRoot = append(hero, "catalog-detail-actions");
     auto& actions =
@@ -590,11 +613,11 @@ DetailContent::DetailContent(
                                                  });
     auto& back = actions.add_item<Button>("Back");
     back.root()->SetClass("catalog-icon-action", true);
-    set_icon_button_content(back, "\ue5c4", "Back");
+    set_icon_button_content(back, "arrow_back", "Back");
     back.on_pressed([&window] { window.pop(); });
     auto& open = actions.add_item<Button>("Open in browser");
     open.root()->SetClass("catalog-icon-action", true);
-    set_icon_button_content(open, "\ue89e", "Open in browser");
+    set_icon_button_content(open, "open_in_new", "Open in browser");
     open.on_pressed([url = detail.siteUrl] { open_web_url(url); });
 
     auto* identity = append(hero, "catalog-detail-identity");
@@ -624,9 +647,8 @@ DetailContent::DetailContent(
     installControl.add_item<CatalogInstallButton>(window, detail);
 
     auto* stats = append(mRoot, "catalog-detail-stats");
-    append_stat(stats, "\uF090", format_count(detail.mod.downloads), " downloads");
-    append_stat(stats, "\uE87D", format_count(detail.mod.endorsements), " endorsements");
-    append_stat(stats, "", format_bytes(detail.mod.packageSize), " package");
+    append_stat(stats, "download", format_count(detail.mod.downloads), " downloads");
+    append_stat(stats, "favorite", format_count(detail.mod.endorsements), " endorsements");
 
     auto* body = append(mRoot, "catalog-detail-body");
     auto* main = append(body, "main");
@@ -658,49 +680,56 @@ DetailContent::DetailContent(
             auto& screenshot = gallery.add_item<Button>(Button::Props{});
             screenshot.root()->SetClass("catalog-screenshot", true);
             screenshot.root()->SetClass("primary", index == 0);
-            set_image(screenshot.root(), detail.screenshots[index].image, index == 0 ? 1280 : 640);
+            auto* image = append(screenshot.root(), "catalog-screenshot-image");
+            set_image(image, detail.screenshots[index].image, index == 0 ? 1280 : 640);
             if (index == 2 && detail.screenshots.size() > shown) {
-                screenshot.set_text(fmt::format("+{}", detail.screenshots.size() - shown));
+                auto* more = append(screenshot.root(), "catalog-screenshot-more");
+                append_text_element(more, "span", fmt::format("+{}", detail.screenshots.size() - shown));
             }
             screenshot.on_pressed([&window, index] { window.show_screenshot(index); });
         }
     }
 
-    auto* dependencies = append(main, "section");
-    dependencies->SetClass("catalog-scroll-anchor", true);
-    add_existing_item<ScrollAnchor>(dependencies);
-    append_text(append(dependencies, "h2"), "Dependencies");
-    auto* dependencyList = append(dependencies, "catalog-dependencies");
-    size_t requiredDusklight = 0;
-    bool dusklightSatisfied = true;
-    for (const auto& import : detail.serviceImports) {
-        if (import.optional) {
-            continue;
+    if (std::ranges::any_of(detail.serviceImports, [](const auto& import) { return !import.optional; })) {
+        auto* dependencies = append(main, "section");
+        dependencies->SetClass("catalog-scroll-anchor", true);
+        add_existing_item<ScrollAnchor>(dependencies);
+        append_text(append(dependencies, "h2"), "Dependencies");
+        auto* dependencyList = append(dependencies, "catalog-dependencies");
+        size_t requiredDusklight = 0;
+        std::vector<std::string> dusklightProblems;
+        for (const auto& import : detail.serviceImports) {
+            if (import.optional) {
+                continue;
+            }
+            const bool available =
+                mods::svc::find_service(import.id.c_str(), import.major, import.minMinor) != nullptr;
+            if (import.id.starts_with(DUSKLIGHT_SERVICE_ID_PREFIX)) {
+                ++requiredDusklight;
+                if (!available) {
+                    dusklightProblems.push_back(mods::svc::describe_missing_service(
+                        import.id.c_str(), import.major, import.minMinor));
+                }
+                continue;
+            }
+            auto* row = append(dependencyList, "catalog-dependency");
+            append_text_element(row, "catalog-dependency-name", import.id);
+            append_text_element(row, "catalog-dependency-status",
+                fmt::format("v{}.{}+ · {}", import.major, import.minMinor,
+                    available ? "Available" : "Not available"));
+            row->SetClass("missing", !available);
         }
-        const bool available =
-            mods::svc::find_service(import.id.c_str(), import.major, import.minMinor) != nullptr;
-        if (import.id.starts_with("dev.twilitrealm.dusklight.")) {
-            ++requiredDusklight;
-            dusklightSatisfied = dusklightSatisfied && available;
-            continue;
+        if (requiredDusklight != 0) {
+            auto* row = append(dependencyList, "catalog-dependency");
+            append_text_element(row, "catalog-dependency-name", "Dusklight services");
+            append_text_element(row, "catalog-dependency-status",
+                dusklightProblems.empty() ? fmt::format("{} required · Available", requiredDusklight) :
+                                           fmt::format("{} required", requiredDusklight));
+            for (const auto& problem : dusklightProblems) {
+                append_text_element(row, "catalog-dependency-status", problem);
+            }
+            row->SetClass("missing", !dusklightProblems.empty());
         }
-        auto* row = append(dependencyList, "catalog-dependency");
-        append_text_element(row, "catalog-dependency-name", import.id);
-        append_text_element(row, "catalog-dependency-status",
-            fmt::format("v{}.{}+ · {}", import.major, import.minMinor,
-                available ? "Available" : "Not available"));
-        row->SetClass("missing", !available);
-    }
-    if (requiredDusklight != 0) {
-        auto* row = append(dependencyList, "catalog-dependency");
-        append_text_element(row, "catalog-dependency-name", "Dusklight services");
-        append_text_element(row, "catalog-dependency-status",
-            fmt::format("{} required · {}", requiredDusklight,
-                dusklightSatisfied ? "Available" : "Update required"));
-        row->SetClass("missing", !dusklightSatisfied);
-    }
-    if (requiredDusklight == 0 && dependencyList->GetNumChildren() == 0) {
-        append_text(dependencyList, "No required dependencies.");
     }
 
     auto* changelog = append(main, "section");
@@ -718,27 +747,13 @@ DetailContent::DetailContent(
         add_list_markers(changelogFragment);
     }
 
-    append_text_element(sidebar, "h3", "Details");
     auto* detailList = append(sidebar, "dl");
     append_detail_field(detailList, "Version", detail.mod.version);
-    append_detail_field(detailList, "Updated", display_date(detail.mod.updatedAt));
-    append_detail_field(detailList, "Published", display_date(detail.mod.publishedAt));
+    append_detail_field(detailList, "Last updated", display_date(detail.mod.updatedAt));
     append_detail_field(
         detailList, "Category", detail.mod.category ? detail.mod.category->name : "Uncategorized");
-    append_detail_field(detailList, "License", detail.license.value_or("Not specified"));
-    append_detail_field(
-        detailList, "Mod ABI", detail.modAbi ? fmt::format("{}", *detail.modAbi) : "Assets only");
-    if (detail.sourceUrl && detail.sourceUrl->starts_with("https://")) {
-        auto* sourceActions = append(sidebar, "catalog-source-actions");
-        auto& sourceGroup =
-            add_existing_item<NavGroup>(sourceActions, Props{
-                                                           .layout = Layout::Vertical,
-                                                           .horizontalBoundary = Boundary::Bubble,
-                                                           .verticalBoundary = Boundary::Bubble,
-                                                       });
-        sourceGroup.add_item<Button>("View source").on_pressed([url = *detail.sourceUrl] {
-            open_web_url(url);
-        });
+    if (detail.license && !detail.license->empty()) {
+        append_detail_field(detailList, "License", *detail.license);
     }
 }
 

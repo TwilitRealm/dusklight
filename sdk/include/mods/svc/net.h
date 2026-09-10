@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define NET_SERVICE_ID "dev.twilitrealm.dusklight.net"
+#define NET_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "net"
 #define NET_SERVICE_MAJOR 1u
 #define NET_SERVICE_MINOR 0u
 

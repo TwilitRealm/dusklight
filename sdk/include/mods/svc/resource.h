@@ -12,7 +12,7 @@
  * for temporary storage.
  */
 
-#define RESOURCE_SERVICE_ID "dev.twilitrealm.dusklight.resource"
+#define RESOURCE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "resource"
 #define RESOURCE_SERVICE_MAJOR 1u
 #define RESOURCE_SERVICE_MINOR 0u
 

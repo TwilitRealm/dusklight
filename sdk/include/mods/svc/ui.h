@@ -8,7 +8,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define UI_SERVICE_ID "dev.twilitrealm.dusklight.ui"
+#define UI_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "ui"
 #define UI_SERVICE_MAJOR 2u
 #define UI_SERVICE_MINOR 2u
 

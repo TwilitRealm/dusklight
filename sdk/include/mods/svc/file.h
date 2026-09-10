@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define FILE_SERVICE_ID "dev.twilitrealm.dusklight.file"
+#define FILE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "file"
 #define FILE_SERVICE_MAJOR 1u
 #define FILE_SERVICE_MINOR 0u
 

@@ -1,18 +1,20 @@
 #include "loader.hpp"
 
-#include "../manifest.hpp"
 #include "depgraph.hpp"
+#include "manifest.hpp"
 #include "native_module.hpp"
+#include "natives.hpp"
+#include "packages.hpp"
 #if DUSK_HAS_PREPATCH
 #include "prepatch.hpp"
 #endif
 
 #include "dusk/config.hpp"
 #include "dusk/data.hpp"
-#include "dusk/io.hpp"
 #include "dusk/logging.h"
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/log_buffer.hpp"
+#include "dusk/mods/manifest.hpp"
 #include "dusk/mods/path.hpp"
 #include "dusk/mods/queue.hpp"
 #include "dusk/mods/svc/config.hpp"
@@ -23,181 +25,23 @@
 #include "dusk/ui/ui.hpp"
 
 #include <borealis/io.hpp>
+#include <borealis/update.hpp>
 #include <fmt/format.h>
-#include <nlohmann/json.hpp>
 
 #include <algorithm>
-#include <charconv>
 #include <chrono>
-#include <cstring>
 #include <filesystem>
-#include <fstream>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
 
-using namespace std::string_literals;
-using namespace std::string_view_literals;
 namespace fs = std::filesystem;
-
-#if defined(_WIN32)
-#if defined(_M_ARM64)
-static constexpr std::string_view k_nativePlatform = "windows-arm64"sv;
-#elif defined(_M_X64)
-static constexpr std::string_view k_nativePlatform = "windows-amd64"sv;
-#elif defined(_M_IX86)
-static constexpr std::string_view k_nativePlatform = "windows-x86"sv;
-#else
-static constexpr std::string_view k_nativePlatform = ""sv;
-#endif
-static constexpr std::string_view k_nativeLibName = "mod.dll"sv;
-#elif defined(__ANDROID__)
-#if defined(__aarch64__)
-static constexpr std::string_view k_nativePlatform = "android-aarch64"sv;
-#elif defined(__x86_64__)
-static constexpr std::string_view k_nativePlatform = "android-x86_64"sv;
-#else
-static constexpr std::string_view k_nativePlatform = ""sv;
-#endif
-static constexpr std::string_view k_nativeLibName = "mod.so"sv;
-#elif defined(__APPLE__)
-#include <TargetConditionals.h>
-#if TARGET_OS_IOS
-static constexpr std::string_view k_nativePlatform = "ios-arm64"sv;
-#elif TARGET_OS_TV
-static constexpr std::string_view k_nativePlatform = "tvos-arm64"sv;
-#elif defined(__aarch64__)
-static constexpr std::string_view k_nativePlatform = "macos-arm64"sv;
-#elif defined(__x86_64__)
-static constexpr std::string_view k_nativePlatform = "macos-x86_64"sv;
-#else
-static constexpr std::string_view k_nativePlatform = ""sv;
-#endif
-static constexpr std::string_view k_nativeLibName = "mod.so"sv;
-#elif defined(__linux__)
-#if defined(__aarch64__)
-static constexpr std::string_view k_nativePlatform = "linux-aarch64"sv;
-#elif defined(__x86_64__)
-static constexpr std::string_view k_nativePlatform = "linux-x86_64"sv;
-#elif defined(__i386__)
-static constexpr std::string_view k_nativePlatform = "linux-x86"sv;
-#else
-static constexpr std::string_view k_nativePlatform = ""sv;
-#endif
-static constexpr std::string_view k_nativeLibName = "mod.so"sv;
-#else
-static constexpr std::string_view k_nativePlatform = ""sv;
-static constexpr std::string_view k_nativeLibName = ""sv;
-#endif
 
 namespace dusk::mods {
 namespace {
 constexpr borealis::Log Log{"dusk::mods::loader"};
 ModLoader g_modLoader;
-constexpr std::string_view k_nativeLibDir = "lib/"sv;
-
-class DirectoryRollback {
-public:
-    ~DirectoryRollback() {
-        if (!mPath.empty()) {
-            std::error_code ec;
-            fs::remove_all(mPath, ec);
-        }
-    }
-
-    void set_path(fs::path path) { mPath = std::move(path); }
-    void release() { mPath.clear(); }
-
-private:
-    fs::path mPath;
-};
-
-std::unique_ptr<ModBundle> load_bundle(const fs::path& modPath, bool fromDir) {
-    if (fromDir) {
-        return std::make_unique<ModBundleDisk>(modPath);
-    } else {
-        return std::make_unique<ModBundleZip>(modPath);
-    }
-}
-
-struct NativeRuntimeLocation {
-    std::string entry;
-    std::vector<std::string> runtimeEntries;
-    bool anyLibs = false;
-};
-
-struct NativeLocateFailure {
-    NativeModStatus status;
-    std::string logMessage;
-};
-
-using NativeLocateResult = std::variant<NativeRuntimeLocation, NativeLocateFailure>;
-
-bool has_native_library_extension(std::string_view name) {
-    const auto endsWith = [name](std::string_view extension) {
-        if (name.size() < extension.size()) {
-            return false;
-        }
-        const auto suffix = name.substr(name.size() - extension.size());
-        return std::ranges::equal(suffix, extension, [](char lhs, char rhs) {
-            const auto lower = [](char value) {
-                return value >= 'A' && value <= 'Z' ? static_cast<char>(value + ('a' - 'A')) :
-                                                      value;
-            };
-            return lower(lhs) == lower(rhs);
-        });
-    };
-    return endsWith(".dll"sv) || endsWith(".so"sv) || endsWith(".dylib"sv);
-}
-
-NativeLocateResult locate_native_runtime(ModBundle& bundle) {
-    NativeRuntimeLocation result;
-    const std::string platformPrefix = fmt::format("{}{}/", k_nativeLibDir, k_nativePlatform);
-    const std::string nativeEntry = platformPrefix + std::string{k_nativeLibName};
-    for (const auto& name : bundle.getFileNames()) {
-        if (name.find('/') == std::string::npos && has_native_library_extension(name)) {
-            return NativeLocateFailure{
-                NativeModStatus::InvalidBundle,
-                fmt::format(
-                    "native library '{}' found at the root (natives go in /lib/{{platform}})",
-                    name),
-            };
-        }
-        if (!name.starts_with(k_nativeLibDir)) {
-            continue;
-        }
-
-        const std::string_view libPath{
-            name.data() + k_nativeLibDir.size(), name.size() - k_nativeLibDir.size()};
-        const auto platformEnd = libPath.find('/');
-        if (platformEnd != std::string_view::npos) {
-            const auto entryName = libPath.substr(platformEnd + 1);
-            if (entryName.find('/') == std::string_view::npos &&
-                (entryName == "mod.dll"sv || entryName == "mod.so"sv))
-            {
-                result.anyLibs = true;
-            }
-        }
-
-        if (!k_nativePlatform.empty() && name.starts_with(platformPrefix)) {
-            const std::string_view relativeName{
-                name.data() + platformPrefix.size(), name.size() - platformPrefix.size()};
-            if (!is_safe_resource_path(relativeName)) {
-                continue;
-            }
-            result.runtimeEntries.push_back(name);
-        }
-        if (name == nativeEntry) {
-            result.entry = name;
-        }
-    }
-    std::ranges::sort(result.runtimeEntries);
-    result.runtimeEntries.erase(
-        std::unique(result.runtimeEntries.begin(), result.runtimeEntries.end()),
-        result.runtimeEntries.end());
-    return result;
-}
 
 void complete_operation(const std::shared_ptr<ModOperation>& operation, const bool success = true,
     std::string message = {}) {
@@ -231,630 +75,12 @@ ModLoader& ModLoader::instance() {
     return g_modLoader;
 }
 
-class InvalidModDataException : public std::runtime_error {
-public:
-    explicit InvalidModDataException(const std::string& msg) : runtime_error(msg) {}
-    explicit InvalidModDataException(const char* msg) : runtime_error(msg) {}
-};
-
-static void validate_mod_id(std::string_view const str) {
-    if (str.empty()) {
-        throw InvalidModDataException("Missing ID value in mod metadata!");
-    }
-
-    bool lastWasPeriod = false;
-    for (auto const chr : str) {
-        if (chr == '.') {
-            if (lastWasPeriod) {
-                throw InvalidModDataException("Cannot have two consecutive periods in mod ID!");
-            }
-            lastWasPeriod = true;
-            continue;
-        }
-
-        lastWasPeriod = false;
-
-        if (chr == '_')
-            continue;
-
-        if (chr >= '0' && chr <= '9')
-            continue;
-
-        if (chr >= 'a' && chr <= 'z')
-            continue;
-
-        if (chr >= 'A' && chr <= 'Z')
-            continue;
-
-        throw InvalidModDataException(
-            fmt::format("Invalid character '{}' in mod ID. Valid characters are period, "
-                        "underscore, and alphanumerics.",
-                chr));
-    }
-}
-
-static bool bundle_has_file(ModBundle& bundle, const std::string& path) {
-    try {
-        bundle.getFileSize(path);
-        return true;
-    } catch (const std::runtime_error&) {
-        return false;
-    }
-}
-
-static std::string resolve_image_path(ModBundle& bundle, const std::string& modId,
-    std::string_view key, const std::string& manifestPath, const std::string& defaultPath) {
-    if (!manifestPath.empty()) {
-        if (!is_safe_resource_path(manifestPath)) {
-            log::write(
-                modId, LOG_LEVEL_WARN, "invalid {} path '{}' in mod.json", key, manifestPath);
-        } else if (!bundle_has_file(bundle, manifestPath)) {
-            log::write(
-                modId, LOG_LEVEL_WARN, "{} path '{}' not found in bundle", key, manifestPath);
-        } else {
-            return manifestPath;
-        }
-    }
-    if (bundle_has_file(bundle, defaultPath)) {
-        return defaultPath;
-    }
-    return {};
-}
-
-struct LoadedManifest {
-    ModMetadata metadata;
-    std::optional<DelegatedModRuntime> runtime;
-};
-
-static uint16_t parse_runtime_version_component(std::string_view text, std::string_view fieldName) {
-    uint32_t value = 0;
-    const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (text.empty() || error != std::errc{} || end != text.data() + text.size() ||
-        value > UINT16_MAX)
-    {
-        throw InvalidModDataException(fmt::format("Invalid {} in runtime version pin", fieldName));
-    }
-    return static_cast<uint16_t>(value);
-}
-
-static std::optional<DelegatedModRuntime> parse_runtime(const nlohmann::json& manifest) {
-    const auto field = manifest.find("runtime");
-    if (field == manifest.end()) {
-        return std::nullopt;
-    }
-    if (!field->is_string()) {
-        throw InvalidModDataException("runtime must be a string");
-    }
-
-    const std::string pin = field->get<std::string>();
-    const auto at = pin.rfind('@');
-    if (at == std::string::npos || at == 0 || at + 1 == pin.size() || pin.find('@') != at ||
-        at >= MOD_META_SERVICE_ID_SIZE)
-    {
-        throw InvalidModDataException(
-            "runtime must be a service id followed by @major or @major.minor");
-    }
-
-    const std::string_view version{pin.data() + at + 1, pin.size() - at - 1};
-    const auto dot = version.find('.');
-    if (dot != std::string_view::npos && version.find('.', dot + 1) != std::string_view::npos) {
-        throw InvalidModDataException("runtime version pin has too many components");
-    }
-
-    DelegatedModRuntime result;
-    result.id = pin.substr(0, at);
-    result.major = parse_runtime_version_component(
-        dot == std::string_view::npos ? version : version.substr(0, dot), "major version");
-    if (dot != std::string_view::npos) {
-        result.minMinor = parse_runtime_version_component(version.substr(dot + 1), "minor version");
-    }
-    return result;
-}
-
-static LoadedManifest load_manifest(const std::filesystem::path& modPath, ModBundle& bundle) {
-    const auto metaJson = bundle.readFile("mod.json");
-    auto j = nlohmann::json::parse(metaJson);
-
-    std::string metaId = j.value("id", "");
-    std::string metaName = j.value("name", "");
-    std::string metaVersion = j.value("version", "");
-    std::string metaAuthor = j.value("author", "");
-    std::string metaDescription = j.value("description", "");
-    std::string metaIcon = j.value("icon", "");
-    std::string metaBanner = j.value("banner", "");
-
-    validate_mod_id(metaId);
-
-    if (metaName.empty()) {
-        metaName = borealis::io::fs_path_to_string(modPath.stem());
-    }
-    if (metaVersion.empty()) {
-        metaVersion = "?"s;
-    }
-    if (metaAuthor.empty()) {
-        metaAuthor = "unknown"s;
-    }
-
-    std::string iconPath = resolve_image_path(bundle, metaId, "icon", metaIcon, "res/icon.png"s);
-    std::string bannerPath =
-        resolve_image_path(bundle, metaId, "banner", metaBanner, "res/banner.png"s);
-
-    return LoadedManifest{
-        .metadata =
-            {
-                std::move(metaId),
-                std::move(metaName),
-                std::move(metaVersion),
-                std::move(metaAuthor),
-                std::move(metaDescription),
-                std::move(iconPath),
-                std::move(bannerPath),
-            },
-        .runtime = parse_runtime(j),
-    };
-}
-
-bool inspect_mod_bundle(
-    const fs::path& path, ModMetadata& metadata, std::string& error, bool* hasNative) noexcept {
-    try {
-        auto bundle = load_bundle(path, false);
-        metadata = load_manifest(path, *bundle).metadata;
-        if (hasNative != nullptr) {
-            *hasNative = std::ranges::any_of(bundle->getFileNames(),
-                [](const auto& name) { return has_native_library_extension(name); });
-        }
-        error.clear();
-        return true;
-    } catch (const std::exception& exception) {
-        error = exception.what();
-    } catch (...) {
-        error = "Unknown bundle validation error";
-    }
-    return false;
-}
-
-// True if the first `capacity` bytes of `str` contain a NUL.
-static bool terminated_within(const char* str, size_t capacity) {
-    return std::memchr(str, '\0', capacity) != nullptr;
-}
-
-static bool parse_meta(NativeMod& native, LoadedMod& mod) {
-    const ModMeta* meta = native.meta;
-    if (meta->struct_size < sizeof(ModMeta)) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "mod_meta descriptor has invalid size {}",
-            meta->struct_size);
-        mod.nativeStatus = NativeModStatus::InvalidMetadata;
-        return false;
-    }
-    const auto* cursor = static_cast<const uint8_t*>(meta->records_begin);
-    const auto* end = static_cast<const uint8_t*>(meta->records_end);
-    if (cursor == nullptr || end == nullptr || cursor > end ||
-        (reinterpret_cast<uintptr_t>(cursor) & 7) != 0)
-    {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "mod_meta section bounds are invalid");
-        mod.nativeStatus = NativeModStatus::InvalidMetadata;
-        return false;
-    }
-
-    ModMetaParsed parsed;
-    size_t headerCount = 0;
-    const auto invalid = [&](std::string_view why) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "invalid metadata record at offset {}: {}",
-            cursor - static_cast<const uint8_t*>(meta->records_begin), why);
-        mod.nativeStatus = NativeModStatus::InvalidMetadata;
-        return false;
-    };
-
-    while (cursor < end) {
-        if (end - cursor < 8) {
-            return invalid("trailing bytes");
-        }
-        uint64_t first = 0;
-        std::memcpy(&first, cursor, sizeof(first));
-        if (first == 0) {  // linker padding / bounds sentinel
-            cursor += 8;
-            continue;
-        }
-
-        const auto* rec = reinterpret_cast<const ModMetaRecord*>(cursor);
-        const size_t size = rec->size;
-        if (size < 8 || size % 8 != 0 || size > static_cast<size_t>(end - cursor)) {
-            return invalid("bad record size");
-        }
-
-        switch (rec->kind) {
-        case MOD_META_PAD:
-            break;
-        case MOD_META_HEADER: {
-            if (size < sizeof(ModMetaHeader)) {
-                return invalid("truncated header record");
-            }
-            const auto* header = reinterpret_cast<const ModMetaHeader*>(rec);
-            ++headerCount;
-            parsed.abiVersion = header->abi_version;
-            break;
-        }
-        case MOD_META_IMPORT: {
-            if (size < sizeof(ModMetaImport)) {
-                return invalid("truncated import record");
-            }
-            auto* record = reinterpret_cast<ModMetaImport*>(const_cast<uint8_t*>(cursor));
-            if (!terminated_within(record->service_id.chars, sizeof(record->service_id.chars))) {
-                return invalid("unterminated import service id");
-            }
-            parsed.imports.push_back(record);
-            break;
-        }
-        case MOD_META_EXPORT: {
-            if (size < sizeof(ModMetaExport)) {
-                return invalid("truncated export record");
-            }
-            auto* record = reinterpret_cast<ModMetaExport*>(const_cast<uint8_t*>(cursor));
-            if (!terminated_within(record->service_id.chars, sizeof(record->service_id.chars))) {
-                return invalid("unterminated export service id");
-            }
-            parsed.exports.push_back(record);
-            break;
-        }
-        case MOD_META_HOOK_FN: {
-            if (size < sizeof(ModMetaHookFn)) {
-                return invalid("truncated hook record");
-            }
-            parsed.hookFns.push_back(
-                reinterpret_cast<ModMetaHookFn*>(const_cast<uint8_t*>(cursor)));
-            break;
-        }
-        case MOD_META_HOOK_MEM: {
-            if (size <= sizeof(ModMetaHookMem)) {
-                return invalid("truncated hook record");
-            }
-            auto* record = reinterpret_cast<ModMetaHookMem*>(const_cast<uint8_t*>(cursor));
-            const char* strings = reinterpret_cast<const char*>(cursor) + sizeof(ModMetaHookMem);
-            const size_t capacity = size - sizeof(ModMetaHookMem);
-            if (!terminated_within(strings, capacity)) {
-                return invalid("unterminated hook vtable symbol");
-            }
-            const size_t vtableLen = std::char_traits<char>::length(strings);
-            if (!terminated_within(strings + vtableLen + 1, capacity - vtableLen - 1)) {
-                return invalid("unterminated hook display name");
-            }
-            parsed.hookMems.push_back(record);
-            break;
-        }
-        case MOD_META_HOOK_MEM_EXT: {
-            if (size <= sizeof(ModMetaHookMemExt)) {
-                return invalid("truncated extended hook record");
-            }
-            auto* record = reinterpret_cast<ModMetaHookMemExt*>(const_cast<uint8_t*>(cursor));
-            if (record->pmf_size <= MOD_META_HOOK_MEM_CAPACITY ||
-                record->pmf_size > MOD_META_HOOK_MEM_EXT_CAPACITY || record->materialize == nullptr)
-            {
-                return invalid("bad extended hook member-pointer size");
-            }
-            const char* strings = reinterpret_cast<const char*>(cursor) + sizeof(ModMetaHookMemExt);
-            const size_t capacity = size - sizeof(ModMetaHookMemExt);
-            if (!terminated_within(strings, capacity)) {
-                return invalid("unterminated extended hook vtable symbol");
-            }
-            const size_t vtableLen = std::char_traits<char>::length(strings);
-            if (!terminated_within(strings + vtableLen + 1, capacity - vtableLen - 1)) {
-                return invalid("unterminated extended hook display name");
-            }
-            parsed.hookMemExts.push_back(record);
-            break;
-        }
-        case MOD_META_HOOK_NAME: {
-            if (size <= sizeof(ModMetaHookName)) {
-                return invalid("truncated hook record");
-            }
-            auto* record = reinterpret_cast<ModMetaHookName*>(const_cast<uint8_t*>(cursor));
-            const char* name = reinterpret_cast<const char*>(cursor) + sizeof(ModMetaHookName);
-            if (!terminated_within(name, size - sizeof(ModMetaHookName))) {
-                return invalid("unterminated hook symbol name");
-            }
-            parsed.hookNames.push_back(record);
-            break;
-        }
-        default:
-            // Additive record kinds may appear within a format version; skip them.
-            log::write(mod.metadata.id, LOG_LEVEL_DEBUG, "skipping unknown metadata record kind {}",
-                rec->kind);
-            break;
-        }
-        cursor += size;
-    }
-
-    if (headerCount != 1) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "expected 1 metadata header record, found {}",
-            headerCount);
-        mod.nativeStatus = NativeModStatus::InvalidMetadata;
-        return false;
-    }
-    if (parsed.abiVersion != MOD_ABI_VERSION) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "expects ABI v{} but engine is v{}, skipping",
-            parsed.abiVersion, MOD_ABI_VERSION);
-        mod.nativeStatus = NativeModStatus::ApiVersionMismatch;
-        return false;
-    }
-
-    native.parsed = std::move(parsed);
-    return true;
-}
-
 static std::string lifecycle_error_message(
     const char* fnName, const ModResult result, const ModError& error) {
     if (error.message[0] != '\0') {
         return error.message;
     }
     return fmt::format("{} failed with result {}", fnName, static_cast<int>(result));
-}
-
-static std::string native_status_message(const NativeModStatus status) {
-    switch (status) {
-    case NativeModStatus::BuildDisabled:
-        return "Code mods are disabled on this Dusklight build";
-    case NativeModStatus::ModMissingPlatform:
-        return fmt::format("Mod not supported on this platform ({})", k_nativePlatform);
-    case NativeModStatus::ApiVersionMismatch:
-        // TODO: differentiate whether mod or Dusklight is out of date
-        return "Mod ABI version mismatch";
-    case NativeModStatus::MissingExport:
-        return "Missing required mod API exports";
-    case NativeModStatus::InvalidMetadata:
-        return "Invalid mod metadata records";
-    case NativeModStatus::InvalidBundle:
-        return "Invalid mod bundle layout (old mod?)";
-    case NativeModStatus::Unknown:
-        return "Unknown mod load failure";
-    case NativeModStatus::None:
-    case NativeModStatus::Loaded:
-        break;
-    }
-    return "native mod failed to load";
-}
-
-fs::path ModLoader::external_native_lib_path(const LoadedMod& mod) const {
-    if (k_nativeLibName.empty()) {
-        return {};
-    }
-    const auto& libDir = m_searchDirs[mod.searchDirIndex].nativeLibDir;
-    if (libDir.empty()) {
-        return {};
-    }
-    const auto filename = fmt::format("{}{}", mod.metadata.id,
-        borealis::io::fs_path_to_string(fs::path{k_nativeLibName}.extension()));
-    fs::path path = libDir / fs::path{filename};
-    std::error_code ec;
-    if (!fs::is_regular_file(path, ec)) {
-        return {};
-    }
-    return path;
-}
-
-void ModLoader::load_native(
-    LoadedMod& mod, const std::string& dllEntry, const std::vector<std::string>& runtimeEntries) {
-    if (!EnableCodeMods) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "Code mods are not available in this build");
-        mod.nativeStatus = NativeModStatus::BuildDisabled;
-        return;
-    }
-
-    const fs::path cacheDir = m_cacheDir / mod.metadata.id;
-    const fs::path scratchDir = cacheDir / "data";
-    std::error_code ec;
-    fs::create_directories(scratchDir, ec);
-    if (ec) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "failed to create mod directory {}: {}",
-            data::abbreviated_path_string(scratchDir), ec.message());
-        return;
-    }
-    mod.dir = fs::absolute(scratchDir);
-    mod.dirUtf8 = borealis::io::fs_path_to_string(mod.dir);
-
-    fs::path libPath;
-    fs::path runtimeDir;
-    DirectoryRollback runtimeDirRollback;
-    if (mod.nativeInPlace) {
-        if (!dllEntry.empty()) {
-            libPath = mod.modPath / dllEntry;
-        } else if (auto external = external_native_lib_path(mod); !external.empty()) {
-            libPath = std::move(external);
-        } else {
-            log::write(mod.metadata.id, LOG_LEVEL_ERROR,
-                "no native library named {} found; skipping", k_nativeLibName);
-            mod.nativeStatus = NativeModStatus::ModMissingPlatform;
-            return;
-        }
-        runtimeDir = libPath.parent_path();
-    } else {
-        if (dllEntry.empty()) {
-            log::write(mod.metadata.id, LOG_LEVEL_ERROR,
-                "no native library named {} found; skipping", k_nativeLibName);
-            mod.nativeStatus = NativeModStatus::ModMissingPlatform;
-            return;
-        }
-
-        // Every generation gets a new directory. The main module and all of its runtime
-        // libraries therefore have fresh paths and can coexist with a previous generation
-        // that is still unwinding after a reload.
-        runtimeDir = cacheDir / fmt::format("g{}", ++mod.cacheGeneration);
-        runtimeDirRollback.set_path(runtimeDir);
-        fs::create_directories(runtimeDir, ec);
-        if (ec) {
-            log::write(mod.metadata.id, LOG_LEVEL_ERROR,
-                "failed to create native runtime directory {}: {}",
-                data::abbreviated_path_string(runtimeDir), ec.message());
-            return;
-        }
-
-        const std::string platformPrefix = fmt::format("{}{}/", k_nativeLibDir, k_nativePlatform);
-        for (const auto& entry : runtimeEntries) {
-            if (!entry.starts_with(platformPrefix)) {
-                continue;
-            }
-            const std::string_view relativeName{
-                entry.data() + platformPrefix.size(), entry.size() - platformPrefix.size()};
-            if (!is_safe_resource_path(relativeName)) {
-                log::write(mod.metadata.id, LOG_LEVEL_ERROR,
-                    "unsafe native runtime path '{}'; skipping", entry);
-                return;
-            }
-
-            const fs::path outputPath = runtimeDir / fs::path{relativeName};
-            fs::create_directories(outputPath.parent_path(), ec);
-            if (ec) {
-                log::write(mod.metadata.id, LOG_LEVEL_ERROR,
-                    "failed to create directory for {}: {}", entry, ec.message());
-                return;
-            }
-
-            std::vector<u8> data;
-            try {
-                data = mod.bundle->readFile(entry);
-            } catch (const std::exception& e) {
-                log::write(
-                    mod.metadata.id, LOG_LEVEL_ERROR, "failed to extract {}: {}", entry, e.what());
-                return;
-            }
-
-            std::ofstream out(outputPath, std::ios::binary | std::ios::out);
-            if (!out) {
-                log::write(mod.metadata.id, LOG_LEVEL_ERROR, "failed to write {}", entry);
-                return;
-            }
-            out.write(reinterpret_cast<const char*>(data.data()),
-                static_cast<std::streamsize>(data.size()));
-            if (!out) {
-                log::write(mod.metadata.id, LOG_LEVEL_ERROR, "failed to write {}", entry);
-                return;
-            }
-        }
-
-        libPath = runtimeDir / fs::path{dllEntry}.filename();
-    }
-
-    auto nativeMod = std::make_unique<NativeMod>();
-    try {
-        nativeMod->handle = std::make_unique<loader::NativeModule>(libPath);
-    } catch (const std::runtime_error& e) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "failed to open {}: {}",
-            data::abbreviated_path_string(libPath), e.what());
-        return;
-    }
-
-    nativeMod->meta = nativeMod->handle->LookupSymbol<const ModMeta*>("mod_meta");
-    nativeMod->contextSymbol = nativeMod->handle->LookupSymbol<ModContext**>("mod_ctx");
-    nativeMod->fn_initialize = nativeMod->handle->LookupSymbol<ModInitializeFn>("mod_initialize");
-    nativeMod->fn_update = nativeMod->handle->LookupSymbol<ModUpdateFn>("mod_update");
-    nativeMod->fn_shutdown = nativeMod->handle->LookupSymbol<ModShutdownFn>("mod_shutdown");
-
-    if (!nativeMod->meta || !nativeMod->contextSymbol || !nativeMod->fn_initialize ||
-        !nativeMod->fn_update || !nativeMod->fn_shutdown)
-    {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR,
-            "{} missing required mod API exports; skipping",
-            data::abbreviated_path_string(libPath));
-        mod.nativeStatus = NativeModStatus::MissingExport;
-        return;
-    }
-
-    if (!parse_meta(*nativeMod, mod)) {
-        return;
-    }
-
-    if (nativeMod->contextSymbol == nullptr) {
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "missing required mod_ctx export");
-        mod.nativeStatus = NativeModStatus::MissingExport;
-        return;
-    }
-    *nativeMod->contextSymbol = mod.context.get();
-
-    mod.nativePath = fs::absolute(libPath);
-    mod.nativeDir = fs::absolute(runtimeDir);
-    mod.nativeDirUtf8 = borealis::io::fs_path_to_string(mod.nativeDir);
-    mod.native = std::move(nativeMod);
-    mod.nativeStatus = NativeModStatus::Loaded;
-    runtimeDirRollback.release();
-}
-
-bool ModLoader::load_native_if_present(LoadedMod& mod) {
-    const auto result = locate_native_runtime(*mod.bundle);
-    if (const auto* failure = std::get_if<NativeLocateFailure>(&result)) {
-        mod.nativeStatus = failure->status;
-        log::write(mod.metadata.id, LOG_LEVEL_ERROR, "{}", failure->logMessage);
-        fail_mod(mod, MOD_ERROR, native_status_message(failure->status));
-        return false;
-    }
-
-    const auto& native = std::get<NativeRuntimeLocation>(result);
-    if (mod.runtime.has_value() &&
-        (native.anyLibs || (mod.nativeInPlace && !external_native_lib_path(mod).empty())))
-    {
-        mod.nativeStatus = NativeModStatus::InvalidBundle;
-        fail_mod(mod, MOD_CONFLICT, "A mod cannot declare both runtime and native code");
-        return false;
-    }
-    if (!native.anyLibs && !(mod.nativeInPlace && !external_native_lib_path(mod).empty())) {
-        mod.nativeStatus = NativeModStatus::None;
-        return true;
-    }
-
-    mod.nativeStatus = NativeModStatus::Unknown;
-    load_native(mod, native.entry, native.runtimeEntries);
-    if (mod.nativeStatus != NativeModStatus::Loaded) {
-        fail_mod(mod, MOD_ERROR, native_status_message(mod.nativeStatus));
-        return false;
-    }
-    return true;
-}
-
-void ModLoader::unload_native(LoadedMod& mod) {
-    if (!mod.native || mod.nativeInPlace) {
-        return;
-    }
-    // Deferred dlclose: this mod's code may still be on the stack below the current tick
-    m_retiredNatives.push_back({std::move(mod.native), std::move(mod.nativeDir)});
-    mod.nativePath.clear();
-    mod.nativeDir.clear();
-    mod.nativeDirUtf8.clear();
-}
-
-void ModLoader::drain_retired_natives() {
-    for (auto& retired : m_retiredNatives) {
-        retired.native.reset();
-        if (!retired.directory.empty()) {
-            std::error_code ec;
-            fs::remove_all(retired.directory, ec);
-        }
-    }
-    m_retiredNatives.clear();
-}
-
-static ModManifestInfo build_manifest_info(const ModMetaParsed& parsed) {
-    ModManifestInfo info;
-    info.imports.reserve(parsed.imports.size());
-    for (const auto* record : parsed.imports) {
-        if (!svc::valid_service_id(record->service_id.chars)) {
-            continue;
-        }
-        info.imports.push_back({
-            .id = record->service_id.chars,
-            .major = record->major_version,
-            .minMinor = record->min_minor_version,
-            .required = (record->rec.flags & SERVICE_IMPORT_OPTIONAL) == 0,
-        });
-    }
-    info.exports.reserve(parsed.exports.size());
-    for (const auto* record : parsed.exports) {
-        if (!svc::valid_service_id(record->service_id.chars)) {
-            continue;
-        }
-        info.exports.push_back({
-            .id = record->service_id.chars,
-            .major = record->major_version,
-        });
-    }
-    return info;
 }
 
 std::string escape_mod_id_for_config(std::string_view const id) {
@@ -944,6 +170,7 @@ LoadedMod* ModLoader::try_load_mod(const fs::path& modPath, bool fromDir, uint32
     mod.active = true;
     mod.modPath = fs::absolute(modPath);
     mod.searchDirIndex = searchDirIndex;
+    mod.fromDirectory = fromDir;
     mod.nativeInPlace = m_searchDirs[searchDirIndex].inPlaceNative && fromDir;
     mod.fileIdentity = file_identity(modPath);
     mod.metadata = std::move(manifest.metadata);
@@ -1134,69 +361,17 @@ void ModLoader::init() {
     // Stale libs from previous sessions (see load_native).
     fs::remove_all(m_cacheDir, ec);
 
-    // A Windows update can be interrupted between moving the live archive aside and publishing
-    // its replacement. Recover that narrow crash window before scanning the user directory.
-    if (fs::is_directory(m_searchDirs.front().path, ec)) {
-        for (const auto& entry : fs::directory_iterator(m_searchDirs.front().path, ec)) {
-            const auto path = entry.path();
-            if (!entry.is_regular_file() || path.extension() != ".old" ||
-                path.stem().extension() != ".dusk")
-            {
-                continue;
-            }
-            auto primary = path;
-            primary.replace_extension();
-            if (fs::exists(primary, ec)) {
-                fs::remove(path, ec);
-            } else {
-                fs::rename(path, primary, ec);
-            }
-            if (ec) {
-                Log.warn("failed to recover stale mod archive '{}': {}",
-                    data::abbreviated_path_string(path), ec.message());
-                ec.clear();
-            }
-        }
-    }
-
-    for (size_t dirIndex = 0; dirIndex < m_searchDirs.size(); ++dirIndex) {
-        const auto& searchDir = m_searchDirs[dirIndex];
-
-        // --mods can point the user dir at the bundled dir; don't scan the same dir twice.
-        bool alreadyScanned = false;
-        for (size_t earlier = 0; earlier < dirIndex && !alreadyScanned; ++earlier) {
-            alreadyScanned = fs::equivalent(m_searchDirs[earlier].path, searchDir.path, ec);
-        }
-        if (alreadyScanned) {
+    const auto packages = scan_packages(m_searchDirs);
+    for (const auto& package : packages) {
+        const auto* selected = select_package(packages, package.metadata.id);
+        if (selected != &package) {
+            log::write(package.metadata.id, LOG_LEVEL_INFO, "{} v{} shadowed by {} v{}",
+                data::abbreviated_path_string(package.path), package.metadata.version,
+                data::abbreviated_path_string(selected->path), selected->metadata.version);
             continue;
         }
-
-        if (!fs::is_directory(searchDir.path)) {
-            if (dirIndex == 0) {
-                Log.info(
-                    "mods directory '{}' not found", data::abbreviated_path_string(searchDir.path));
-            } else {
-                Log.debug(
-                    "mods directory '{}' not found", data::abbreviated_path_string(searchDir.path));
-            }
-            continue;
-        }
-
-        std::vector<fs::directory_entry> entries;
-        for (auto& e : fs::directory_iterator(searchDir.path, ec)) {
-            if (e.is_directory() && fs::exists(e.path() / "mod.json")) {
-                entries.push_back(e);
-            } else if (e.is_regular_file() && e.path().extension() == ".dusk") {
-                entries.push_back(e);
-            }
-        }
-        std::sort(entries.begin(), entries.end(),
-            [](const fs::directory_entry& a, const fs::directory_entry& b) {
-                return a.path().filename() < b.path().filename();
-            });
-
-        for (auto& entry : entries) {
-            (void)try_load_mod(entry.path(), entry.is_directory(), static_cast<uint32_t>(dirIndex));
+        if (auto* mod = try_load_mod(package.path, package.fromDirectory, package.searchDirIndex)) {
+            record_package_sources(*mod, packages);
         }
     }
 
@@ -1349,7 +524,11 @@ fs::path ModLoader::user_mods_dir() const {
 }
 
 bool ModLoader::can_uninstall(const LoadedMod& mod) const {
-    return mod.searchDirIndex == 0 && mod.modPath.extension() == ".dusk";
+    return mod.hasUserPackage;
+}
+
+bool ModLoader::can_update(const LoadedMod& mod) const {
+    return mod.searchDirIndex != 0 || (!mod.fromDirectory && can_uninstall(mod));
 }
 
 void ModLoader::notify_mod_failure(LoadedMod& mod, bool firstFailure) {
@@ -1360,7 +539,7 @@ void ModLoader::notify_mod_failure(LoadedMod& mod, bool firstFailure) {
     if (!m_startupComplete) {
         return;
     }
-    m_pendingRequests.push_back(LifecycleRequest{
+    m_pendingRequests.emplace_back(LifecycleRequest{
         .modId = mod.metadata.id,
         .action = LifecycleAction::Disable,
     });
@@ -1425,13 +604,6 @@ std::vector<LoadedMod*> ModLoader::collect_lifecycle_set(LoadedMod& target) cons
     return ordered;
 }
 
-bool ModLoader::ensure_native_loaded(LoadedMod& mod) {
-    if (mod.native || mod.nativeStatus == NativeModStatus::None) {
-        return true;
-    }
-    return load_native_if_present(mod);
-}
-
 bool ModLoader::reload_bundle(LoadedMod& mod) {
     log::write(mod.metadata.id, LOG_LEVEL_INFO, "reloading from {}",
         data::abbreviated_path_string(mod.modPath));
@@ -1489,8 +661,6 @@ bool ModLoader::reload_bundle(LoadedMod& mod) {
 }
 
 void ModLoader::resume_lifecycle_set(const std::vector<LoadedMod*>& affected) {
-    // Publish every candidate's static exports before any initialize, so optional cycles and
-    // provider changes use the same ordering rules as startup.
     for (auto* mod : affected) {
         if (mod->active || mod->loadFailed || !mod->cvarIsEnabled->getValue()) {
             continue;
@@ -1530,7 +700,8 @@ void ModLoader::resume_lifecycle_set(const std::vector<LoadedMod*>& affected) {
     }
 }
 
-void ModLoader::apply_lifecycle_change(LoadedMod& target, const bool reload) {
+void ModLoader::apply_lifecycle_change(
+    LoadedMod& target, const bool reload, const PackageCandidate* replacement) {
     auto affected = collect_lifecycle_set(target);
 
     // Dependents first (reverse init order), like shutdown.
@@ -1548,6 +719,17 @@ void ModLoader::apply_lifecycle_change(LoadedMod& target, const bool reload) {
             // Provisional; cleared below if the mod comes straight back up.
             mod->suspendedByProvider = true;
         }
+    }
+
+    if (replacement != nullptr) {
+        target.modPath = replacement->path;
+        target.searchDirIndex = replacement->searchDirIndex;
+        target.fromDirectory = replacement->fromDirectory;
+        target.nativeInPlace =
+            replacement->fromDirectory && m_searchDirs[replacement->searchDirIndex].inPlaceNative;
+        std::stable_sort(m_mods.begin(), m_mods.end(),
+            [](const auto& a, const auto& b) { return a->searchDirIndex > b->searchDirIndex; });
+        loader::sort_mods(m_mods);
     }
 
     if (reload) {
@@ -1581,7 +763,6 @@ void ModLoader::on_enabled_changed(LoadedMod& mod) {
     }
     if (mod.suspendedByProvider) {
         if (!mod.cvarIsEnabled->getValue()) {
-            // The user disabled a suspended mod; stop waiting for its providers.
             mod.suspendedByProvider = false;
         }
         return;
@@ -1713,24 +894,72 @@ ModLoader::OperationResult ModLoader::load_runtime_mod(const fs::path& requested
     return runtime_result(*mod);
 }
 
-ModLoader::OperationResult ModLoader::reload_runtime_mod(LoadedMod& mod) {
-    if (mod.nativeInPlace) {
+ModLoader::OperationResult ModLoader::reload_runtime_mod(
+    LoadedMod& mod, const PackageCandidate* replacement) {
+    if (mod.nativeInPlace && replacement == nullptr) {
         return {
             .success = false,
-            .message = "Built-in mods cannot be updated in-game",
+            .message = "An in-place native library cannot be reloaded",
             .mod = &mod,
         };
     }
-    apply_lifecycle_change(mod, true);
+    apply_lifecycle_change(mod, true, replacement);
     ++m_generation;
     return runtime_result(mod);
+}
+
+ModLoader::OperationResult ModLoader::uninstall_runtime_mod(LoadedMod& mod) {
+    std::vector<PackageCandidate> packages;
+    try {
+        packages = scan_packages(m_searchDirs);
+    } catch (const std::exception& exception) {
+        return {.success = false, .message = exception.what()};
+    }
+    record_package_sources(mod, packages);
+    if (!can_uninstall(mod)) {
+        return {.success = false, .message = "No installed package to remove"};
+    }
+
+    std::string removalError;
+    std::erase_if(packages, [&](const auto& package) {
+        if (package.metadata.id != mod.metadata.id || package.searchDirIndex != 0 ||
+            package.fromDirectory || package.symlink)
+        {
+            return false;
+        }
+        std::error_code error;
+        fs::remove(package.path, error);
+        if (error) {
+            removalError = fmt::format("Could not remove {}: {}",
+                data::abbreviated_path_string(package.path), error.message());
+        }
+        return !error;
+    });
+
+    OperationResult result;
+    if (const auto* selected = select_package(packages, mod.metadata.id)) {
+        if (selected->path != mod.modPath) {
+            result = reload_runtime_mod(mod, selected);
+        } else {
+            result.mod = &mod;
+            ++m_generation;
+        }
+        record_package_sources(mod, packages);
+    } else {
+        forget_mod(mod);
+    }
+    if (!removalError.empty()) {
+        result.success = false;
+        result.message = std::move(removalError);
+    }
+    return result;
 }
 
 ModLoader::OperationResult ModLoader::runtime_result(LoadedMod& mod) {
     if (mod.loadFailed) {
         return {
             .success = false,
-            .message = mod.failureReason.empty() ? "The mod failed to activate" : mod.failureReason,
+            .message = mod.failureReason.empty() ? "Mod failed to activate" : mod.failureReason,
             .mod = &mod,
         };
     }
@@ -1788,62 +1017,71 @@ ModLoader::OperationResult ModLoader::install_staged(const fs::path& requestedPa
         };
     }
 
-    fs::path destination;
+    const auto destination = userDir / fmt::format("{}.dusk", safe_filename(metadata.id));
     auto* installed = find_mod(metadata.id);
-    if (installed != nullptr) {
-        if (!can_uninstall(*installed)) {
-            return {
-                .success = false,
-                .message = "This bundled mod cannot be updated in-game",
-            };
-        }
-        destination = installed->modPath;
-    } else {
-        destination = userDir / fmt::format("{}.dusk", safe_filename(metadata.id));
+    if (installed != nullptr && !can_update(*installed)) {
+        return {
+            .success = false,
+            .message = "Cannot install mod over a development directory",
+        };
     }
 
-    std::string replaceError;
-#ifdef _WIN32
-    fs::path aside = destination;
-    aside += ".old";
-    const bool hadDestination = fs::exists(destination, error);
-    if (hadDestination) {
-        fs::remove(aside, error);
-        error.clear();
-        fs::rename(destination, aside, error);
-        if (error) {
+    for (const auto& mod : mods()) {
+        if (mod.metadata.id != metadata.id && fs::equivalent(mod.modPath, destination, error)) {
             return {
                 .success = false,
-                .message =
-                    fmt::format("Failed to prepare the installed package: {}", error.message()),
+                .message = "The destination filename belongs to a different mod",
             };
         }
     }
-    if (!borealis::io::atomic_replace(path, destination, replaceError)) {
-        if (hadDestination) {
-            std::error_code restoreError;
-            fs::rename(aside, destination, restoreError);
-        }
+    error.clear();
+
+    if (!borealis::update::parse_version(metadata.version)) {
+        return {.success = false, .message = "The package version is invalid"};
+    }
+    std::vector<PackageCandidate> packages;
+    try {
+        packages = scan_packages(m_searchDirs);
+    } catch (const std::exception& exception) {
+        return {.success = false, .message = exception.what()};
+    }
+    if (const auto* selected = select_package(packages, metadata.id);
+        selected && compare_package_versions(metadata.version, selected->metadata.version) < 0)
+    {
         return {
             .success = false,
-            .message = std::move(replaceError),
+            .message = fmt::format(
+                "A newer version ({}) is already installed", selected->metadata.version),
         };
     }
-    auto result =
-        installed != nullptr ? reload_runtime_mod(*installed) : load_runtime_mod(destination);
-    if (hadDestination) {
-        fs::remove(aside, error);
+
+    const auto packageResult = install_package(path, destination, metadata.id);
+    if (!packageResult.replaced) {
+        return {.success = false, .message = packageResult.error};
+    }
+    std::erase_if(packages, [&](const auto& package) {
+        if (package.metadata.id != metadata.id || package.searchDirIndex != 0 ||
+            package.fromDirectory)
+        {
+            return false;
+        }
+        std::error_code statusError;
+        return fs::equivalent(package.path, destination, statusError) ||
+               !fs::exists(package.path, statusError);
+    });
+    packages.push_back({.path = destination, .metadata = metadata});
+    const auto* selected = select_package(packages, metadata.id);
+    auto result = installed != nullptr ? reload_runtime_mod(*installed, selected) :
+                                         load_runtime_mod(selected->path);
+    if (result.mod != nullptr) {
+        record_package_sources(*result.mod, packages);
+    }
+
+    if (result.success && !packageResult.error.empty()) {
+        result.success = false;
+        result.message = packageResult.error;
     }
     return result;
-#else
-    if (!borealis::io::atomic_replace(path, destination, replaceError)) {
-        return {
-            .success = false,
-            .message = std::move(replaceError),
-        };
-    }
-    return installed != nullptr ? reload_runtime_mod(*installed) : load_runtime_mod(destination);
-#endif
 }
 
 void ModLoader::apply_pending_requests() {
@@ -1854,7 +1092,6 @@ void ModLoader::apply_pending_requests() {
         return;
     }
 
-    // Package mutations retain request order. Enable/disable/reactivate can still coalesce per mod.
     const auto requests = std::exchange(m_pendingRequests, {});
     std::vector<LifecycleRequest> coalesced;
     for (const auto& request : requests) {
@@ -1915,28 +1152,18 @@ void ModLoader::apply_pending_requests() {
                 complete_operation(uninstall->operation);
                 continue;
             }
-            if (!can_uninstall(*mod)) {
-                complete_operation(
-                    uninstall->operation, false, "The mod is part of this Dusklight installation");
-                continue;
-            }
-
             const auto removedName = mod->metadata.name;
             const auto removedId = mod->metadata.id;
-            std::error_code error;
-            if (!fs::remove(mod->modPath, error)) {
-                complete_operation(uninstall->operation, false,
-                    error ? error.message() : "The package was not found");
-                continue;
+            auto result = uninstall_runtime_mod(*mod);
+            if (result.success) {
+                queue::remove_by_mod_id(removedId);
+                ui::push_toast({
+                    .title = result.mod != nullptr ? "User update removed" : "Mod uninstalled",
+                    .content = removedName,
+                    .duration = std::chrono::seconds{2},
+                });
             }
-            forget_mod(*mod);
-            queue::remove_by_mod_id(removedId);
-            complete_operation(uninstall->operation);
-            ui::push_toast({
-                .title = "Mod uninstalled",
-                .content = removedName,
-                .duration = std::chrono::seconds{2},
-            });
+            complete_operation(uninstall->operation, result.success, std::move(result.message));
             continue;
         }
 

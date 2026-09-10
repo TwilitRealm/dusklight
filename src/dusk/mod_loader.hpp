@@ -208,8 +208,11 @@ struct LoadedMod {
     std::string dataDirUtf8;
 
     uint32_t searchDirIndex = 0;
-    // Native lib is dlopen'd in place and stays resident for the session. Reload is unsupported.
+    bool fromDirectory = false;
+    // Native lib is dlopen'd in place.
     bool nativeInPlace = false;
+    bool hasUserPackage = false;
+    bool hasBundledCopy = false;
     FileIdentity fileIdentity;
 
     std::unique_ptr<ConfigVar<bool>> cvarIsEnabled;
@@ -259,6 +262,8 @@ struct LoadedMod {
     [[nodiscard]] bool activation_failed() const { return loadFailed || (is_enabled() && !active); }
 };
 
+struct PackageCandidate;
+
 class ModLoader {
 public:
     static ModLoader& instance();
@@ -279,6 +284,7 @@ public:
 
     [[nodiscard]] std::filesystem::path user_mods_dir() const;
     [[nodiscard]] bool can_uninstall(const LoadedMod& mod) const;
+    [[nodiscard]] bool can_update(const LoadedMod& mod) const;
     [[nodiscard]] LoadedMod* find_mod(std::string_view id);
     [[nodiscard]] const LoadedMod* find_mod(std::string_view id) const;
     [[nodiscard]] uint64_t generation() const noexcept { return m_generation; }
@@ -359,14 +365,17 @@ private:
     void apply_pending_requests();
     [[nodiscard]] OperationResult install_staged(const std::filesystem::path& path);
     [[nodiscard]] OperationResult load_runtime_mod(const std::filesystem::path& path);
-    [[nodiscard]] OperationResult reload_runtime_mod(LoadedMod& mod);
+    [[nodiscard]] OperationResult reload_runtime_mod(
+        LoadedMod& mod, const PackageCandidate* replacement = nullptr);
+    [[nodiscard]] OperationResult uninstall_runtime_mod(LoadedMod& mod);
     [[nodiscard]] OperationResult runtime_result(LoadedMod& mod);
     void forget_mod(LoadedMod& mod);
     void flush_toasts();
     void on_enabled_changed(LoadedMod& mod);
     // Deactivates `target` (if needed) and its transitive dependents, optionally re-reads the
     // bundle from disk, then reactivates whatever the current cvar/provider state allows.
-    void apply_lifecycle_change(LoadedMod& target, bool reload);
+    void apply_lifecycle_change(
+        LoadedMod& target, bool reload, const PackageCandidate* replacement = nullptr);
     // `target` plus transitive active/suspended dependents, in m_mods (init) order.
     std::vector<LoadedMod*> collect_lifecycle_set(LoadedMod& target) const;
     void resume_lifecycle_set(const std::vector<LoadedMod*>& mods);
@@ -374,7 +383,6 @@ private:
     bool ensure_native_loaded(LoadedMod& mod);
 };
 
-// Reads and validates mod.json without loading native code or changing loader state.
 bool inspect_mod_bundle(const std::filesystem::path& path, ModMetadata& metadata,
     std::string& error, bool* hasNative = nullptr) noexcept;
 

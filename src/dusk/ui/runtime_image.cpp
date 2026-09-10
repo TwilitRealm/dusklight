@@ -1,11 +1,10 @@
 #include "runtime_image.hpp"
 
-#include <SDL3/SDL_iostream.h>
-#include <SDL3/SDL_surface.h>
 #include <borealis/log.hpp>
+#include <png.h>
 
 #include <cstddef>
-#include <cstring>
+#include <memory>
 
 namespace dusk::ui {
 namespace {
@@ -16,55 +15,37 @@ constexpr uint32_t kMaxImageDimension = 4096;
 }  // namespace
 
 std::optional<DecodedImage> decode_png(std::span<const uint8_t> data, std::string_view source) {
-    SDL_IOStream* stream = SDL_IOFromConstMem(data.data(), data.size());
-    if (stream == nullptr) {
-        Log.warn("Failed to open image stream for '{}': {}", source, SDL_GetError());
+    png_image png{};
+    png.version = PNG_IMAGE_VERSION;
+    const std::unique_ptr<png_image, decltype(&png_image_free)> cleanup{&png, png_image_free};
+    if (!png_image_begin_read_from_memory(&png, data.data(), data.size())) {
+        Log.warn("Failed to read image header '{}': {}", source, png.message);
+        return std::nullopt;
+    }
+    if (png.width == 0 || png.height == 0 || png.width > kMaxImageDimension ||
+        png.height > kMaxImageDimension)
+    {
+        Log.warn("Image '{}' has unsupported dimensions {}x{}", source, png.width, png.height);
         return std::nullopt;
     }
 
-    SDL_Surface* loadedSurface = SDL_LoadPNG_IO(stream, true);
-    if (loadedSurface == nullptr) {
-        Log.warn("Failed to decode image '{}': {}", source, SDL_GetError());
-        return std::nullopt;
-    }
-
-    SDL_Surface* rgbaSurface = SDL_ConvertSurface(loadedSurface, SDL_PIXELFORMAT_RGBA32);
-    SDL_DestroySurface(loadedSurface);
-    if (rgbaSurface == nullptr) {
-        Log.warn("Failed to convert image '{}': {}", source, SDL_GetError());
-        return std::nullopt;
-    }
-
-    const auto width = static_cast<uint32_t>(rgbaSurface->w);
-    const auto height = static_cast<uint32_t>(rgbaSurface->h);
-    if (width == 0 || height == 0 || width > kMaxImageDimension || height > kMaxImageDimension) {
-        Log.warn("Image '{}' has unsupported dimensions {}x{}", source, width, height);
-        SDL_DestroySurface(rgbaSurface);
-        return std::nullopt;
-    }
-
-    const size_t rowSize = static_cast<size_t>(width) * 4;
+    png.format = PNG_FORMAT_RGBA;
     DecodedImage image{
-        .pixels = std::vector<uint8_t>(rowSize * height),
-        .width = width,
-        .height = height,
+        .width = png.width,
+        .height = png.height,
     };
-    for (uint32_t row = 0; row < height; ++row) {
-        const auto* src = static_cast<const uint8_t*>(rgbaSurface->pixels) +
-                          static_cast<size_t>(row) * static_cast<size_t>(rgbaSurface->pitch);
-        auto* dst = image.pixels.data() + static_cast<size_t>(row) * rowSize;
-        std::memcpy(dst, src, rowSize);
-
-        for (size_t col = 0; col < rowSize; col += 4) {
-            const uint8_t alpha = dst[col + 3];
-            for (size_t channel = 0; channel < 3; ++channel) {
-                dst[col + channel] =
-                    static_cast<uint8_t>((static_cast<uint32_t>(dst[col + channel]) * alpha) / 255);
-            }
+    image.pixels.resize(PNG_IMAGE_SIZE(png));
+    if (!png_image_finish_read(&png, nullptr, image.pixels.data(), 0, nullptr)) {
+        Log.warn("Failed to decode image '{}': {}", source, png.message);
+        return std::nullopt;
+    }
+    for (size_t offset = 0; offset < image.pixels.size(); offset += 4) {
+        const uint8_t alpha = image.pixels[offset + 3];
+        for (size_t channel = 0; channel < 3; ++channel) {
+            image.pixels[offset + channel] = static_cast<uint8_t>(
+                (static_cast<uint32_t>(image.pixels[offset + channel]) * alpha) / 255);
         }
     }
-
-    SDL_DestroySurface(rgbaSurface);
     return image;
 }
 

@@ -199,6 +199,22 @@ mod-header.has-banner {
     margin: -24dp -24dp 0dp -24dp;
 }
 
+mod-header-image {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none;
+    mask-image: linear-gradient(180deg, #fff 40%, transparent);
+    filter: grayscale(0);
+}
+
+mod-header.inactive mod-header-image {
+    filter: grayscale(1);
+}
+
 mod-actions {
     position: absolute;
     top: 24dp;
@@ -209,9 +225,10 @@ mod-actions {
 }
 
 mod-actions button {
-    font-size: var(--font-size-md);
-    padding: 6dp 14dp;
-    background-color: rgba(var(--color-surface-rgb), 80%);
+    --button-background: rgba(var(--color-surface-rgb), 80%);
+    --button-background-hover: rgba(var(--color-control-rgb), 90%);
+    --button-background-selected: rgba(var(--color-control-rgb), 90%);
+    --button-background-active: rgba(var(--color-surface-rgb), 90%);
     box-shadow: rgba(var(--color-border-rgb), 60%) 0 0 0 1dp;
 }
 

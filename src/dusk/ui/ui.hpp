@@ -4,9 +4,11 @@
 #include <SDL3/SDL_events.h>
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "nav_types.hpp"
 
@@ -88,6 +90,25 @@ void update() noexcept;
 
 Document& push_document(
     std::unique_ptr<Document> doc, bool show = true, bool passive = false) noexcept;
+
+namespace detail {
+Document& pop_to_or_push_document(bool (*matches)(Document&),
+    const std::function<std::unique_ptr<Document>()>& create,
+    const std::function<void(Document&)>& configure);
+}
+
+template <typename T, typename Configure, typename... Args>
+T& pop_to_or_push(Configure&& configure, Args&&... args) {
+    return static_cast<T&>(detail::pop_to_or_push_document(
+        [](Document& document) { return dynamic_cast<T*>(&document) != nullptr; },
+        [&]() -> std::unique_ptr<Document> {
+            return std::make_unique<T>(std::forward<Args>(args)...);
+        },
+        [&](Document& document) {
+            std::invoke(std::forward<Configure>(configure), static_cast<T&>(document));
+        }));
+}
+
 void bring_document_to_front(Document& doc) noexcept;
 bool register_scoped_styles(DocumentScope scope, std::string id, const std::string& rcss) noexcept;
 void unregister_scoped_styles(DocumentScope scope, std::string_view id) noexcept;

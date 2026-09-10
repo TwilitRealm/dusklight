@@ -1484,6 +1484,12 @@ set(DUSK_FILES
         src/dusk/mods/loader/depgraph.hpp
         src/dusk/mods/loader/loader.cpp
         src/dusk/mods/loader/loader.hpp
+        src/dusk/mods/loader/manifest.cpp
+        src/dusk/mods/loader/manifest.hpp
+        src/dusk/mods/loader/natives.cpp
+        src/dusk/mods/loader/natives.hpp
+        src/dusk/mods/loader/packages.cpp
+        src/dusk/mods/loader/packages.hpp
         src/dusk/mods/loader/native_module.cpp
         src/dusk/mods/loader/native_module.hpp
         src/dusk/mods/loader/prepatch.cpp
@@ -1601,6 +1607,12 @@ set(DUSK_FILES
         src/dusk/ui/nav_types.hpp
         src/dusk/ui/nav_group.cpp
         src/dusk/ui/nav_group.hpp
+        src/dusk/ui/context_menu.cpp
+        src/dusk/ui/context_menu.hpp
+        src/dusk/ui/icon_button.cpp
+        src/dusk/ui/icon_button.hpp
+        src/dusk/ui/tooltip.cpp
+        src/dusk/ui/tooltip.hpp
         src/dusk/ui/number_button.cpp
         src/dusk/ui/number_button.hpp
         src/dusk/ui/overlay.cpp

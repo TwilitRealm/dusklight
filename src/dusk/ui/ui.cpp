@@ -325,6 +325,50 @@ Document& push_document(std::unique_ptr<Document> doc, bool show, bool passive) 
     return ret;
 }
 
+Document& detail::pop_to_or_push_document(bool (*matches)(Document&),
+    const std::function<std::unique_ptr<Document>()>& create,
+    const std::function<void(Document&)>& configure) {
+    Document* destination = nullptr;
+    size_t destinationIndex = 0;
+    for (size_t i = sDocumentStack.size(); i > 0; --i) {
+        auto& document = *sDocumentStack[i - 1];
+        if (!document.closed() && !document.pending_close() && matches(document)) {
+            destination = &document;
+            destinationIndex = i - 1;
+            break;
+        }
+    }
+
+    if (destination != nullptr) {
+        std::vector<Document*> closing;
+        for (size_t i = sDocumentStack.size(); i > destinationIndex + 1; --i) {
+            closing.push_back(sDocumentStack[i - 1].get());
+        }
+        for (auto* document : closing) {
+            if (!document->closed() && !document->pending_close()) {
+                if (document->visible()) {
+                    document->hide(true);
+                } else {
+                    document->force_hide(true);
+                }
+            }
+        }
+        configure(*destination);
+    } else {
+        auto document = create();
+        configure(*document);
+        if (auto* current = top_document()) {
+            current->cover();
+        }
+        destination = &push_document(std::move(document), false);
+    }
+
+    destination->show();
+    destination->focus();
+    input::sync_input_block();
+    return *destination;
+}
+
 void bring_document_to_front(Document& doc) noexcept {
     const auto it = std::ranges::find_if(
         sDocumentStack, [&doc](const auto& entry) { return entry.get() == &doc; });
