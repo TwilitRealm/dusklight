@@ -8363,7 +8363,7 @@ int daAlink_c::procWolfEnemyHangBite() {
     current.angle.y = shape_angle.y;
     setDoStatusContinuation(3);
 
-    IF_DUSK(const bool holdToMash = DUSK_IF_ELSE(dusk::getSettings().game.holdToMash, false));
+    IF_DUSK(const bool holdToMash = DUSK_IF_ELSE(dusk::getSettings().game.holdToMash, false);)
 
     if (holdToMash ? doButton() : doTrigger()) {
         mProcVar3.field_0x300e = 1;
