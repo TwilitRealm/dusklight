@@ -246,22 +246,37 @@ s32 J3DTexGenBlockBasic::countDLSize() {
 }
 
 s32 J3DTevBlockPatched::countDLSize() {
+#if TARGET_PC
+    return 2048;
+#endif
     return 560;
 }
 
 s32 J3DTevBlock1::countDLSize() {
+#if TARGET_PC
+    return 256;
+#endif
     return 105;
 }
 
 s32 J3DTevBlock2::countDLSize() {
+#if TARGET_PC
+    return 512;
+#endif
     return 335;
 }
 
 s32 J3DTevBlock4::countDLSize() {
+#if TARGET_PC
+    return 1024;
+#endif
     return 580;
 }
 
 s32 J3DTevBlock16::countDLSize() {
+#if TARGET_PC
+    return 2048;
+#endif
     return 1000;
 }
 
