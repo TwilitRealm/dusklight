@@ -1,7 +1,7 @@
 {
   "id": "dev.twilitrealm.audio_mod",
-  "name": "[DEMO] Audio Mod",
+  "name": "[Demo] Audio Mod",
   "version": "1.0.0",
-  "author": "You, the listener",
-  "description": "An example Dusklight mod"
+  "author": "Twilit Realm",
+  "description": "Tests the functionality of the audio_res service, modifying some sounds"
 }
