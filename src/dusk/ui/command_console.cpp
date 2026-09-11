@@ -18,6 +18,7 @@ namespace {
 const Rml::String kDocumentSource = R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/command_console.rcss" />
 </head>
 <body>
@@ -253,7 +254,7 @@ void CommandConsole::append_message(std::string text) {
 }
 
 void CommandConsole::limit_visible_messages() {
-    std::size_t visibleCount = 0;
+    size_t visibleCount = 0;
     for (auto it = mMessages.rbegin(); it != mMessages.rend(); ++it) {
         if (it->expired) {
             continue;

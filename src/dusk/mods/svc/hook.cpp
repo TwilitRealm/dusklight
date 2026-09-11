@@ -297,27 +297,32 @@ bool install_backend(
 #endif
 }
 
-void deactivate_backend(void* target, InstalledBackend& backend) {
+bool deactivate_backend(void* target, InstalledBackend& backend) {
 #if DUSK_HAS_PREPATCH
     if (backend.kind == BackendKind::Prepatch) {
         prepatch::publish(backend.prepatchSite, nullptr);
         backend = {};
-        return;
+        return true;
     }
 #endif
 #if DUSK_HAS_FUNCHOOK
     if (backend.kind == BackendKind::Funchook) {
         const int uninst = funchook_uninstall(backend.handle, 0);
+        if (uninst != 0) {
+            DuskLog.warn("HookSystem: funchook uninstall for {:p} failed: {}", target,
+                funchook_error_message(backend.handle));
+            return false;
+        }
         const int destr = funchook_destroy(backend.handle);
-        if (uninst != 0 || destr != 0) {
-            DuskLog.warn("HookSystem: funchook uninstall/destroy for {:p} returned {}/{}", target,
-                uninst, destr);
+        if (destr != 0) {
+            DuskLog.warn("HookSystem: funchook destroy for {:p} returned {}", target, destr);
         }
     }
 #else
     (void)target;
 #endif
     backend = {};
+    return true;
 }
 
 bool handoff_backend(
@@ -352,8 +357,8 @@ bool handoff_hook(void* target, InstalledHook& entry) {
 #else
     constexpr bool prepatched = false;
 #endif
-    if (!prepatched) {
-        deactivate_backend(target, entry.backend);
+    if (!prepatched && !deactivate_backend(target, entry.backend)) {
+        DuskLog.fatal("HookSystem: cannot hand off a hook that remains installed at {:p}", target);
     }
 
     entry.active = nullptr;
@@ -535,13 +540,20 @@ ModResult hook_uninstall(ModContext* context, void* fnAddr, void** originalFnSlo
         return MOD_INVALID_ARGUMENT;
     }
 
+    const bool removedActive = entry.activeStore == originalFnSlot;
+#if DUSK_HAS_FUNCHOOK
+    if (removedActive && entry.backend.kind == BackendKind::Funchook &&
+        !deactivate_backend(fnAddr, entry.backend)) {
+        return MOD_ERROR;
+    }
+#endif
+
     if (const auto registryIt = s_registry.find(key);
         registryIt != s_registry.end() && erase_callbacks(registryIt->second, context))
     {
         s_registry.erase(registryIt);
     }
 
-    const bool removedActive = entry.activeStore == originalFnSlot;
     entry.candidates.erase(candidateIt);
     *originalFnSlot = nullptr;
     if (!removedActive) {
@@ -897,7 +909,9 @@ void hook_remove_mod(LoadedMod& mod) {
 
         auto* target = reinterpret_cast<void*>(it->first);
         if (entry.candidates.empty()) {
-            deactivate_backend(target, entry.backend);
+            if (!deactivate_backend(target, entry.backend)) {
+                DuskLog.fatal("HookSystem: cannot detach a mod with a live hook at {:p}", target);
+            }
             it = s_installed.erase(it);
             continue;
         }

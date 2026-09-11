@@ -3,7 +3,7 @@
 #include <mods/api.h>
 #include <mods/svc/config.h>
 
-#define ACTOR_SERVICE_ID "dev.twilitrealm.dusklight.actor"
+#define ACTOR_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "actor"
 #define ACTOR_SERVICE_MAJOR 1u
 #define ACTOR_SERVICE_MINOR 0u
 

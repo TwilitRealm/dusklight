@@ -8,6 +8,7 @@
 #include "dusk/language.hpp"
 #include "dusk/main.h"
 #include "dusk/settings.h"
+#include "dusk/ui/format.hpp"
 #include "dusk/ui/menu_bar.hpp"
 #include "modal.hpp"
 #include "mods_window.hpp"
@@ -37,41 +38,43 @@
 namespace dusk::ui {
 namespace {
 constexpr borealis::Log PrelaunchLog{"dusk::ui::prelaunch"};
+constexpr ByteFormat verificationByteFormat{.gibFractionDigits = 2, .mibFractionDigits = 0};
 
 PrelaunchState sPrelaunchState;
 
 const Rml::String kDocumentSource = R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/prelaunch.rcss" />
 </head>
 <body>
-    <div class="gradient" />
-    <div class="background" />
+    <prelaunch-gradient />
+    <prelaunch-background />
     <content id="root" open>
         <menu>
             <hero class="intro-item delay-0">
-                <eyebrow><span>Twilit Realm</span> presents</eyebrow>
+                <eyebrow><studio-name>Twilit Realm</studio-name> presents</eyebrow>
                 <img src="res/logo.png" />
             </hero>
-            <div id="menu-list" />
+            <menu-list id="menu-list" />
         </menu>
         <disc-info class="intro-item delay-5">
-            <div id="disc-status">
+            <disc-status id="disc-status">
                 <icon />
-                <span id="disc-status-label" />
-            </div>
-            <span id="disc-version" class="detail" />
+                <disc-status-label id="disc-status-label" />
+            </disc-status>
+            <disc-version id="disc-version" />
         </disc-info>
         <version-info class="intro-item delay-6">
-            <div class="version">Version <span id="version-text"></span></div>
-            <div id="update-status" class="update">
-                <span id="update-message"></span>
+            <version-label>Version <version-number id="version-text"></version-number></version-label>
+            <update-status id="update-status">
+                <update-message id="update-message"></update-message>
                 <button id="update-download">
-                    <span id="update-download-label"></span>
+                    <update-download-label id="update-download-label"></update-download-label>
                     &nbsp;<icon />
                 </button>
-            </div>
+            </update-status>
         </version-info>
     </content>
 </body>
@@ -160,22 +163,6 @@ DiscVerificationState verification_to_config(iso::ValidationError validation) {
     default:
         return DiscVerificationState::Unknown;
     }
-}
-
-std::string format_bytes(std::size_t bytes) {
-    constexpr double KiB = 1024.0;
-    constexpr double MiB = KiB * 1024.0;
-    constexpr double GiB = MiB * 1024.0;
-    if (bytes >= static_cast<std::size_t>(GiB)) {
-        return fmt::format("{:.2f} GiB", static_cast<double>(bytes) / GiB);
-    }
-    if (bytes >= static_cast<std::size_t>(MiB)) {
-        return fmt::format("{:.0f} MiB", static_cast<double>(bytes) / MiB);
-    }
-    if (bytes >= static_cast<std::size_t>(KiB)) {
-        return fmt::format("{:.0f} KiB", static_cast<double>(bytes) / KiB);
-    }
-    return fmt::format("{} B", bytes);
 }
 
 void begin_disc_verification(std::string path) noexcept {
@@ -329,7 +316,7 @@ void apply_disc_verification_result(const DiscVerificationResult& result) {
         state.pendingDiscPath = result.path;
         state.pendingDiscInfo = result.info;
         state.pendingDiscValidation = result.validation;
-        state.errorString = escape(get_error_msg(result.validation));
+        state.errorString = get_error_msg(result.validation);
         return;
     }
 
@@ -345,41 +332,34 @@ void apply_disc_verification_result(const DiscVerificationResult& result) {
     state.pendingDiscPath.clear();
     state.pendingDiscInfo = {};
     state.pendingDiscValidation = iso::ValidationError::Unknown;
-    state.errorString = escape(get_error_msg(result.validation));
+    state.errorString = get_error_msg(result.validation);
 }
 
 class DiscVerificationModal : public WindowSmall {
 public:
-    DiscVerificationModal() : WindowSmall("modal", "modal-dialog") {
-        auto* header = append(mDialog, "div");
-        header->SetClass("modal-header", true);
+    DiscVerificationModal() : WindowSmall("modal") {
+        auto* header = append(mDialog, "modal-header");
 
-        auto* title = append(header, "div");
-        title->SetClass("modal-title", true);
-        title->SetInnerRML("Verifying disc image");
+        auto* title = append(header, "modal-title");
+        append_text(title, "Verifying disc image");
 
         auto* icon = append(header, "icon");
         icon->SetClass("verifying", true);
 
-        auto* body = append(mDialog, "div");
-        body->SetClass("modal-body", true);
+        auto* body = append(mDialog, "modal-body");
 
-        auto* content = append(body, "div");
-        content->SetClass("verification-progress", true);
+        auto* content = append(body, "verification-progress");
 
-        mFileName = append(content, "div");
-        mFileName->SetClass("verification-file", true);
+        mFileName = append(content, "verification-file");
 
         mProgress = append(content, "progress");
         mProgress->SetClass("progress-ongoing", true);
         mProgress->SetClass("verification-progress-bar", true);
         mProgress->SetAttribute("value", 0.f);
 
-        mDetail = append(content, "div");
-        mDetail->SetClass("verification-detail", true);
+        mDetail = append(content, "verification-detail");
 
-        auto* actions = append(mDialog, "div");
-        actions->SetClass("modal-actions", true);
+        auto* actions = append(mDialog, "modal-actions");
         mCancelButton = std::make_unique<Button>(actions, "Cancel");
         mCancelButton->root()->SetClass("modal-btn", true);
         mCancelButton->on_pressed([this] { request_cancel(); });
@@ -448,12 +428,12 @@ private:
             if (fileName.empty()) {
                 fileName = sDiscVerificationTask->path;
             }
-            mFileName->SetInnerRML(escape(fileName));
+            set_text_content(mFileName, fileName);
         }
 
-        const std::size_t bytesRead =
+        const size_t bytesRead =
             sDiscVerificationTask->status.bytesRead.load(std::memory_order_relaxed);
-        const std::size_t bytesTotal =
+        const size_t bytesTotal =
             sDiscVerificationTask->status.bytesTotal.load(std::memory_order_relaxed);
 
         if (bytesTotal == 0) {
@@ -461,7 +441,7 @@ private:
                 mProgress->SetAttribute("value", 0.f);
             }
             if (mDetail != nullptr) {
-                mDetail->SetInnerRML("Opening disc image...");
+                set_text_content(mDetail, "Opening disc image...");
             }
             return;
         }
@@ -472,8 +452,9 @@ private:
             mProgress->SetAttribute("value", fraction);
         }
         if (mDetail != nullptr) {
-            mDetail->SetInnerRML(escape(fmt::format("{} / {} ({:.0f}%)", format_bytes(bytesRead),
-                format_bytes(bytesTotal), fraction * 100.0f)));
+            set_text_content(mDetail,
+                fmt::format("{} / {} ({:.0f}%)", format_bytes(bytesRead, verificationByteFormat),
+                    format_bytes(bytesTotal, verificationByteFormat), fraction * 100.0f));
         }
     }
 
@@ -598,7 +579,7 @@ private:
         }
         mText = text;
         if (direction == 0) {
-            mLabels[mActiveLabel]->SetInnerRML(escape(text));
+            set_text_content(mLabels[mActiveLabel], text);
             mLabels[mActiveLabel]->SetProperty(
                 Rml::PropertyId::Left, Rml::Property{0.0f, Rml::Unit::PERCENT});
             mLabels[mActiveLabel]->SetClass("active", true);
@@ -611,7 +592,7 @@ private:
         auto* outgoing = mLabels[mActiveLabel];
         mActiveLabel = 1 - mActiveLabel;
         auto* incoming = mLabels[mActiveLabel];
-        incoming->SetInnerRML(escape(text));
+        set_text_content(incoming, text);
 
         const Rml::Property incomingOffset{
             static_cast<float>(direction) * kSlideDistance, Rml::Unit::PERCENT};
@@ -632,7 +613,7 @@ private:
     std::array<Rml::Element*, 2> mLabels{};
     Rml::Element* mNext = nullptr;
     Rml::String mText;
-    std::size_t mActiveLabel = 0;
+    size_t mActiveLabel = 0;
 };
 
 }  // namespace
@@ -709,7 +690,7 @@ void try_push_verification_modal(Document& host) {
 
     if (!state.pendingDiscPath.empty()) {
         const Rml::String bodyRml =
-            state.errorString + "<br/><br/>You may proceed at your own risk.";
+            escape(state.errorString) + "<br/><br/>You may proceed at your own risk.";
         auto acceptHashMismatch = [](Modal& modal) {
             auto& st = prelaunch_state();
             std::string path = std::move(st.pendingDiscPath);
@@ -746,7 +727,7 @@ void try_push_verification_modal(Document& host) {
 
     host.push(std::make_unique<Modal>(Modal::Props{
         .title = "Disc verification error",
-        .bodyRml = state.errorString,
+        .bodyText = state.errorString,
         .actions =
             {
                 ModalAction{
@@ -1055,22 +1036,22 @@ void Prelaunch::update() {
     if (mDiscStatus != nullptr && discStatusLabel != nullptr) {
         if (!activeDiscLoaded) {
             mDiscStatus->RemoveAttribute("status");
-            discStatusLabel->SetInnerRML("No disc image found.");
+            set_text_content(discStatusLabel, "No disc image found.");
         } else if (discRestartPending) {
             mDiscStatus->SetAttribute("status", "pending");
-            discStatusLabel->SetInnerRML("Pending restart.");
+            set_text_content(discStatusLabel, "Pending restart.");
         } else if (state.configuredDiscValidation == iso::ValidationError::Success) {
             mDiscStatus->SetAttribute("status", "good");
-            discStatusLabel->SetInnerRML("Disc ready.");
+            set_text_content(discStatusLabel, "Disc ready.");
         } else if (state.configuredDiscValidation == iso::ValidationError::HashMismatch) {
             mDiscStatus->SetAttribute("status", "mismatch");
-            discStatusLabel->SetInnerRML("Disc hash mismatch.");
+            set_text_content(discStatusLabel, "Disc hash mismatch.");
         } else if (canLaunchConfiguredDisc) {
             mDiscStatus->SetAttribute("status", "unknown");
-            discStatusLabel->SetInnerRML("Disc not verified.");
+            set_text_content(discStatusLabel, "Disc not verified.");
         } else {
             mDiscStatus->SetAttribute("status", "bad");
-            discStatusLabel->SetInnerRML("Disc unavailable.");
+            set_text_content(discStatusLabel, "Disc unavailable.");
         }
     }
     if (mDiscDetail != nullptr) {
@@ -1112,7 +1093,7 @@ void Prelaunch::update() {
                 innerRML += "Unknown";
                 break;
             }
-            mDiscDetail->SetInnerRML(innerRML);
+            set_text_content(mDiscDetail, innerRML);
         } else {
             mDiscDetail->SetProperty(Rml::PropertyId::Display, Rml::Style::Display::None);
         }
@@ -1122,7 +1103,7 @@ void Prelaunch::update() {
         if (versionStr[0] == 'v') {
             versionStr = versionStr.substr(1);
         }
-        mVersion->SetInnerRML(escape(versionStr));
+        set_text_content(mVersion, Rml::String{versionStr});
     }
     if (mUpdateStatus != nullptr && mUpdateMessage != nullptr) {
         if (auto result = take_finished_update_check()) {
@@ -1134,22 +1115,22 @@ void Prelaunch::update() {
 
         if (sUpdateCheck) {
             mUpdateStatus->SetAttribute("state", "checking");
-            mUpdateMessage->SetInnerRML("Checking for updates...");
+            set_text_content(mUpdateMessage, "Checking for updates...");
         } else if (!sUpdateCheckResult.has_value() ||
                    sUpdateCheckResult->status == borealis::update::Status::UpToDate)
         {
             mUpdateStatus->RemoveAttribute("state");
-            mUpdateMessage->SetInnerRML("");
+            set_text_content(mUpdateMessage, "");
         } else if (sUpdateCheckResult->status == borealis::update::Status::UpdateAvailable) {
             mUpdateStatus->SetAttribute("state", "available");
-            mUpdateMessage->SetInnerRML("Update available!");
+            set_text_content(mUpdateMessage, "Update available!");
             if (mUpdateDownloadLabel != nullptr) {
-                mUpdateDownloadLabel->SetInnerRML(escape(
-                    fmt::format("Download {}", update_release_label(sUpdateCheckResult->latest))));
+                set_text_content(mUpdateDownloadLabel,
+                    fmt::format("Download {}", update_release_label(sUpdateCheckResult->latest)));
             }
         } else {
             mUpdateStatus->SetAttribute("state", "failed");
-            mUpdateMessage->SetInnerRML("Failed to check for updates");
+            set_text_content(mUpdateMessage, "Failed to check for updates");
         }
     }
 

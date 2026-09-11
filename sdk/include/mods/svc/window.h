@@ -8,7 +8,7 @@
 
 #include <limits.h>
 
-#define WINDOW_SERVICE_ID "dev.twilitrealm.dusklight.window"
+#define WINDOW_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "window"
 #define WINDOW_SERVICE_MAJOR 1u
 #define WINDOW_SERVICE_MINOR 0u
 

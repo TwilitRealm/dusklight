@@ -1,16 +1,28 @@
-*, *:before, *:after {
-    box-sizing: border-box;
-}
-
 body {
+    --color-oil-border: rgba(42, 32, 18, 82%);
+    --color-oil-background: rgba(18, 14, 10, 70%);
+    --color-oil-fill: rgb(255, 232, 74);
+    --color-button-a: rgba(34, 112, 123, 62%);
+    --color-button-b: rgba(161, 61, 66, 58%);
+    --color-button-x: rgba(83, 115, 151, 56%);
+    --color-button-y: rgba(113, 91, 150, 54%);
+    --color-stick-background: rgba(18, 20, 24, 35%);
+    --color-stick-knob: rgba(238, 236, 226, 55%);
+
+    --button-color: rgba(248, 244, 232, 90%);
+    --button-background: rgba(22, 24, 28, 48%);
+    --button-background-active: rgba(63, 78, 90, 68%);
+    --button-border-color: rgba(var(--color-white-rgb), 22%);
+    --button-border-color-active: rgba(var(--color-white-rgb), 48%);
+
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden;
-    font-family: "Fira Sans Condensed";
+    font-family: var(--font-family-heading);
     font-weight: bold;
-    color: rgba(248, 244, 232, 90%);
+    color: var(--button-color);
     z-index: 1;
     filter: opacity(0);
     transition: filter 0.2s linear-in-out;
@@ -30,12 +42,11 @@ button {
     justify-content: center;
     decorator: none;
     padding: 0;
-    border: 1dp rgba(255, 255, 255, 22%);
-    background-color: rgba(22, 24, 28, 48%);
-    color: rgba(248, 244, 232, 90%);
+    border-width: 1dp;
+    border-color: var(--button-border-color);
+    background-color: var(--button-background);
+    color: var(--button-color);
     text-align: center;
-    /* backdrop-filter: blur(7dp); */
-    /* box-shadow: 0 6dp 18dp rgba(0, 0, 0, 28%); */
     transform-origin: center;
     transition: background-color border-color filter transform 0.08s linear-in-out,
                 opacity 0.2s linear-in-out;
@@ -43,8 +54,8 @@ button {
 
 button.pressed,
 button.active {
-    background-color: rgba(63, 78, 90, 68%);
-    border-color: rgba(255, 255, 255, 48%);
+    background-color: var(--button-background-active);
+    border-color: var(--button-border-color-active);
     filter: brightness(1.18);
 }
 
@@ -68,9 +79,9 @@ button icon {
 
 button icon glyph {
     display: block;
-    font-family: "Material Symbols Rounded";
+    font-family: var(--font-family-icons);
     font-weight: normal;
-    font-size: 24dp;
+    font-size: var(--font-size-4xl);
     line-height: 1;
 }
 
@@ -92,9 +103,9 @@ button icon glyph {
     position: absolute;
 }
 
-.trigger-l.active {
-    background-color: rgba(57, 116, 133, 74%);
-    border-color: rgba(128, 222, 234, 72%);
+.trigger-l {
+    --button-background-active: rgba(57, 116, 133, 74%);
+    --button-border-color-active: rgba(128, 222, 234, 72%);
 }
 
 .trigger,
@@ -103,12 +114,14 @@ button icon glyph {
 }
 
 .trigger {
-    font-size: 22dp;
+    font-size: var(--font-size-3xl);
 }
 
 .button-z {
-    background-color: rgba(118, 79, 158, 58%);
-    border-color: rgba(203, 170, 255, 36%);
+    --button-background: rgba(118, 79, 158, 58%);
+    --button-background-active: rgba(139, 91, 187, 82%);
+    --button-border-color: rgba(203, 170, 255, 36%);
+    --button-border-color-active: rgba(220, 194, 255, 70%);
 }
 
 .midna-icon {
@@ -121,7 +134,7 @@ button icon glyph {
 .button-z.has-icon span,
 .face.has-item span {
     position: absolute;
-    font-size: 13dp;
+    font-size: var(--font-size-xs);
     line-height: 1;
 }
 
@@ -130,20 +143,14 @@ button icon glyph {
     bottom: 7dp;
 }
 
-.button-z.pressed {
-    background-color: rgba(139, 91, 187, 82%);
-    border-color: rgba(220, 194, 255, 70%);
-}
-
 action-bar {
     position: absolute;
     display: flex;
     align-items: center;
-    border: 1dp rgba(255, 255, 255, 22%);
+    border-width: 1dp;
+    border-color: var(--button-border-color);
     border-radius: 23dp;
-    background-color: rgba(22, 24, 28, 48%);
-    /* backdrop-filter: blur(7dp); */
-    /* box-shadow: 0 -6dp 18dp rgba(0, 0, 0, 28%); */
+    background-color: var(--button-background);
     overflow: hidden;
     opacity: 1;
     transform-origin: center;
@@ -175,7 +182,7 @@ action-bar:hidden separator {
 }
 
 .utility.pressed {
-    background-color: rgba(63, 78, 90, 68%);
+    background-color: var(--button-background-active);
 }
 
 .utility.pressed,
@@ -185,7 +192,7 @@ action-bar:hidden separator {
 
 .skip {
     z-index: 1;
-    border-color: rgba(255, 255, 255, 36%);
+    border-color: rgba(var(--color-white-rgb), 36%);
 }
 
 separator {
@@ -193,7 +200,7 @@ separator {
     flex: 0 0 1dp;
     width: 1dp;
     height: 24dp;
-    background-color: rgba(255, 255, 255, 18%);
+    background-color: rgba(var(--color-white-rgb), 18%);
     opacity: 1;
     transition: opacity 0.2s linear-in-out;
 }
@@ -201,7 +208,7 @@ separator {
 .face {
     position: absolute;
     border-radius: 29dp;
-    font-size: 24dp;
+    font-size: var(--font-size-4xl);
     overflow: visible;
 }
 
@@ -219,10 +226,10 @@ separator {
     min-width: 17dp;
     height: 15dp;
     padding: 1dp 3dp;
-    border-radius: 7dp;
-    background-color: rgba(0, 0, 0, 52%);
-    color: rgba(255, 255, 255, 92%);
-    font-size: 12dp;
+    border-radius: var(--radius-control);
+    background-color: rgba(var(--color-black-rgb), 52%);
+    color: rgba(var(--color-white-rgb), 92%);
+    font-size: var(--font-size-2xs);
     line-height: 13dp;
     text-align: center;
 }
@@ -233,11 +240,10 @@ separator {
     bottom: -5dp;
     width: 34dp;
     height: 8dp;
-    padding: 2dp;
-    border: 1dp rgba(42, 32, 18, 82%);
-    border-radius: 4dp;
-    background-color: rgba(18, 14, 10, 70%);
-    /* box-shadow: 0 2dp 6dp rgba(0, 0, 0, 35%); */
+    padding: var(--space-2xs);
+    border: 1dp var(--color-oil-border);
+    border-radius: var(--radius-small);
+    background-color: var(--color-oil-background);
 }
 
 oil-fill {
@@ -245,31 +251,31 @@ oil-fill {
     width: 0%;
     height: 100%;
     border-radius: 2dp;
-    background-color: rgb(255, 232, 74);
+    background-color: var(--color-oil-fill);
 }
 
 .face.has-item span {
     right: 6dp;
     bottom: 6dp;
-    color: rgba(255, 255, 255, 88%);
+    color: rgba(var(--color-white-rgb), 88%);
 }
 
 .face.a {
     border-radius: 37dp;
     font-size: 31dp;
-    background-color: rgba(34, 112, 123, 62%);
+    background-color: var(--color-button-a);
 }
 
 .face.b {
-    background-color: rgba(161, 61, 66, 58%);
+    background-color: var(--color-button-b);
 }
 
 .face.x {
-    background-color: rgba(83, 115, 151, 56%);
+    background-color: var(--color-button-x);
 }
 
 .face.y {
-    background-color: rgba(113, 91, 150, 54%);
+    background-color: var(--color-button-y);
 }
 
 button.control.docked-top,
@@ -306,10 +312,9 @@ touch-stick {
     width: 124dp;
     height: 124dp;
     border-radius: 62dp;
-    background-color: rgba(18, 20, 24, 35%);
-    border: 1dp rgba(255, 255, 255, 20%);
-    /* backdrop-filter: blur(7dp); */
-    /* box-shadow: 0 8dp 24dp rgba(0, 0, 0, 24%); */
+    background-color: var(--color-stick-background);
+    border-width: 1dp;
+    border-color: rgba(var(--color-white-rgb), 20%);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.18s linear-in-out;
@@ -326,7 +331,8 @@ stick-ring {
     width: 88dp;
     height: 88dp;
     border-radius: 44dp;
-    border: 1dp rgba(255, 255, 255, 18%);
+    border-width: 1dp;
+    border-color: rgba(var(--color-white-rgb), 18%);
 }
 
 stick-knob {
@@ -334,6 +340,7 @@ stick-knob {
     width: 48dp;
     height: 48dp;
     border-radius: 24dp;
-    background-color: rgba(238, 236, 226, 55%);
-    border: 1dp rgba(255, 255, 255, 45%);
+    background-color: var(--color-stick-knob);
+    border-width: 1dp;
+    border-color: rgba(var(--color-white-rgb), 45%);
 }

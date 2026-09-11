@@ -8,10 +8,10 @@ body {
     height: 100%;
     margin: 0;
     padding: 0;
-    font-family: "Fira Sans Condensed";
+    font-family: var(--font-family-heading);
     font-weight: bold;
-    font-size: 18dp;
-    color: #E0DBC8;
+    font-size: var(--font-size-xl);
+    color: var(--color-text);
 }
 
 button {
@@ -23,11 +23,12 @@ popup {
     width: 100%;
     display: flex;
     align-items: stretch;
-    height: 64dp;
-    background-color: rgba(21, 22, 16, 80%);
-    border-bottom: 2dp #92875B;
+    height: var(--toolbar-height);
+    background-color: rgba(var(--color-surface-rgb), 80%);
+    border-bottom-width: 2dp;
+    border-bottom-color: var(--color-border);
     backdrop-filter: blur(5dp);
-    transform: translateY(-64dp);
+    transform: translateY(var(--toolbar-hidden-offset));
     transition: transform 0.2s cubic-in-out;
 }
 
@@ -41,5 +42,5 @@ popup tab-bar {
 
 popup tab-bar tab {
     opacity: 0.35;
-    color: #E0DBC8;
+    color: var(--color-text);
 }

@@ -46,6 +46,7 @@ Rml::String touch_controls_editor_document_source() {
     return Rml::String{R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/touch_controls.rcss" />
     <link type="text/rcss" href="res/rml/touch_controls_editor.rcss" />
 </head>
@@ -87,7 +88,7 @@ bool is_vertical_edge(TouchControlsEditor::EditHandle handle) noexcept {
     return handle == EditHandle::Top || handle == EditHandle::Bottom;
 }
 
-bool control_valid(std::size_t index) noexcept {
+bool control_valid(size_t index) noexcept {
     return index < touch_layout_controls().size();
 }
 
@@ -110,7 +111,7 @@ TouchControlsEditor::TouchControlsEditor()
     mWorkingLayout.version = ControlLayout::Version;
 
     const auto controls = touch_layout_controls();
-    for (std::size_t i = 0; i < controls.size() && i < mElements.size(); ++i) {
+    for (size_t i = 0; i < controls.size() && i < mElements.size(); ++i) {
         mElements[i].root =
             mDocument != nullptr ? mDocument->GetElementById(controls[i].elementId) : nullptr;
     }
@@ -196,7 +197,7 @@ bool TouchControlsEditor::focus() {
 
 void TouchControlsEditor::bind_control_events() noexcept {
     const auto controls = touch_layout_controls();
-    for (std::size_t i = 0; i < controls.size() && i < mElements.size(); ++i) {
+    for (size_t i = 0; i < controls.size() && i < mElements.size(); ++i) {
         auto* element = mElements[i].root;
         if (element == nullptr) {
             continue;
@@ -284,7 +285,7 @@ void TouchControlsEditor::sync_control_layouts() noexcept {
     }
 
     const auto controls = touch_layout_controls();
-    for (std::size_t i = 0; i < controls.size() && i < mElements.size(); ++i) {
+    for (size_t i = 0; i < controls.size() && i < mElements.size(); ++i) {
         const auto layout = resolve_control_layout(props_for(i), docSize);
         auto& element = mElements[i];
         element.layout.visualRect = layout.visual;
@@ -308,7 +309,7 @@ void TouchControlsEditor::sync_selection_frame() noexcept {
     }
 
     mSelectionFrame->SetClass("visible", hasSelection);
-    for (std::size_t i = 0; i < mElements.size(); ++i) {
+    for (size_t i = 0; i < mElements.size(); ++i) {
         if (mElements[i].root != nullptr) {
             mElements[i].root->SetClass("editor-selected", hasSelection && i == mSelectedIndex);
         }
@@ -322,7 +323,7 @@ void TouchControlsEditor::sync_selection_frame() noexcept {
         mSelectionFrame, mAppliedSelectionFrame, *mElements[mSelectedIndex].layout.visualRect);
 }
 
-void TouchControlsEditor::set_selected_control(std::size_t index) noexcept {
+void TouchControlsEditor::set_selected_control(size_t index) noexcept {
     if (!control_valid(index)) {
         clear_selected_control();
         return;
@@ -336,7 +337,7 @@ void TouchControlsEditor::clear_selected_control() noexcept {
     sync_selection_frame();
 }
 
-ControlProps TouchControlsEditor::props_for(std::size_t index) const {
+ControlProps TouchControlsEditor::props_for(size_t index) const {
     const auto controls = touch_layout_controls();
     if (!control_valid(index)) {
         return {};
@@ -352,7 +353,7 @@ ControlProps TouchControlsEditor::props_for(std::size_t index) const {
 }
 
 void TouchControlsEditor::store_props(
-    std::size_t index, ControlRect visual, ControlProps props) noexcept {
+    size_t index, ControlRect visual, ControlProps props) noexcept {
     if (!control_valid(index)) {
         return;
     }
@@ -390,7 +391,7 @@ void TouchControlsEditor::restore_active_control() noexcept {
 }
 
 bool TouchControlsEditor::begin_edit(
-    std::size_t index, EditHandle handle, Rml::Vector2f positionPx, bool touch,
+    size_t index, EditHandle handle, Rml::Vector2f positionPx, bool touch,
     SDL_FingerID touchId) noexcept {
     if (!control_valid(index) || mPointerEdit.active) {
         return false;
@@ -542,7 +543,7 @@ ControlRect TouchControlsEditor::rect_for_edit(
     return rect;
 }
 
-ControlRect TouchControlsEditor::clamp_visual_rect(std::size_t index, ControlRect rect) const noexcept {
+ControlRect TouchControlsEditor::clamp_visual_rect(size_t index, ControlRect rect) const noexcept {
     auto* context = mDocument != nullptr ? mDocument->GetContext() : nullptr;
     const auto docSize = touch_document_size_dp(context);
     if (docSize.w <= 0.f || docSize.h <= 0.f || !control_valid(index)) {
@@ -559,7 +560,7 @@ ControlRect TouchControlsEditor::clamp_visual_rect(std::size_t index, ControlRec
     return rect;
 }
 
-Rml::Vector2f TouchControlsEditor::min_visual_size(std::size_t index) const noexcept {
+Rml::Vector2f TouchControlsEditor::min_visual_size(size_t index) const noexcept {
     if (!control_valid(index)) {
         return {kMinControlDp, kMinControlDp};
     }
@@ -594,7 +595,8 @@ void TouchControlsEditor::request_reset() {
     auto dismiss = [](Modal& modal) { modal.pop(); };
     push(std::make_unique<Modal>(Modal::Props{
         .title = "Reset Touch Layout?",
-        .bodyRml = "Reset controls to their default layout. This will not be saved until you press Save.",
+        .bodyText =
+            "Reset controls to their default layout. This will not be saved until you press Save.",
         .actions =
             {
                 ModalAction{

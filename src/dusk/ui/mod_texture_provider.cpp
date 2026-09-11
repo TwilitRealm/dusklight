@@ -1,6 +1,7 @@
 #include "mod_texture_provider.hpp"
 
 #include "dusk/mod_loader.hpp"
+#include "runtime_image.hpp"
 
 #include <fmt/format.h>
 
@@ -14,14 +15,12 @@ std::string mod_image_source(const mods::LoadedMod& mod, std::string_view bundle
 
 #ifdef AURORA_ENABLE_RMLUI
 
-#include <SDL3/SDL_iostream.h>
-#include <SDL3/SDL_surface.h>
-#include <borealis/log.hpp>
+#include <RmlUi/Core.h>
 #include <aurora/rmlui.hpp>
+#include <borealis/log.hpp>
 
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <memory>
 #include <optional>
 #include <span>
@@ -35,22 +34,15 @@ namespace dusk::ui {
 namespace {
 
 constexpr borealis::Log Log{"dusk::ui::modTexture"};
-
 constexpr std::string_view kScheme = "mod";
 constexpr std::string_view kSourcePrefix = "mod://";
 constexpr size_t kMaxCachedImages = 64;
+constexpr size_t kMaxCachedImageBytes = 64 * 1024 * 1024;
 constexpr size_t kMaxImageFileSize = 16 * 1024 * 1024;
-constexpr uint32_t kMaxImageDimension = 4096;
 
-struct CachedImage {
-    std::vector<uint8_t> pixels;
-    uint32_t width = 0;
-    uint32_t height = 0;
-};
-
-std::unordered_map<std::string, CachedImage>& image_cache() {
-    static auto* cache = new std::unordered_map<std::string, CachedImage>();
-    return *cache;
+std::unordered_map<std::string, DecodedImage>& image_cache() {
+    static std::unordered_map<std::string, DecodedImage> cache;
+    return cache;
 }
 
 std::string_view strip_query(std::string_view path) noexcept {
@@ -61,62 +53,7 @@ std::string_view strip_query(std::string_view path) noexcept {
     return path;
 }
 
-std::optional<CachedImage> decode_png(std::span<const uint8_t> data, std::string_view source) {
-    SDL_IOStream* stream = SDL_IOFromConstMem(data.data(), data.size());
-    if (stream == nullptr) {
-        Log.warn("Failed to open image stream for '{}': {}", source, SDL_GetError());
-        return std::nullopt;
-    }
-
-    SDL_Surface* loadedSurface = SDL_LoadPNG_IO(stream, true);
-    if (loadedSurface == nullptr) {
-        Log.warn("Failed to decode image '{}': {}", source, SDL_GetError());
-        return std::nullopt;
-    }
-
-    SDL_Surface* rgbaSurface = SDL_ConvertSurface(loadedSurface, SDL_PIXELFORMAT_RGBA32);
-    SDL_DestroySurface(loadedSurface);
-    if (rgbaSurface == nullptr) {
-        Log.warn("Failed to convert image '{}': {}", source, SDL_GetError());
-        return std::nullopt;
-    }
-
-    const auto width = static_cast<uint32_t>(rgbaSurface->w);
-    const auto height = static_cast<uint32_t>(rgbaSurface->h);
-    if (width == 0 || height == 0 || width > kMaxImageDimension || height > kMaxImageDimension) {
-        Log.warn("Image '{}' has unsupported dimensions {}x{}", source, width, height);
-        SDL_DestroySurface(rgbaSurface);
-        return std::nullopt;
-    }
-
-    const size_t rowSize = static_cast<size_t>(width) * 4;
-    CachedImage image{
-        .pixels = std::vector<uint8_t>(rowSize * height),
-        .width = width,
-        .height = height,
-    };
-    for (uint32_t row = 0; row < height; ++row) {
-        const auto* src = static_cast<const uint8_t*>(rgbaSurface->pixels) +
-                          static_cast<size_t>(row) * static_cast<size_t>(rgbaSurface->pitch);
-        auto* dst = image.pixels.data() + static_cast<size_t>(row) * rowSize;
-        std::memcpy(dst, src, rowSize);
-
-        // Convert to premultiplied alpha for correct compositing.
-        for (size_t col = 0; col < rowSize; col += 4) {
-            const uint8_t alpha = dst[col + 3];
-            for (size_t channel = 0; channel < 3; ++channel) {
-                dst[col + channel] = static_cast<uint8_t>(
-                    (static_cast<uint32_t>(dst[col + channel]) * static_cast<uint32_t>(alpha)) /
-                    255);
-            }
-        }
-    }
-
-    SDL_DestroySurface(rgbaSurface);
-    return image;
-}
-
-std::optional<CachedImage> load_mod_image(std::string_view idAndPath, std::string_view source) {
+std::optional<DecodedImage> load_mod_image(std::string_view idAndPath, std::string_view source) {
     const auto slash = idAndPath.find('/');
     if (slash == std::string_view::npos || slash == 0 || slash + 1 >= idAndPath.size()) {
         Log.warn("Malformed mod image source '{}'", source);
@@ -169,8 +106,20 @@ std::optional<aurora::rmlui::RuntimeTexture> mod_texture_provider(std::string_vi
         if (!image) {
             return std::nullopt;
         }
-        if (cache.size() >= kMaxCachedImages) {
-            cache.erase(cache.begin());
+        if (image->pixels.size() > kMaxCachedImageBytes) {
+            return std::nullopt;
+        }
+        size_t cachedBytes = 0;
+        for (const auto& [source, cached] : cache) {
+            cachedBytes += cached.pixels.size();
+        }
+        while (cache.size() >= kMaxCachedImages ||
+               cachedBytes > kMaxCachedImageBytes - image->pixels.size())
+        {
+            const auto victim = cache.begin();
+            cachedBytes -= victim->second.pixels.size();
+            Rml::ReleaseTexture(victim->first);
+            cache.erase(victim);
         }
         it = cache.emplace(key, std::move(*image)).first;
     }
@@ -194,6 +143,9 @@ void register_mod_texture_provider() noexcept {
 
 void unregister_mod_texture_provider() noexcept {
     aurora::rmlui::unregister_texture_provider(kScheme);
+    for (const auto& [source, image] : image_cache()) {
+        Rml::ReleaseTexture(source);
+    }
     image_cache().clear();
 }
 

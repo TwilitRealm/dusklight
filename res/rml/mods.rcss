@@ -1,8 +1,8 @@
 window.mods content pane.mod-list {
     flex: 0 0 360dp;
-    padding: 16dp;
+    padding: var(--space-lg);
     padding-bottom: 0dp;
-    gap: 4dp;
+    gap: var(--space-xs);
 }
 
 @media (max-height: 640dp) {
@@ -12,29 +12,66 @@ window.mods content pane.mod-list {
 }
 
 window.mods content pane.mod-detail {
-    gap: 12dp;
+    gap: var(--space-md);
 }
 
-.mod-info-row {
+mod-entry.browser,
+mod-entry.installs {
+    min-height: 76dp;
+}
+
+mod-entry.browser mod-icon {
+    color: var(--color-accent);
+    decorator: text("&#xe2c0;" center center);
+}
+
+mod-entry.installs mod-icon {
+    color: var(--color-accent);
+    decorator: text("&#xe2c4;" center center);
+}
+
+mod-entry.installs {
+    background-color: rgba(var(--color-control-rgb), 20%);
+    box-shadow: rgba(var(--color-border-rgb), 25%) 0 0 0 1dp;
+}
+
+mod-entry.installs:hover,
+mod-entry.installs:focus-visible {
+    background-color: rgba(var(--color-interactive-rgb), 12%);
+    box-shadow: var(--color-accent) 0 0 0 2dp;
+}
+
+mod-entry.installs progress {
+    height: 6dp;
+    margin: var(--space-xs) 0 0 0;
+}
+
+mod-list-separator {
+    display: block;
+    height: 1dp;
+    margin: var(--space-sm) 10dp;
+    background-color: rgba(var(--color-border-rgb), 30%);
+}
+
+mod-info-row {
     display: flex;
     align-items: center;
-    gap: 12dp;
-    padding: 4dp 0;
+    gap: var(--space-md);
+    padding: var(--space-xs) 0;
 }
 
-.mod-info-label {
-    font-family: "Fira Sans Condensed";
-    font-weight: bold;
+mod-info-row > b {
+    font-family: var(--font-family-heading);
     opacity: 0.55;
     flex: 0 0 auto;
 }
 
-.mod-info-value {
+mod-info-row > span {
     flex: 1 1 0;
 }
 
 .mod-path {
-    font-size: 14dp;
+    font-size: var(--font-size-sm);
     word-break: break-all;
     opacity: 0.7;
 }
@@ -42,106 +79,113 @@ window.mods content pane.mod-detail {
 mod-entry {
     display: flex;
     flex-flow: row;
-    gap: 12dp;
+    gap: var(--space-md);
     padding: 10dp;
     border-radius: 10dp;
-    decorator: vertical-gradient(#c2a42d00 #c2a42d00);
+    decorator: vertical-gradient(rgba(var(--color-accent-rgb), 0%) rgba(var(--color-accent-rgb), 0%));
     transition: decorator 0.1s linear-in-out;
     cursor: pointer;
     focus: auto;
 }
 
 mod-entry.current {
-    box-shadow: rgba(146, 135, 91, 40%) 0 0 0 1dp;
+    box-shadow: rgba(var(--color-border-rgb), 40%) 0 0 0 1dp;
 }
 
 mod-entry:hover,
 mod-entry:focus-visible {
-    decorator: vertical-gradient(#c2a42d00 #c2a42d26);
+    decorator: vertical-gradient(rgba(var(--color-accent-rgb), 0) rgba(var(--color-accent-rgb), 38));
 }
 
 mod-entry:selected {
-    decorator: vertical-gradient(#c2a42d10 #c2a42d40);
+    decorator: vertical-gradient(rgba(var(--color-accent-rgb), 16) rgba(var(--color-accent-rgb), 64));
 }
 
-mod-entry .mod-icon {
+mod-icon {
+    display: block;
     flex: 0 0 auto;
     width: 56dp;
     height: 56dp;
-    border-radius: 8dp;
-}
-
-mod-entry icon.mod-icon {
+    border-radius: var(--radius-panel);
+    font-family: var(--font-family-icons);
     font-size: 36dp;
-    background-color: rgba(17, 16, 10, 20%);
-    color: rgba(224, 219, 200, 45%);
+    background-color: rgba(var(--color-control-rgb), 20%);
+    color: rgba(var(--color-text-rgb), 45%);
     decorator: text("&#xe87b;" center center);
+    overflow: hidden;
 }
 
-mod-entry .mod-entry-info {
+mod-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-panel);
+}
+
+mod-info {
     display: flex;
     flex-flow: column;
     flex: 1 1 0;
     min-width: 0;
-    gap: 2dp;
+    gap: var(--space-2xs);
 }
 
-mod-entry .mod-entry-name {
+mod-info header {
     display: flex;
     flex-flow: row;
     align-items: baseline;
     gap: 6dp;
 }
 
-mod-entry .mod-entry-name-text {
+mod-info header b {
     flex: 0 1 auto;
     min-width: 0;
-    font-weight: bold;
     white-space: nowrap;
     overflow: hidden;
 }
 
-mod-entry .mod-entry-version {
+mod-info header small {
     flex: 0 0 auto;
-    font-size: 13dp;
-    color: rgba(224, 219, 200, 50%);
+    font-size: var(--font-size-xs);
+    color: rgba(var(--color-text-rgb), 50%);
 }
 
-mod-entry .mod-entry-status.active {
-    color: #44cc55;
+mod-status.active {
+    color: var(--color-success);
 }
 
-mod-entry .mod-entry-status.failed {
-    color: #cc4444;
+mod-status.failed {
+    color: var(--color-error);
 }
 
-mod-entry .mod-entry-network {
+mod-network {
     margin-left: 6dp;
     padding: 1dp 5dp;
     border-radius: 5dp;
-    background-color: rgba(67, 151, 219, 20%);
-    color: #6fb7ef;
+    background-color: rgba(var(--color-info-rgb), 20%);
+    color: var(--color-info);
 }
 
-mod-entry .mod-entry-desc {
-    font-size: 14dp;
+mod-info > p {
+    margin: 0;
+    font-size: var(--font-size-sm);
     line-height: 1.3;
-    color: rgba(224, 219, 200, 65%);
+    color: rgba(var(--color-text-rgb), 65%);
     max-height: 2.6em;
     overflow: hidden;
     white-space: pre-wrap;
 }
 
-mod-entry .mod-entry-sub {
-    font-size: 13dp;
-    color: rgba(224, 219, 200, 50%);
+mod-info > small {
+    font-size: var(--font-size-xs);
+    color: rgba(var(--color-text-rgb), 50%);
 }
 
-mod-entry.inactive .mod-icon {
+mod-entry.inactive mod-icon {
     filter: grayscale(1);
 }
 
-mod-entry.inactive .mod-entry-info {
+mod-entry.inactive mod-info {
     opacity: 0.5;
 }
 
@@ -155,20 +199,37 @@ mod-header.has-banner {
     margin: -24dp -24dp 0dp -24dp;
 }
 
-mod-header .mod-actions {
+mod-header-image {
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none;
+    mask-image: linear-gradient(180deg, #fff 40%, transparent);
+    filter: grayscale(0);
+}
+
+mod-header.inactive mod-header-image {
+    filter: grayscale(1);
+}
+
+mod-actions {
     position: absolute;
     top: 24dp;
     left: 24dp;
     display: flex;
     flex-flow: row;
-    gap: 8dp;
+    gap: var(--space-sm);
 }
 
-mod-header .mod-actions button {
-    font-size: 16dp;
-    padding: 6dp 14dp;
-    background-color: rgba(21, 22, 16, 80%);
-    box-shadow: rgba(146, 135, 91, 60%) 0 0 0 1dp;
+mod-actions button {
+    --button-background: rgba(var(--color-surface-rgb), 80%);
+    --button-background-hover: rgba(var(--color-control-rgb), 90%);
+    --button-background-selected: rgba(var(--color-control-rgb), 90%);
+    --button-background-active: rgba(var(--color-surface-rgb), 90%);
+    box-shadow: rgba(var(--color-border-rgb), 60%) 0 0 0 1dp;
 }
 
 mod-header.no-banner {
@@ -177,56 +238,55 @@ mod-header.no-banner {
     align-items: center;
 }
 
-mod-header.no-banner .mod-actions {
+mod-header.no-banner mod-actions {
     position: static;
 }
 
-window.mods .mod-title {
+mod-title {
     display: block;
-    font-size: 28dp;
+    font-size: var(--font-size-5xl);
     font-weight: bold;
 }
 
-window.mods .mod-title .mod-title-version {
+mod-title small {
     font-weight: normal;
-    font-size: 16dp;
-    color: rgba(224, 219, 200, 55%);
+    font-size: var(--font-size-md);
+    color: rgba(var(--color-text-rgb), 55%);
 }
 
-window.mods .mod-author {
+mod-author {
     display: block;
-    font-size: 15dp;
-    color: rgba(224, 219, 200, 55%);
+    font-size: var(--font-size-base);
+    color: rgba(var(--color-text-rgb), 55%);
 }
 
-window.mods .mod-restart-note {
-    font-size: 15dp;
-    color: #ffa826;
+mod-restart-note {
+    font-size: var(--font-size-base);
+    color: var(--color-warning);
     opacity: 0.85;
 }
 
-window.mods .mod-description {
+mod-description {
     line-height: 1.5;
 }
 
-.status-badge {
-    font-size: 14dp;
+status-badge {
+    font-size: var(--font-size-sm);
     opacity: 0.7;
 }
 
-.status-badge.active,
-.mod-info-label.active {
-    color: #44cc55;
+status-badge.active,
+mod-info-row > b.active {
+    color: var(--color-success);
     opacity: 1;
 }
 
-.status-badge.failed,
-.mod-info-label.failed {
-    color: #cc4444;
+status-badge.failed,
+mod-info-row > b.failed {
+    color: var(--color-error);
     opacity: 1;
 }
-
-.status-badge.network {
-    color: #6fb7ef;
+status-badge.network {
+    color: var(--color-info);
     opacity: 1;
 }

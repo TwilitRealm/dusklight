@@ -20,7 +20,7 @@
  * (file-local statics included).
  */
 
-#define HOOK_SERVICE_ID "dev.twilitrealm.dusklight.hook"
+#define HOOK_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "hook"
 #define HOOK_SERVICE_MAJOR 1u
 #define HOOK_SERVICE_MINOR 1u
 

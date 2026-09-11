@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define TEXTURE_SERVICE_ID "dev.twilitrealm.dusklight.texture"
+#define TEXTURE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "texture"
 #define TEXTURE_SERVICE_MAJOR 1u
 #define TEXTURE_SERVICE_MINOR 0u
 

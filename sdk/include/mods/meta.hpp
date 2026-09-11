@@ -13,10 +13,14 @@
  * modmeta records. Each IMPORT_SERVICE/EXPORT_SERVICE/DEFINE_HOOK use places one
  * constant-initialized record object in the metadata section.
  */
+#if defined(_MSVC_LANG) && !defined(__clang__)
+#define MOD_META_NO_ASAN
+#else
 #if defined(__has_attribute) && __has_attribute(no_sanitize)
 #define MOD_META_NO_ASAN __attribute__((no_sanitize("address")))
 #else
 #define MOD_META_NO_ASAN
+#endif
 #endif
 
 #if defined(_WIN32)

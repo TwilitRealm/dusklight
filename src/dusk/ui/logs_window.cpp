@@ -72,11 +72,10 @@ std::string format_time(int64_t timeMs) {
     return fmt::format("{}.{:03}", buffer.data(), timeMs % 1000);
 }
 
-Rml::Element* append_span(Rml::Element* parent, const char* className, const Rml::String& text) {
-    auto* span = append(parent, "span");
-    span->SetClass(className, true);
-    append_text(span, text);
-    return span;
+Rml::Element* append_log_field(Rml::Element* parent, const char* tagName, const Rml::String& text) {
+    auto* field = append(parent, tagName);
+    append_text(field, text);
+    return field;
 }
 
 }  // namespace
@@ -89,18 +88,15 @@ LogsWindow::LogsWindow(std::string modFilter)
 }
 
 void LogsWindow::build_content(Rml::Element* content) {
-    auto* toolbar = append(content, "div");
-    toolbar->SetClass("log-toolbar", true);
+    auto* toolbar = append(content, "log-toolbar");
 
-    auto* title = append(toolbar, "div");
-    title->SetClass("log-title", true);
-    title->SetInnerRML("Logs");
+    auto* title = append(toolbar, "log-title");
+    append_text(title, "Logs");
 
-    auto* modLabel = append(toolbar, "div");
-    modLabel->SetClass("log-title-mod", true);
-    modLabel->SetInnerRML(mModFilter.empty() ? "All mods" : fmt::format("{}", escape(mModFilter)));
+    auto* modLabel = append(toolbar, "log-title-mod");
+    append_text(modLabel, mModFilter.empty() ? "All mods" : mModFilter);
 
-    append(toolbar, "div")->SetClass("log-toolbar-spacer", true);
+    append(toolbar, "log-toolbar-spacer");
 
     for (const LogLevel level :
         {LOG_LEVEL_TRACE, LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, LOG_LEVEL_WARN, LOG_LEVEL_ERROR})
@@ -116,7 +112,7 @@ void LogsWindow::build_content(Rml::Element* content) {
             });
     }
 
-    append(toolbar, "div")->SetClass("log-toolbar-spacer", true);
+    append(toolbar, "log-toolbar-spacer");
 
     add_child<Button>(toolbar, "Copy").on_pressed([this] { copy_to_clipboard(); });
     add_child<Button>(toolbar, "Clear").on_pressed([this] {
@@ -127,8 +123,7 @@ void LogsWindow::build_content(Rml::Element* content) {
     auto& pane = add_child<Pane>(content, Pane::Type::Uncontrolled);
     pane.root()->SetClass("log-view", true);
     mScrollElem = pane.root();
-    mLinesElem = append(pane.root(), "div");
-    mLinesElem->SetClass("log-lines", true);
+    mLinesElem = append(pane.root(), "log-lines");
 
     listen(mScrollElem, Rml::EventId::Scroll, [this](Rml::Event&) {
         const float bottom = mScrollElem->GetScrollHeight() - mScrollElem->GetClientHeight();
@@ -259,16 +254,15 @@ Rml::Element* LogsWindow::append_log_line(const mods::log::Line& line) {
         modId = "?";
     }
 
-    auto* elem = append(mLinesElem, "div");
-    elem->SetClass("log-line", true);
+    auto* elem = append(mLinesElem, "log-line");
     elem->SetClass(level_class(line.level), true);
 
     constexpr const char* kNbsp = "\xc2\xa0";
-    append_span(elem, "log-time", format_time(line.timeMs));
+    append_log_field(elem, "log-time", format_time(line.timeMs));
     append_text(elem, kNbsp);
-    append_span(elem, "log-mod", fmt::format("[{}]", modId));
+    append_log_field(elem, "log-mod", fmt::format("[{}]", modId));
     append_text(elem, kNbsp);
-    append_span(elem, "log-msg", line.message);
+    append_log_field(elem, "log-msg", line.message);
 
     return elem;
 }

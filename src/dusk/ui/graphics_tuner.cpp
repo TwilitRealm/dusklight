@@ -20,20 +20,21 @@ namespace {
 const Rml::String kDocumentSource = R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/tuner.rcss" />
 </head>
 <body>
-    <div id="root" class="tuner-root">
-        <div class="tuner">
-            <div class="header">
-                <div id="title"></div>
-                <div id="carousel-container" class="carousel-container"></div>
-            </div>
-            <div id="description" class="description"></div>
-            <div class="divider"></div>
-            <div id="footer" class="footer"></div>
-        </div>
-    </div>
+    <tuner-root id="root">
+        <graphics-tuner>
+            <tuner-header>
+                <tuner-title id="title" />
+                <carousel-container id="carousel-container" />
+            </tuner-header>
+            <tuner-description id="description" />
+            <tuner-divider />
+            <tuner-footer id="footer" />
+        </graphics-tuner>
+    </tuner-root>
 </body>
 </rml>
 )RML";
@@ -118,8 +119,7 @@ const GraphicsSetting& bind(Min min, Max max, Def def, int step, Rml::String (*l
 
 Rml::Element* create_stepped_carousel_root(Rml::Element* parent) {
     auto* doc = parent->GetOwnerDocument();
-    auto root = doc->CreateElement("div");
-    root->SetClass("stepped-carousel", true);
+    auto root = doc->CreateElement("stepped-carousel");
     root->SetAttribute("tabindex", "0");
     return parent->AppendChild(std::move(root));
 }
@@ -130,7 +130,7 @@ Rml::Element* create_stepped_carousel_arrow(
     auto button = doc->CreateElement("button");
     button->SetClass("stepped-carousel-arrow", true);
     button->SetClass(className, true);
-    button->SetInnerRML(label);
+    append_text(button.get(), label);
     return parent->AppendChild(std::move(button));
 }
 
@@ -172,10 +172,9 @@ const GraphicsSetting& GraphicsSetting::of(GraphicsOption option) {
 
 SteppedCarousel::SteppedCarousel(Rml::Element* parent, Props props)
     : Component(create_stepped_carousel_root(parent)), mProps(std::move(props)) {
-    mPrevElem = create_stepped_carousel_arrow(mRoot, "prev", "&#xe5cb;");
-    mValueElem = append(mRoot, "div");
-    mValueElem->SetClass("stepped-carousel-value", true);
-    mNextElem = create_stepped_carousel_arrow(mRoot, "next", "&#xe5cc;");
+    mPrevElem = create_stepped_carousel_arrow(mRoot, "prev", "\uE5CB");
+    mValueElem = append(mRoot, "stepped-carousel-value");
+    mNextElem = create_stepped_carousel_arrow(mRoot, "next", "\uE5CC");
 
     listen(mPrevElem, Rml::EventId::Click,
         [this](Rml::Event&) { handle_nav_command(NavCommand::Left); });
@@ -201,9 +200,9 @@ void SteppedCarousel::refresh() {
     }
     const int value = std::clamp(mProps.getValue ? mProps.getValue() : 0, mProps.min, mProps.max);
     if (mProps.formatValue) {
-        mValueElem->SetInnerRML(mProps.formatValue(value));
+        set_text_content(mValueElem, mProps.formatValue(value));
     } else {
-        mValueElem->SetInnerRML(std::to_string(value));
+        set_text_content(mValueElem, std::to_string(value));
     }
 
     update_carousel_arrow_color(mPrevElem, value == mProps.min);
@@ -245,10 +244,10 @@ GraphicsTuner::GraphicsTuner(GraphicsTunerProps props)
     }
 
     if (auto* title = mDocument->GetElementById("title")) {
-        title->SetInnerRML(escape(props.title));
+        append_text(title, props.title);
     }
     if (auto* description = mDocument->GetElementById("description")) {
-        description->SetInnerRML(escape(props.helpText));
+        append_text(description, props.helpText);
     }
     if (auto* carouselParent = mDocument->GetElementById("carousel-container")) {
         mCarousel = &add_component<SteppedCarousel>(carouselParent,

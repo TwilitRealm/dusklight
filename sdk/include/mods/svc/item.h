@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define ITEM_SERVICE_ID "dev.twilitrealm.dusklight.item"
+#define ITEM_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "item"
 #define ITEM_SERVICE_MAJOR 2u
 #define ITEM_SERVICE_MINOR 3u
 

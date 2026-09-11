@@ -2,7 +2,6 @@
 
 #include "ui.hpp"
 
-#include <fmt/format.h>
 #include <utility>
 
 namespace dusk::ui {
@@ -12,6 +11,10 @@ Rml::Element* createRoot(Rml::Element* parent) {
     auto* doc = parent->GetOwnerDocument();
     auto elem = doc->CreateElement("select-button");
     return parent->AppendChild(std::move(elem));
+}
+
+Rml::String value_label(const Rml::String& value, bool modified) {
+    return modified ? Rml::String{"•\u00a0"} + value : value;
 }
 
 }  // namespace
@@ -32,22 +35,14 @@ bool SelectButton::modified() const {
 void SelectButton::set_modified(bool value) {
     if (mProps.modified != value) {
         mValueElem->SetClass("modified", value);
-        if (value) {
-            mValueElem->SetInnerRML(fmt::format("•&nbsp;{}", escape(mProps.value)));
-        } else {
-            mValueElem->SetInnerRML(escape(mProps.value));
-        }
+        set_text_content(mValueElem, value_label(mProps.value, value));
         mProps.modified = value;
     }
 }
 
 void SelectButton::set_value_label(const Rml::String& value) {
     if (mProps.value != value) {
-        if (mProps.modified) {
-            mValueElem->SetInnerRML(fmt::format("•&nbsp;{}", escape(value)));
-        } else {
-            mValueElem->SetInnerRML(escape(value));
-        }
+        set_text_content(mValueElem, value_label(value, mProps.modified));
         mProps.value = value;
     }
 }
@@ -67,7 +62,7 @@ SelectButton& SelectButton::on_pressed(SelectButtonCallback callback) {
 
 void SelectButton::update_props(Props props) {
     if (mProps.key != props.key) {
-        mKeyElem->SetInnerRML(escape(props.key));
+        set_text_content(mKeyElem, props.key);
     }
     if (mProps.icon != props.icon) {
         Rml::StringList iconClasses;

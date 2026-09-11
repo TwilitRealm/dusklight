@@ -6,7 +6,7 @@
 #include <mods/service.hpp>
 #endif
 
-#define MESSAGE_SERVICE_ID "dev.twilitrealm.dusklight.message"
+#define MESSAGE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "message"
 #define MESSAGE_SERVICE_MAJOR 1u
 #define MESSAGE_SERVICE_MINOR 1u
 

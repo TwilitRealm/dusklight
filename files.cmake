@@ -1422,6 +1422,8 @@ set(DUSK_FILES
         src/dusk/achievements.cpp
         src/dusk/action_bindings.cpp
         src/dusk/action_bindings.h
+        src/dusk/archive.cpp
+        src/dusk/archive.hpp
         src/dusk/asserts.cpp
         src/dusk/autosave.cpp
         src/dusk/config.cpp
@@ -1432,10 +1434,10 @@ set(DUSK_FILES
         src/dusk/dvd_asset.cpp
         src/dusk/dvd_asset.hpp
         src/dusk/extras.c
-        src/dusk/frame_interpolation.cpp
         src/dusk/commands.cpp
         src/dusk/commands.hpp
         src/dusk/game_clock.cpp
+        src/dusk/hash.hpp
         src/dusk/game_mode.cpp
         src/dusk/gamepad_color.cpp
         src/dusk/globals.cpp
@@ -1462,6 +1464,10 @@ set(DUSK_FILES
         src/dusk/imgui/ImGuiStateShare.cpp
         src/dusk/imgui/ImGuiStateShare.hpp
         src/dusk/imgui/ImGuiStubLog.cpp
+        src/dusk/interp/camera.cpp
+        src/dusk/interp/dual_buffer.cpp
+        src/dusk/interp/frame_interpolation.cpp
+        src/dusk/interp/line.cpp
         src/dusk/io.cpp
         src/dusk/iso_validate.cpp
         src/dusk/language.cpp
@@ -1478,10 +1484,20 @@ set(DUSK_FILES
         src/dusk/mods/loader/depgraph.hpp
         src/dusk/mods/loader/loader.cpp
         src/dusk/mods/loader/loader.hpp
+        src/dusk/mods/loader/manifest.cpp
+        src/dusk/mods/loader/manifest.hpp
+        src/dusk/mods/loader/natives.cpp
+        src/dusk/mods/loader/natives.hpp
+        src/dusk/mods/loader/packages.cpp
+        src/dusk/mods/loader/packages.hpp
         src/dusk/mods/loader/native_module.cpp
         src/dusk/mods/loader/native_module.hpp
         src/dusk/mods/loader/prepatch.cpp
         src/dusk/mods/loader/prepatch.hpp
+        src/dusk/mods/catalog.cpp
+        src/dusk/mods/catalog.hpp
+        src/dusk/mods/queue.cpp
+        src/dusk/mods/queue.hpp
         src/dusk/mods/item.hpp
         src/dusk/mods/item_actor.cpp
         src/dusk/mods/item_checks.cpp
@@ -1558,6 +1574,8 @@ set(DUSK_FILES
         src/dusk/ui/controls.hpp
         src/dusk/ui/document.cpp
         src/dusk/ui/document.hpp
+        src/dusk/ui/drop_install_modal.cpp
+        src/dusk/ui/drop_install_modal.hpp
         src/dusk/ui/editor.cpp
         src/dusk/ui/editor.hpp
         src/dusk/ui/event.cpp
@@ -1578,8 +1596,18 @@ set(DUSK_FILES
         src/dusk/ui/list.hpp
         src/dusk/ui/menu_bar.cpp
         src/dusk/ui/menu_bar.hpp
+        src/dusk/ui/mod_browser.cpp
+        src/dusk/ui/mod_browser.hpp
+        src/dusk/ui/queue_window.cpp
+        src/dusk/ui/queue_window.hpp
+        src/dusk/ui/package_row.cpp
+        src/dusk/ui/package_row.hpp
         src/dusk/ui/mod_texture_provider.cpp
         src/dusk/ui/mod_texture_provider.hpp
+        src/dusk/ui/remote_texture_provider.cpp
+        src/dusk/ui/remote_texture_provider.hpp
+        src/dusk/ui/runtime_image.cpp
+        src/dusk/ui/runtime_image.hpp
         src/dusk/ui/mod_window.cpp
         src/dusk/ui/mod_window.hpp
         src/dusk/ui/modal.cpp
@@ -1589,6 +1617,12 @@ set(DUSK_FILES
         src/dusk/ui/nav_types.hpp
         src/dusk/ui/nav_group.cpp
         src/dusk/ui/nav_group.hpp
+        src/dusk/ui/context_menu.cpp
+        src/dusk/ui/context_menu.hpp
+        src/dusk/ui/icon_button.cpp
+        src/dusk/ui/icon_button.hpp
+        src/dusk/ui/tooltip.cpp
+        src/dusk/ui/tooltip.hpp
         src/dusk/ui/number_button.cpp
         src/dusk/ui/number_button.hpp
         src/dusk/ui/overlay.cpp

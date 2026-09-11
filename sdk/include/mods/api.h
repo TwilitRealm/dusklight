@@ -42,6 +42,8 @@ extern "C" {
 #define MOD_ABI_VERSION 1u
 #define MOD_ERROR_MESSAGE_SIZE 512u
 
+#define DUSKLIGHT_SERVICE_ID_PREFIX "dev.twilitrealm.dusklight."
+
 typedef struct ModContext ModContext;
 
 typedef enum ModResult {
