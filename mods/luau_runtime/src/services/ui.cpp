@@ -1,12 +1,19 @@
-#include "runtime.hpp"
+#include "ui.hpp"
+
+#include "../runtime.hpp"
 
 #include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
 
-namespace luau_runtime {
+#include "../lua_helpers.hpp"
+
+namespace luau_runtime::services {
 namespace {
+
+using namespace luau_runtime::lua_helpers;
+using namespace std::string_view_literals;
 
 constexpr char kUiWindowMetatable[] = "dusklight.ui_window";
 constexpr char kUiDialogMetatable[] = "dusklight.ui_dialog";
@@ -285,40 +292,32 @@ std::vector<UiListItem> list_items(lua_State* state, int table, std::vector<std:
     return items;
 }
 
+constexpr EnumName<UiControlKind> kControlKindNames[] = {
+    { UI_CONTROL_BUTTON, "button"sv },
+    { UI_CONTROL_TOGGLE, "toggle"sv },
+    { UI_CONTROL_NUMBER, "number"sv },
+    { UI_CONTROL_STRING, "string"sv },
+    { UI_CONTROL_SELECT, "select"sv },
+    { UI_CONTROL_COLOR, "color"sv },
+    { UI_CONTROL_GROUP, "group"sv },
+    { UI_CONTROL_FILE_PICKER, "file_picker"sv },
+};
+
 UiControlKind control_kind(lua_State* state, const std::string& kind) {
-    if (kind == "button")
-        return UI_CONTROL_BUTTON;
-    if (kind == "toggle")
-        return UI_CONTROL_TOGGLE;
-    if (kind == "number")
-        return UI_CONTROL_NUMBER;
-    if (kind == "string")
-        return UI_CONTROL_STRING;
-    if (kind == "select")
-        return UI_CONTROL_SELECT;
-    if (kind == "color")
-        return UI_CONTROL_COLOR;
-    if (kind == "group")
-        return UI_CONTROL_GROUP;
-    if (kind == "file_picker")
-        return UI_CONTROL_FILE_PICKER;
-    luaL_error(state, "unknown UI control kind '%s'", kind.c_str());
+    return enum_str_to_value(state, kind.data(), kControlKindNames);
 }
 
+constexpr EnumName<UiStyleScope> kStyleScopeNames[] = {
+    { UI_SCOPE_PRELAUNCH, "prelaunch"sv },
+    { UI_SCOPE_WINDOW, "window"sv },
+    { UI_SCOPE_MENU_BAR, "menu_bar"sv },
+    { UI_SCOPE_OVERLAY, "overlay"sv },
+    { UI_SCOPE_TOUCH_CONTROLS, "touch_controls"sv },
+    { UI_SCOPE_GRAPHICS_TUNER, "graphics_tuner"sv },
+};
+
 UiStyleScope style_scope(lua_State* state, const std::string& scope) {
-    if (scope == "prelaunch")
-        return UI_SCOPE_PRELAUNCH;
-    if (scope == "window")
-        return UI_SCOPE_WINDOW;
-    if (scope == "menu_bar")
-        return UI_SCOPE_MENU_BAR;
-    if (scope == "overlay")
-        return UI_SCOPE_OVERLAY;
-    if (scope == "touch_controls")
-        return UI_SCOPE_TOUCH_CONTROLS;
-    if (scope == "graphics_tuner")
-        return UI_SCOPE_GRAPHICS_TUNER;
-    luaL_error(state, "unknown UI style scope '%s'", scope.c_str());
+    return enum_str_to_value<UiStyleScope>(state, scope.data(), kStyleScopeNames);
 }
 
 int pane_add_section(lua_State* state) {

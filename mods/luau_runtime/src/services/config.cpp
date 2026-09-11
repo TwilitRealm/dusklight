@@ -1,10 +1,15 @@
-#include "runtime.hpp"
+#include "config.hpp"
+#include "../runtime.hpp"
 
 #include <string>
 #include <vector>
 
-namespace luau_runtime {
+#include "../lua_helpers.hpp"
+
+namespace luau_runtime::services {
 namespace {
+
+using namespace luau_runtime::lua_helpers;
 
 constexpr char kConfigVarMetatable[] = "dusklight.config_var";
 constexpr char kConfigSubscriptionMetatable[] = "dusklight.config_subscription";

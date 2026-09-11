@@ -26,15 +26,37 @@ FetchContent_Declare(luau
 )
 FetchContent_MakeAvailable(luau)
 
+FetchContent_Declare(luabridge3
+    URL https://github.com/TwilitRealm/LuaBridge3/archive/refs/tags/twilit-v1.zip
+    URL_HASH SHA256=aa65e6e3446363d03842134182db28e6206e08d366b8efb8f66d26f96a3314be
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(luabridge3)
+
 add_mod(luau_runtime
     SOURCES
-        src/bindings.cpp
-        src/config.cpp
+        src/services/bindings.cpp
+        src/services/config.cpp
+        src/services/config.hpp
+        src/services/services.cpp
+        src/services/services.hpp
+        src/services/ui.cpp
+        src/services/ui.hpp
+        src/lua_bridge_helpers.cpp
+        src/lua_bridge_helpers.hpp
+        src/lua_helpers.cpp
+        src/lua_helpers.hpp
+        src/runtime.hpp
         src/runtime.cpp
-        src/ui.cpp
     MOD_JSON mod.json
     RES_DIR res
     BUNDLE
 )
 
-target_link_libraries(luau_runtime PRIVATE Luau.VM Luau.Compiler)
+target_precompile_headers(luau_runtime PRIVATE src/lua_bridge_helpers.hpp src/lua_helpers.hpp)
+
+# As far as I can tell, Luau already does stack checks.
+target_compile_definitions(luau_runtime PRIVATE LUABRIDGE_SAFE_STACK_CHECKS=0)
+add_subdirectory(src/services/audio_res)
+
+target_link_libraries(luau_runtime PRIVATE Luau.VM Luau.Compiler LuaBridge)
