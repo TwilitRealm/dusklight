@@ -37,6 +37,7 @@ int open_audio_res(lua_State* state) {
         .addFunction("default_effect_info", default_effect_info)
         .addFunction("replace_sound_table_effect", replace_sound_table_effect)
         .addFunction("add_sound_table_effect", add_sound_table_effect)
+        .addVariable("STREAM_MAX_CHILDREN", STREAM_MAX_CHILDREN)
         .addFunction("default_stream_info", default_stream_info)
         .addFunction("replace_sound_table_stream", replace_sound_table_stream)
         .addFunction("add_sound_table_stream", add_sound_table_stream)
