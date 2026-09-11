@@ -92,7 +92,7 @@ option(DUSK_SELECTED_OPT "If on, selected parts of the project will be compiled 
 option(DUSK_PACKAGE_INSTALL "Install Dusklight with a Linux-native file structure" OFF)
 option(DUSK_GFX_DEBUG_GROUPS "Report debug groups to the native graphics API" ${DUSK_GFX_DEBUG_GROUPS_DEFAULT})
 option(DUSK_ENABLE_CODE_MODS "Enable code mods" ON)
-option(DUSK_ENABLE_OPUS "Enable loading Opus audio files for mods" ON)
+option(DUSK_ENABLE_OPUS "Enable loading Opus audio files for mods" OFF)
 
 
 set(DUSK_HAS_FUNCHOOK OFF)
