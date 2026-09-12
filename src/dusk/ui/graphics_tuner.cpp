@@ -79,6 +79,9 @@ Rml::String format_percent(int value) { return fmt::format("{}%", value); }
 
 Rml::String format_bool(int value) { return value ? "On" : "Off"; }
 
+Rml::String format_degrees(int value) { return fmt::format("{}°", value); }
+
+
 template <typename T>
 int read_cvar(const ConfigVar<T>& var) {
     if constexpr (std::is_same_v<T, float>) {
@@ -164,6 +167,9 @@ const GraphicsSetting& GraphicsSetting::of(GraphicsOption option) {
     case GraphicsOption::TextureReplacements:
         return bind<[]() -> auto& { return getSettings().game.enableTextureReplacements; }>(
             0, 1, 0, 1, format_bool);
+    case GraphicsOption::CameraFieldOfView:
+        return bind<[]() -> auto& { return getSettings().game.cameraFieldOfView; }>(
+            45, 90, 60, 1, format_degrees);
     }
     DuskLog.error("{} is an invalid GraphicsOption", static_cast<int>(option));
     abort();
@@ -171,21 +177,21 @@ const GraphicsSetting& GraphicsSetting::of(GraphicsOption option) {
 
 SteppedCarousel::SteppedCarousel(Rml::Element* parent, Props props)
     : Component(create_stepped_carousel_root(parent)), mProps(std::move(props)) {
-    mPrevElem = create_stepped_carousel_arrow(mRoot, "prev", "\uE5CB");
-    mValueElem = append(mRoot, "stepped-carousel-value");
-    mNextElem = create_stepped_carousel_arrow(mRoot, "next", "\uE5CC");
+            mPrevElem = create_stepped_carousel_arrow(mRoot, "prev", "\uE5CB");
+            mValueElem = append(mRoot, "stepped-carousel-value");
+            mNextElem = create_stepped_carousel_arrow(mRoot, "next", "\uE5CC");
 
-    listen(mPrevElem, Rml::EventId::Click,
-        [this](Rml::Event&) { handle_nav_command(NavCommand::Left); });
-    listen(mNextElem, Rml::EventId::Click,
-        [this](Rml::Event&) { handle_nav_command(NavCommand::Right); });
-    listen(mRoot, Rml::EventId::Keydown, [this](Rml::Event& event) {
-        const auto cmd = map_nav_event(event);
-        if (cmd != NavCommand::None && handle_nav_command(cmd)) {
-            event.StopPropagation();
+            listen(mPrevElem, Rml::EventId::Click,
+                [this](Rml::Event&) { handle_nav_command(NavCommand::Left); });
+            listen(mNextElem, Rml::EventId::Click,
+                [this](Rml::Event&) { handle_nav_command(NavCommand::Right); });
+            listen(mRoot, Rml::EventId::Keydown, [this](Rml::Event& event) {
+                const auto cmd = map_nav_event(event);
+                if (cmd != NavCommand::None && handle_nav_command(cmd)) {
+                    event.StopPropagation();
+                }
+            });
         }
-    });
-}
 
 bool SteppedCarousel::focus() {
     return Component::focus();

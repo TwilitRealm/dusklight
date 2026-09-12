@@ -776,7 +776,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             });
 
         config_int_select(leftPane, rightPane, getSettings().video.uiScale,
-            "UI Scale", 
+            "UI Scale",
             "Scales the Dusklight interface relative to the display's DPI scale. Has no effect on the game's UI and HUD.",
             50, 200, 25, {}, {}, "%");
 
@@ -801,15 +801,11 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             });
 
         leftPane.add_section("Camera");
-        graphics_tuner_control(*this, leftPane, rightPane, getSettings().game.cameraFieldOfView,
+        graphics_tuner_control(*this, leftPane, rightPane,
             GraphicsTunerProps{
-                .option = GraphicsOption::CameraFOV,
+                .option = GraphicsOption::CameraFieldOfView,
                 .title = "Field of View",
                 .helpText = kCameraFOVHelpText,
-                .valueMin = 45,
-                .valueMax = 90,
-                .defaultValue = 60,
-                .step = 1,
             });
 
         leftPane.add_section("Post-Processing");
