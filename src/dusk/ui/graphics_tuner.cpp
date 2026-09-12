@@ -126,12 +126,11 @@ Rml::Element* create_stepped_carousel_root(Rml::Element* parent) {
 
 Rml::Element* create_stepped_carousel_arrow(
     Rml::Element* parent, const Rml::String& className, const Rml::String& label) {
-    auto* doc = parent->GetOwnerDocument();
-    auto button = doc->CreateElement("button");
+    auto* button = append(parent, "button");
     button->SetClass("stepped-carousel-arrow", true);
     button->SetClass(className, true);
-    append_text(button.get(), label);
-    return parent->AppendChild(std::move(button));
+    append_text(button, label);
+    return button;
 }
 
 void update_carousel_arrow_color(Rml::Element* arrow, bool dim) {
