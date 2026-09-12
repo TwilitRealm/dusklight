@@ -1258,7 +1258,7 @@ bool dCamera_c::Run() {
 #endif
     }
 
-    mFovy = mViewCache.mFovy; // = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+    mFovy = mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
     mBank = mViewCache.mBank;
     bumpCheck(mBumpCheckFlags);
 
@@ -5866,7 +5866,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
 
         mViewCache.mCenter.y = sp14F0.y + talk->field_0x1c.y;
         mViewCache.mEye = mViewCache.mCenter + mViewCache.mDirection.Xyz();
-        mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+        mViewCache.mFovy = 60.0f;
         hideActor(actor2_sp428);
         break;
     }
@@ -5925,7 +5925,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
             mStyleSettle.mFinished = true;
             mViewCache.mCenter.y = sp14F0.y + talk->field_0x1c.y;
             mViewCache.mEye = mViewCache.mCenter + mViewCache.mDirection.Xyz();
-            mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+            mViewCache.mFovy = 60.0f;
         }
 
         hideActor(actor2_sp420);
@@ -5984,7 +5984,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
 
         mViewCache.mCenter.y = sp14F0.y + talk->field_0x1c.y;
         mViewCache.mEye = mViewCache.mCenter + mViewCache.mDirection.Xyz();
-        mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue())*0.83f; // 50.0f
+        mViewCache.mFovy = 50.0f;
         hideActor(actor2_sp418);
         break;
     }
@@ -6041,7 +6041,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
 
         mViewCache.mCenter.y = sp14F0.y + talk->field_0x1c.y;
         mViewCache.mEye = mViewCache.mCenter + mViewCache.mDirection.Xyz();
-        mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue())*0.75f; // 45.0f
+        mViewCache.mFovy = 45.0f;
         hideActor(actor2_sp410);
         break;
     }
@@ -6511,7 +6511,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
             mViewCache.mDirection.U(mViewCache.mDirection.U() + sp258);
         }
 
-        mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+        mViewCache.mFovy = 60.0f;
         break;
     }
 
@@ -6554,7 +6554,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
                 }
             }
 
-            mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+            mViewCache.mFovy = 60.0f;
         }
         break;
 
@@ -6579,7 +6579,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
         talk->field_0x90.y = (talkEyePos(speaker).y + talkEyePos(listener).y) * 0.5f - 30.0f;
         talk->field_0xa8.Val(sp3A4, cSAngle::_0, sp4E0.U() + sp24C);
         talk->field_0x9c = talk->field_0x90 + talk->field_0xa8.Xyz();
-        talk->field_0xb0 = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+        talk->field_0xb0 = 60.0f;
 
         if (lineBGCheck(&sp13B8, &talk->field_0x9c, talk->field_0x8c)
             || lineBGCheck(&sp13AC, &talk->field_0x9c, talk->field_0x8c)
@@ -6699,7 +6699,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
                 mViewCache.mDirection.U(mViewCache.mDirection.U() + sp248);
             }
 
-            mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+            mViewCache.mFovy = 60.0f;
         }
         break;
 
@@ -6745,7 +6745,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
         mViewCache.mDirection.Val(140.0f, cSAngle(-20.0f), cSAngle(-40.0f) + directionOf(actor1_sp374));
         mStyleSettle.mFinished = true;
         mViewCache.mEye = mViewCache.mCenter + mViewCache.mDirection.Xyz();
-        mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue())*0.96f; // 58.0f;
+        mViewCache.mFovy = 58.0f;
         break;
     }
 
@@ -6765,7 +6765,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
 
         mViewCache.mCenter.y += talk->field_0x1c.y;
         mViewCache.mEye = mViewCache.mCenter + mViewCache.mDirection.Xyz();
-        mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue())*0.96f; // 58.0f;
+        mViewCache.mFovy = 58.0f;
         break;
     }
 
@@ -6802,7 +6802,7 @@ bool dCamera_c::talktoCamera(s32 param_0) {
             talk->field_0xa8.Val(160.0f, cSAngle::_0, sp98 + directionOf(actor1_sp364));
         }
 
-        talk->field_0xb0 = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+        talk->field_0xb0 = 60.0f;
         talk->field_0x9c = talk->field_0x90 + talk->field_0xa8.Xyz();
 
         cXyz sp1328 = attentionPos(actor1_sp364);
@@ -11678,7 +11678,7 @@ void dCamForcusLine::Init() {
     field_0x68 = 180.0f;
     field_0x6c = 0.0f;
     field_0x60 = 180.0f;
-    field_0x64 = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+    field_0x64 = 60.0f;
 }
 
 void dCamForcusLine::Draw() {
