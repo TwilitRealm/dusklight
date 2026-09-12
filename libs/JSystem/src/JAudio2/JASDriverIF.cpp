@@ -3,13 +3,14 @@
 #include "JSystem/JAudio2/JASDriverIF.h"
 #include "JSystem/JAudio2/JASAiCtrl.h"
 #include "JSystem/JAudio2/JASDSPInterface.h"
+#include "dusk/settings.h"
 #include <os.h>
 
 void JASDriver::setDSPLevel(f32 param_0) {
     JASDsp::setDSPMixerLevel(param_0);
 }
 
-u16 JASDriver::MAX_MIXERLEVEL = 0x2EE0;
+DUSK_GAME_DATA u16 JASDriver::MAX_MIXERLEVEL = 0x2EE0;
 
 u16 JASDriver::getChannelLevel_dsp() {
     return JASDriver::MAX_MIXERLEVEL;
@@ -23,14 +24,25 @@ f32 JASDriver::getDSPLevel() {
     return JASDsp::getDSPMixerLevel();
 }
 
-u32 JASDriver::JAS_SYSTEM_OUTPUT_MODE = JAS_OUTPUT_STEREO;
+DUSK_GAME_DATA u32 JASDriver::JAS_SYSTEM_OUTPUT_MODE = JAS_OUTPUT_STEREO;
 
 void JASDriver::setOutputMode(u32 mode) {
     JAS_SYSTEM_OUTPUT_MODE = mode;
 }
 
 u32 JASDriver::getOutputMode() {
+#ifdef TARGET_PC
+    switch (dusk::getSettings().audio.outputMode) {
+        case dusk::AudioOutputMode::StereoSpeakers:
+            return JAS_OUTPUT_STEREO;
+        case dusk::AudioOutputMode::StereoHeadphones:
+        case dusk::AudioOutputMode::Surround6ch:
+        case dusk::AudioOutputMode::Surround8ch:
+            return JAS_OUTPUT_SURROUND;
+    }
+#else
     return JASDriver::JAS_SYSTEM_OUTPUT_MODE;
+#endif
 }
 
 void JASDriver::waitSubFrame() {
@@ -40,11 +52,11 @@ void JASDriver::waitSubFrame() {
     } while (r31 == getSubFrameCounter());
 }
 
-JASCallbackMgr JASDriver::sDspSyncCallback;
+DUSK_GAME_DATA JASCallbackMgr JASDriver::sDspSyncCallback;
 
-JASCallbackMgr JASDriver::sSubFrameCallback;
+DUSK_GAME_DATA JASCallbackMgr JASDriver::sSubFrameCallback;
 
-JASCallbackMgr JASDriver::sUpdateDacCallback;
+DUSK_GAME_DATA JASCallbackMgr JASDriver::sUpdateDacCallback;
 
 int JASDriver::rejectCallback(DriverCallback callback, void* param_1) {
     int r31 = sDspSyncCallback.reject(callback, param_1);

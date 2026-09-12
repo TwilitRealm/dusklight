@@ -3,7 +3,6 @@
 
 #include "JSystem/J3DGraphAnimator/J3DSkinDeform.h"
 #include "JSystem/J3DGraphBase/J3DPacket.h"
-#include "dusk/frame_interpolation.h"
 #include <types.h>
 
 enum J3DMdlFlag {
@@ -80,7 +79,9 @@ public:
     virtual ~J3DModel() {}
 
 #if TARGET_PC
-    static void interp_callback(bool isSimFrame, void* pUserWork);
+    static void interp_callback(void* pUserWork);
+    void calc_presentation_base_mtx();
+    void prepare_presentation_view();
 #endif
 
     J3DModelData* getModelData() { return mModelData; }
@@ -106,12 +107,13 @@ public:
     void setUserArea(uintptr_t area) { mUserArea = area; }
     uintptr_t getUserArea() const { return mUserArea; }
     Vec* getBaseScale() { return &mBaseScale; }
+#if TARGET_PC
+    void setAnmMtx(int jointNo, Mtx m);
+#else
     void setAnmMtx(int jointNo, Mtx m) {
         mMtxBuffer->setAnmMtx(jointNo, m);
-#ifdef TARGET_PC
-        dusk::frame_interp::record_final_mtx(mMtxBuffer->getAnmMtx(jointNo));
-#endif
     }
+#endif
     MtxP getAnmMtx(int jointNo) { return mMtxBuffer->getAnmMtx(jointNo); }
     MtxP getWeightAnmMtx(int i) { return mMtxBuffer->getWeightAnmMtx(i); }
     J3DSkinDeform* getSkinDeform() { return mSkinDeform; }
@@ -133,6 +135,9 @@ public:
     /* 0xD0 */ J3DVtxColorCalc* mVtxColorCalc;
     /* 0xD4 */ J3DUnkCalc1* mUnkCalc1;
     /* 0xD8 */ J3DUnkCalc2* mUnkCalc2;
+#if TARGET_PC
+    Mtx mPresentationBase;
+#endif
 };
 
 #endif /* J3DMODEL_H */

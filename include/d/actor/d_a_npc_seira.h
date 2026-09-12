@@ -12,7 +12,7 @@ class daNpc_Seira_Param_c {
 public:
     virtual ~daNpc_Seira_Param_c() {}
 
-    static const daNpc_Seira_HIOParam m;
+    static DUSK_GAME_DATA const daNpc_Seira_HIOParam m;
 };
 
 #if DEBUG
@@ -114,10 +114,9 @@ public:
     BOOL checkChangeJoint(int val) { return val == 4; }
     BOOL checkRemoveJoint(int val) { return val == 8; }
 
-    static char DUSK_CONST* DUSK_CONST mCutNameList[2];
-    static cutFunc DUSK_CONST mCutList[2];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mCutNameList[2];
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mCutList[2];
 
-private:
     /* 0x0F7C */ mDoExt_McaMorfSO* mpSeiraMorf;
     /* 0x0F80 */ NPC_SEIRA_HIO_CLASS* mpHIO;
     /* 0x0F80 */ dCcD_Cyl mCyl1;

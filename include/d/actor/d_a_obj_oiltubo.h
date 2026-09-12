@@ -33,10 +33,9 @@ public:
     BOOL chkEvent();
     int wait(void*);
 
-    static const dCcD_SrcGObjInf mCcDObjInfo;
-    static dCcD_SrcCyl DUSK_CONST mCcDCyl;
+    static DUSK_GAME_DATA const dCcD_SrcGObjInf mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcCyl DUSK_CONST mCcDCyl;
 
-private:
     /* 0x568 */ request_of_phase_process_class mPhase;
     /* 0x570 */ J3DModel* mpModel;
     /* 0x574 */ J3DModel* mpBModel;

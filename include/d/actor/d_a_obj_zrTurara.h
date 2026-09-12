@@ -29,7 +29,6 @@ public:
     int Draw();
     int Delete();
 
-private:
     /* 0x5A0 */ dCcD_Stts mCcStatus;
     /* 0x5DC */ dCcD_Cyl mCcCyl;
     /* 0x718 */ request_of_phase_process_class mPhaseReq;
@@ -50,8 +49,8 @@ public:
     int getSwBit2() { return fopAcM_GetParamBit(this, 8, 8); }
     int getScale() { return fopAcM_GetParamBit(this, 0x10, 8); }
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcCyl mCcDCyl;
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcCyl mCcDCyl;
 };
 
 STATIC_ASSERT(sizeof(daZrTurara_c) == 0x76C);

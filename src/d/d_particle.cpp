@@ -8,26 +8,27 @@
 // weak data from it (unlike here).
 
 #include "d/d_particle.h"
-#include <cstdio>
-#include "JSystem/J3DGraphAnimator/J3DMaterialAnm.h"
-#include "JSystem/J3DGraphBase/J3DMaterial.h"
+#include "d/d_jnt_col.h"
 #include "JSystem/JKernel/JKRExpHeap.h"
 #include "JSystem/JKernel/JKRSolidHeap.h"
-#include "JSystem/JMath/JMATrigonometric.h"
+#include "JSystem/J3DGraphBase/J3DMaterial.h"
+#include "JSystem/J3DGraphAnimator/J3DMaterialAnm.h"
 #include "JSystem/JParticle/JPAEmitterManager.h"
 #include "JSystem/JParticle/JPAResourceManager.h"
-#include "SSystem/SComponent/c_math.h"
-#include "d/actor/d_a_player.h"
-#include "d/d_com_inf_game.h"
-#include "d/d_jnt_col.h"
+#include "JSystem/JMath/JMATrigonometric.h"
 #include "d/d_s_play.h"
-#include "f_op/f_op_actor_mng.h"
-#include "m_Do/m_Do_graphic.h"
+#include <cstdio>
+#include "d/d_com_inf_game.h"
 #include "m_Do/m_Do_lib.h"
-#include "tracy/Tracy.hpp"
+#include "m_Do/m_Do_graphic.h"
+#include "f_op/f_op_actor_mng.h"
+#include "d/actor/d_a_player.h"
+#include "SSystem/SComponent/c_math.h"
 
-#ifndef __MWERKS__
-#include "dusk/math.h"
+#if TARGET_PC
+#include "dusk/game_clock.h"
+
+#include <tracy/Tracy.hpp>
 #endif
 
 #if DEBUG
@@ -35,7 +36,7 @@
 #endif
 
 extern "C" {
-    extern dPa_particleTracePcallBack_c JPTracePCB4;
+    DUSK_GAME_EXTERN dPa_particleTracePcallBack_c JPTracePCB4;
 }
 
 void dPa_cleanupGX() {
@@ -125,11 +126,11 @@ u32 dummy(JPABaseEmitter* i_emitter) {
     return i_emitter->getAge();
 }
 
-dPa_modelEcallBack dPa_modelEcallBack::mEcallback;
+DUSK_GAME_DATA dPa_modelEcallBack dPa_modelEcallBack::mEcallback;
 
-dPa_modelPcallBack dPa_modelEcallBack::mPcallback;
+DUSK_GAME_DATA dPa_modelPcallBack dPa_modelEcallBack::mPcallback;
 
-dPa_modelEcallBack::model_c* dPa_modelEcallBack::mModel;
+DUSK_GAME_DATA dPa_modelEcallBack::model_c* dPa_modelEcallBack::mModel;
 
 #if DEBUG
 u8 dPa_modelEcallBack::mNum;
@@ -1120,7 +1121,7 @@ void dPa_control_c::level_c::cutTable(dPa_control_c::level_c::emitter_c* i_emitt
     i_emitter->cleanup();
 }
 
-dPa_selectTexEcallBack dPa_control_c::mTsubo[] = {
+DUSK_GAME_DATA dPa_selectTexEcallBack dPa_control_c::mTsubo[] = {
     dPa_selectTexEcallBack(0),
     dPa_selectTexEcallBack(1),
     dPa_selectTexEcallBack(2),
@@ -1137,35 +1138,35 @@ static GXColor l_lifeBallColor[3] = {
     {0xEB, 0xD7, 0x2F, 0xFF},
 };
 
-dPa_setColorEcallBack dPa_control_c::mLifeBall[3] = {
+DUSK_GAME_DATA dPa_setColorEcallBack dPa_control_c::mLifeBall[3] = {
     dPa_setColorEcallBack(l_lifeBallColor[0]),
     dPa_setColorEcallBack(l_lifeBallColor[1]),
     dPa_setColorEcallBack(l_lifeBallColor[2]),
 };
 
-JPAEmitterManager* dPa_control_c::mEmitterMng;
+DUSK_GAME_DATA JPAEmitterManager* dPa_control_c::mEmitterMng;
 
-dPa_wbPcallBack_c dPa_control_c::mWaterBubblePcallBack;
+DUSK_GAME_DATA dPa_wbPcallBack_c dPa_control_c::mWaterBubblePcallBack;
 
-dPa_fsenthPcallBack dPa_control_c::mFsenthPcallBack;
+DUSK_GAME_DATA dPa_fsenthPcallBack dPa_control_c::mFsenthPcallBack;
 
-dPa_light8EcallBack dPa_control_c::mLight8EcallBack;
+DUSK_GAME_DATA dPa_light8EcallBack dPa_control_c::mLight8EcallBack;
 
-dPa_light8PcallBack dPa_control_c::mLight8PcallBack;
+DUSK_GAME_DATA dPa_light8PcallBack dPa_control_c::mLight8PcallBack;
 
-dPa_gen_b_light8EcallBack dPa_control_c::m_b_Light8EcallBack;
+DUSK_GAME_DATA dPa_gen_b_light8EcallBack dPa_control_c::m_b_Light8EcallBack;
 
-dPa_gen_b_light8PcallBack dPa_control_c::m_b_Light8PcallBack;
+DUSK_GAME_DATA dPa_gen_b_light8PcallBack dPa_control_c::m_b_Light8PcallBack;
 
-dPa_gen_d_light8EcallBack dPa_control_c::m_d_Light8EcallBack;
+DUSK_GAME_DATA dPa_gen_d_light8EcallBack dPa_control_c::m_d_Light8EcallBack;
 
-dPa_gen_d_light8PcallBack dPa_control_c::m_d_Light8PcallBack;
+DUSK_GAME_DATA dPa_gen_d_light8PcallBack dPa_control_c::m_d_Light8PcallBack;
 
-u8 dPa_control_c::mStatus;
+DUSK_GAME_DATA u8 dPa_control_c::mStatus;
 
-Mtx dPa_control_c::mWindViewMatrix;
+DUSK_GAME_DATA Mtx dPa_control_c::mWindViewMatrix;
 
-dPa_particleTracePcallBack_c dPa_control_c::mParticleTracePCB;
+DUSK_GAME_DATA dPa_particleTracePcallBack_c dPa_control_c::mParticleTracePCB;
 
 dPa_control_c::dPa_control_c() {
 #if DEBUG
@@ -1975,7 +1976,7 @@ void dPa_light8PcallBack::draw(JPABaseEmitter* param_1, JPABaseParticle* param_2
     JGeometry::TVec3<f32> local_160;
     JGeometry::TVec3<f32> local_16c;
 #if TARGET_PC
-    if (dusk::frame_interp::is_sim_frame())
+    if (dusk::game_clock::is_sim_frame())
 #endif
     {
         dPa_setWindPower(param_2);

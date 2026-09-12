@@ -50,10 +50,9 @@ public:
     virtual int Draw();
     virtual int Delete();
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcSph mCcDSph;
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcSph mCcDSph;
 
-private:
     /* 0x56C */ request_of_phase_process_class mPhase;
     /* 0x574 */ J3DModel* mModel;
     /* 0x578 */ u8 mMode;

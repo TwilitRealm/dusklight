@@ -325,13 +325,13 @@ void daNpc_grO_HIO_c::genMessage(JORMContext* ctx) {
 }
 #endif
 
-char DUSK_CONST* DUSK_CONST daNpc_grO_c::mEvtCutNameList[3] = {
+DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST daNpc_grO_c::mEvtCutNameList[3] = {
     "",
     "BOKIN_FINISH",
     "PUSHOUT",
 };
 
-daNpc_grO_c::cutFunc DUSK_CONST daNpc_grO_c::mEvtCutList[3] = {
+DUSK_GAME_DATA daNpc_grO_c::cutFunc DUSK_CONST daNpc_grO_c::mEvtCutList[3] = {
     NULL,
     &daNpc_grO_c::ECut_bokinFinish,
     &daNpc_grO_c::cutPushOut,
@@ -355,7 +355,7 @@ daNpc_grO_c::~daNpc_grO_c() {
     #endif
 }
 
-daNpc_grO_HIOParam const daNpc_grO_Param_c::m = {
+DUSK_GAME_DATA daNpc_grO_HIOParam const daNpc_grO_Param_c::m = {
     160.0f,
     -3.0f,
     1.0f,
@@ -1681,7 +1681,9 @@ int daNpc_grO_c::talk(void* param_1) {
             if (facePlayerFlag && talkProc(NULL, TRUE, NULL)) {
                 if (mType == TYPE_MINES) {
                     if (mFlow.getEventId(&itemId) == 1) {
-                        mItemID = fopAcM_createItemForPresentDemo(&current.pos, itemId, 0, -1, -1, NULL, NULL);
+                        DUSK_ITEM_CHECK("key_shard_2:D_MN04", itemId, this);
+                        mItemID = fopAcM_createItemForPresentDemo(&current.pos, itemId, 0, -1, -1,
+                            NULL, NULL DUSK_GIVE_TAG("key_shard_2:D_MN04"));
                         if (mItemID != fpcM_ERROR_PROCESS_ID_e) {
                             s16 eventIdx = dComIfGp_getEventManager().getEventIdx(this, "DEFAULT_GETITEM", 0xFF);
                             dComIfGp_getEvent()->reset(this);

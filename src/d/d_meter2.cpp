@@ -27,6 +27,15 @@
 #if TARGET_PC
 #include "dusk/memory.h"
 #include "dusk/settings.h"
+
+namespace {
+
+// Reads the user HUD scale setting, clamped to a safe range.
+f32 dGetUserHudScale() {
+    return std::clamp(dusk::getSettings().game.hudScale.getValue(), 0.5f, 2.0f);
+}
+
+}  // namespace
 #endif
 
 int dMeter2_c::_create() {
@@ -597,7 +606,8 @@ void dMeter2_c::moveLife() {
             life_count = (dComIfGs_getMaxLife() / 5) * 4;
         }
 
-        s16 new_life = dComIfGs_getLife() + dComIfGp_getItemLifeCount();
+        DUSK_IF_ELSE(int, s16) new_life = dComIfGs_getLife() + dComIfGp_getItemLifeCount(); // prevent an overflow with really large damage values
+
         if (new_life > life_count) {
             new_life = life_count;
         } else if (new_life < 0) {
@@ -669,9 +679,7 @@ void dMeter2_c::moveLife() {
     }
 
 #if TARGET_PC
-    const f32 lifeGaugeScale =
-        g_drawHIO.mLifeParentScale *
-        std::clamp(dusk::getSettings().game.hudScale.getValue(), 0.5f, 2.0f);
+    const f32 lifeGaugeScale = g_drawHIO.mLifeParentScale * dGetUserHudScale();
 #else
     const f32 lifeGaugeScale = g_drawHIO.mLifeParentScale;
 #endif
@@ -1108,8 +1116,13 @@ void dMeter2_c::moveRupee() {
         }
     }
 
-    if (mRupeeKeyScale != g_drawHIO.mRupeeKeyScale) {
-        mRupeeKeyScale = g_drawHIO.mRupeeKeyScale;
+#if TARGET_PC
+    const f32 rupeeKeyScale = g_drawHIO.mRupeeKeyScale * dGetUserHudScale();
+#else
+    const f32 rupeeKeyScale = g_drawHIO.mRupeeKeyScale;
+#endif
+    if (mRupeeKeyScale != rupeeKeyScale) {
+        mRupeeKeyScale = rupeeKeyScale;
         draw_rupee = true;
     }
 
@@ -1207,8 +1220,13 @@ void dMeter2_c::moveKey() {
         }
     }
 
-    if (mKeyScale != g_drawHIO.mKeyScale) {
-        mKeyScale = g_drawHIO.mKeyScale;
+#if TARGET_PC
+    const f32 keyScale = g_drawHIO.mKeyScale * dGetUserHudScale();
+#else
+    const f32 keyScale = g_drawHIO.mKeyScale;
+#endif
+    if (mKeyScale != keyScale) {
+        mKeyScale = keyScale;
         draw_key = true;
     }
 
@@ -2139,8 +2157,13 @@ void dMeter2_c::moveButtonCross() {
         draw_cross = true;
     }
 
-    if (mButtonCrossScale != g_drawHIO.mButtonCrossScale) {
-        mButtonCrossScale = g_drawHIO.mButtonCrossScale;
+#if TARGET_PC
+    const f32 buttonCrossScale = g_drawHIO.mButtonCrossScale * dGetUserHudScale();
+#else
+    const f32 buttonCrossScale = g_drawHIO.mButtonCrossScale;
+#endif
+    if (mButtonCrossScale != buttonCrossScale) {
+        mButtonCrossScale = buttonCrossScale;
         draw_cross = true;
     }
 

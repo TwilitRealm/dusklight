@@ -36,7 +36,7 @@ class daNpcTkc_Param_c {
 public:
     virtual ~daNpcTkc_Param_c() {}
 
-    static daNpcTkc_HIOParam const m;
+    static DUSK_GAME_DATA daNpcTkc_HIOParam const m;
 };
 
 #if DEBUG
@@ -106,9 +106,8 @@ public:
     BOOL chkAction(actionFunc action) { return action == mAction; }
     void lookat();
 
-    static evtFunc mEvtSeqList[4];
+    static DUSK_GAME_DATA evtFunc mEvtSeqList[4];
 
-private:
     /* 0xB48 */ Z2Creature mSound;
     /* 0xBD8 */ daNpcF_MatAnm_c* mpMatAnm;
     /* 0xBDC */ daNpcF_ActorMngr_c mActorMngr[1];

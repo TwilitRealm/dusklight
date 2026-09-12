@@ -60,10 +60,9 @@ public:
     inline ~daObjKznkarm_c();
     inline daObjKznkarm_Attr_c* attr() const;
 
-    static daObjKznkarm_Attr_c const M_attr;
-    static actionFunc ActionTable[4][2];
+    static DUSK_GAME_DATA daObjKznkarm_Attr_c const M_attr;
+    static DUSK_GAME_DATA actionFunc ActionTable[4][2];
 
-private:
     /* 0x568 */ J3DModel* mpModel;
     /* 0x56C */ request_of_phase_process_class mPhase;
     /* 0x574 */ dBgS_AcchCir mAcchCir;

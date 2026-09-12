@@ -11,8 +11,20 @@
 #include "d/d_bg_w.h"
 #include "d/d_cc_uty.h"
 #include "d/d_com_inf_game.h"
-#include "dusk/frame_interpolation.h"
-#include "dusk/settings.h"
+
+#if TARGET_PC
+#include "dusk/interp/dual_buffer.h"
+#include "dusk/interp/frame_interpolation.h"
+
+static const int CHAIN_INTERP_MAX = 64;
+
+namespace {
+struct KLiftInterp {
+    cXyz draw[CHAIN_INTERP_MAX];
+    dusk::interp::DualBuffer<cXyz, CHAIN_INTERP_MAX> chain{draw};
+};
+}  // namespace
+#endif
 
 struct daObjKLift00_HIO_c : public mDoHIO_entry_c {
     daObjKLift00_HIO_c();
@@ -297,11 +309,6 @@ int daObjKLift00_c::Create() {
     if(getLock())
         mStopSwingingFrames = 5;
 
-#if TARGET_PC
-    mChainInterpPrevValid = false;
-    mChainInterpCurrValid = false;
-#endif
-
     return 1;
 }
 
@@ -444,23 +451,20 @@ int daObjKLift00_c::Execute(Mtx** i_mtx) {
 }
 
 #if TARGET_PC
-static void klift00_interp_callback(bool isSimFrame, void* pUserWork) {
-    static_cast<daObjKLift00_c*>(pUserWork)->onInterpCallback();
+static void klift00_interp_post(void* pUserWork) {
+    static_cast<daObjKLift00_c*>(pUserWork)->onInterpPresentation();
 }
 
-void daObjKLift00_c::onInterpCallback() {
-    if (!mChainInterpPrevValid || !mChainInterpCurrValid) {
-        return;
-    }
-
-    const f32 alpha = dusk::frame_interp::get_interpolation_step();
-    cXyz savedPositions[64];
+void daObjKLift00_c::onInterpPresentation() {
+    cXyz savedPositions[CHAIN_INTERP_MAX];
 
     for (int i = 0; i < mNumChains; i++) {
         savedPositions[i] = mChainPositions[i].mCurrentPos;
-        const cXyz& p0 = mChainInterpPrev[i];
-        const cXyz& p1 = mChainInterpCurr[i];
-        mChainPositions[i].mCurrentPos = p0 + (p1 - p0) * alpha;
+    }
+
+    auto& interp = dusk::interp::get<KLiftInterp>(this);
+    for (int i = 0; i < mNumChains; i++) {
+        mChainPositions[i].mCurrentPos = interp.draw[i];
     }
 
     setMtx();
@@ -493,18 +497,12 @@ int daObjKLift00_c::Draw() {
     dComIfGd_setList();
 
 #if TARGET_PC
-    if (dusk::frame_interp::is_enabled()) {
-        if (mChainInterpCurrValid) {
-            memcpy(mChainInterpPrev, mChainInterpCurr, mNumChains * sizeof(cXyz));
-            mChainInterpPrevValid = true;
-        }
-
+    if (dusk::interp::is_enabled() && mNumChains > 0 && mNumChains <= CHAIN_INTERP_MAX) {
+        cXyz curr[CHAIN_INTERP_MAX];
         for (int i = 0; i < mNumChains; i++) {
-            mChainInterpCurr[i] = mChainPositions[i].mCurrentPos;
+            curr[i] = mChainPositions[i].mCurrentPos;
         }
-        
-        mChainInterpCurrValid = true;
-        dusk::frame_interp::add_interpolation_callback(&klift00_interp_callback, this);
+        dusk::interp::get<KLiftInterp>(this).chain.capture_and_schedule(curr, mNumChains, &klift00_interp_post, this);
     }
 #endif
 

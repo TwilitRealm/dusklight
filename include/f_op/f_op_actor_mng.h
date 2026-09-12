@@ -12,9 +12,10 @@
 #include "f_pc/f_pc_manager.h"
 #include "m_Do/m_Do_hostIO.h"
 #include "SSystem/SComponent/c_phase.h"
-#include "dusk/endian_ssystem.h"
 
-#if !__MWERKS__
+#if TARGET_PC
+#include "helpers/endian_ssystem.h"
+
 // mwerks compiler makes value initialization act like default initialization so we need
 // to be explicit about default initialization in modern compilers
 #define fopAcM_ct_placement(ptr, ClassName) JKR_NEW_ARGS (ptr) ClassName
@@ -23,13 +24,10 @@
 #endif
 
 #define fopAcM_ct(ptr, ClassName)                                           \
-    if ((ptr)->layer_tag.layer == NULL) { OSPanic(__FILE__, __LINE__, "UH OH"); } \
     if (!fopAcM_CheckCondition(ptr, fopAcCnd_INIT_e)) {                     \
         fopAcM_ct_placement(ptr, ClassName);                                \
         fopAcM_OnCondition(ptr, fopAcCnd_INIT_e);                           \
-    } \
-    if ((ptr)->layer_tag.layer == NULL) { OSPanic(__FILE__, __LINE__, "Oh come on"); }
-
+    }
 
 #define fopAcM_RegisterDeleteID(i_this, actor_name_str)                     \
     ("Delete -> " actor_name_str "(id=%d)\n", fopAcM_GetID(i_this))
@@ -50,14 +48,14 @@ class cM3dGPla;
 s8 dComIfGp_getReverb(int roomNo);
 
 namespace fopAcM {
-extern u8 HeapAdjustEntry;
-extern u8 HeapAdjustUnk;
-extern u8 HeapAdjustVerbose;
-extern u8 HeapAdjustQuiet;
-extern u8 HeapDummyCreate;
-extern u8 HeapDummyCheck;
-extern u8 HeapSkipMargin;
-extern int HeapAdjustMargin;
+DUSK_GAME_EXTERN u8 HeapAdjustEntry;
+DUSK_GAME_EXTERN u8 HeapAdjustUnk;
+DUSK_GAME_EXTERN u8 HeapAdjustVerbose;
+DUSK_GAME_EXTERN u8 HeapAdjustQuiet;
+DUSK_GAME_EXTERN u8 HeapDummyCreate;
+DUSK_GAME_EXTERN u8 HeapDummyCheck;
+DUSK_GAME_EXTERN u8 HeapSkipMargin;
+DUSK_GAME_EXTERN int HeapAdjustMargin;
 }  // namespace fopAcM
 
 struct fopAcM_prmBase_class {
@@ -79,6 +77,10 @@ struct fopAcM_prm_class {
     /* 0x1C */ fpc_ProcID parent_id;
     /* 0x20 */ s8 argument;
     /* 0x21 */ s8 room_no;
+#if TARGET_PC
+    u32 mItemGiveTag;
+    u8 mItemGiveOriginalNo;
+#endif
 };
 
 struct fopAcM_search4ev_prm {
@@ -516,8 +518,9 @@ s32 fopAcM_SearchByName(s16 i_procName, fopAc_ac_c** i_outActor);
 fopAcM_prm_class* fopAcM_CreateAppend();
 
 fopAcM_prm_class* createAppend(u16 i_setId, u32 i_parameters, const cXyz* i_pos, int i_roomNo,
-                               const csXyz* i_angle, const cXyz* i_scale, s8 i_argument,
-                               fpc_ProcID i_parentId);
+    const csXyz* i_angle, const cXyz* i_scale, s8 i_argument,
+    fpc_ProcID i_parentId IF_DUSK_ARG(u32 i_itemGiveTag = 0)
+        IF_DUSK_ARG(u8 i_itemOriginalNo = 0xFF));
 
 void fopAcM_Log(fopAc_ac_c const* i_actor, char const* i_message);
 
@@ -526,19 +529,22 @@ s32 fopAcM_delete(fopAc_ac_c* i_actor);
 s32 fopAcM_delete(fpc_ProcID i_actorID);
 
 fpc_ProcID fopAcM_create(s16 i_procName, u16 i_setId, u32 i_parameters, const cXyz* i_pos,
-                         int i_roomNo, const csXyz* i_angle, const cXyz* i_scale, s8 i_argument,
-                         createFunc i_createFunc);
+    int i_roomNo, const csXyz* i_angle, const cXyz* i_scale, s8 i_argument,
+    createFunc i_createFunc IF_DUSK_ARG(u32 i_itemGiveTag = 0)
+        IF_DUSK_ARG(u8 i_itemOriginalNo = 0xFF));
 
 fpc_ProcID fopAcM_create(s16 i_procName, u32 i_parameters, const cXyz* i_pos, int i_roomNo,
-                         const csXyz* i_angle, const cXyz* i_scale, s8 i_argument);
+    const csXyz* i_angle, const cXyz* i_scale, s8 i_argument IF_DUSK_ARG(u32 i_itemGiveTag = 0)
+        IF_DUSK_ARG(u8 i_itemOriginalNo = 0xFF));
 
 inline fpc_ProcID fopAcM_Create(s16 i_procName, createFunc i_createFunc, void* params) {
     return fpcM_Create(i_procName, i_createFunc,params);
 }
 
 fopAc_ac_c* fopAcM_fastCreate(s16 i_procName, u32 i_parameters, const cXyz* i_pos, int i_roomNo,
-                              const csXyz* i_angle, const cXyz* i_scale, s8 i_argument,
-                              createFunc i_createFunc, void* i_createFuncData);
+    const csXyz* i_angle, const cXyz* i_scale, s8 i_argument, createFunc i_createFunc,
+    void* i_createFuncData IF_DUSK_ARG(u32 i_itemGiveTag = 0)
+        IF_DUSK_ARG(u8 i_itemOriginalNo = 0xFF));
 
 fopAc_ac_c* fopAcM_fastCreate(const char* i_actorname, u32 i_parameters, const cXyz* i_pos,
                               int i_roomNo, const csXyz* i_angle, const cXyz* i_scale,
@@ -623,11 +629,11 @@ fopAc_ac_c* fopAcM_getItemEventPartner(const fopAc_ac_c*);
 fopAc_ac_c* fopAcM_getEventPartner(const fopAc_ac_c*);
 
 fpc_ProcID fopAcM_createItemForPresentDemo(cXyz const* i_pos, int i_itemNo, u8 param_2,
-                                           int i_itemBitNo, int i_roomNo, csXyz const* i_angle,
-                                           cXyz const* i_scale);
+    int i_itemBitNo, int i_roomNo, csXyz const* i_angle,
+    cXyz const* i_scale IF_DUSK_ARG(u32 i_itemGiveTag = 0));
 
 fpc_ProcID fopAcM_createItemForTrBoxDemo(cXyz const* i_pos, int i_itemNo, int i_itemBitNo,
-                                         int i_roomNo, csXyz const* i_angle, cXyz const* i_scale);
+    int i_roomNo, csXyz const* i_angle, cXyz const* i_scale IF_DUSK_ARG(u32 i_itemGiveTag = 0));
 
 u8 fopAcM_getItemNoFromTableNo(u8 i_tableNo);
 
@@ -641,11 +647,12 @@ fpc_ProcID fopAcM_createItemFromTable(cXyz const* i_pos, int i_tableNo, int i_it
                                       bool i_createDirect);
 
 fpc_ProcID fopAcM_createDemoItem(const cXyz* i_pos, int i_itemNo, int i_itemBitNo,
-                                 const csXyz* i_angle, int i_roomNo, const cXyz* scale, u8 param_7);
+    const csXyz* i_angle, int i_roomNo, const cXyz* scale,
+    u8 param_7 IF_DUSK_ARG(u32 i_itemGiveTag = 0));
 
 fpc_ProcID fopAcM_createItemForBoss(const cXyz* i_pos, int i_itemNo, int i_roomNo,
-                                    const csXyz* i_angle, const cXyz* i_scale, f32 i_speedF,
-                                    f32 i_speedY, int param_8);
+    const csXyz* i_angle, const cXyz* i_scale, f32 i_speedF, f32 i_speedY,
+    int param_8 IF_DUSK_ARG(const char* i_itemCheckName = NULL));
 
 fpc_ProcID fopAcM_createItemForMidBoss(const cXyz* i_pos, int i_itemNo, int i_roomNo,
                                        const csXyz* i_angle, const cXyz* i_scale, int param_6,
@@ -826,8 +833,8 @@ BOOL fopAcM_getNameString(const fopAc_ac_c*, char*);
 
 inline void fopAcM_SetStatusMap(fopAc_ac_c*, u32) {}
 
-extern cull_box l_cullSizeBox[fopAc_CULLBOX_MAX_e];
-extern cull_sphere l_cullSizeSphere[fopAc_CULLSPHERE_MAX_e];
+DUSK_GAME_EXTERN cull_box l_cullSizeBox[fopAc_CULLBOX_MAX_e];
+DUSK_GAME_EXTERN cull_sphere l_cullSizeSphere[fopAc_CULLSPHERE_MAX_e];
 
 class fopAcM_lc_c {
 public:
@@ -854,7 +861,7 @@ public:
         return cBgW_CheckBGround(poly.mNormal.y);
     }
 
-    static dBgS_ObjLinChk mLineCheck;
+    static DUSK_GAME_DATA dBgS_ObjLinChk mLineCheck;
 };
 
 class dBgS_RoofChk;
@@ -864,16 +871,16 @@ public:
     static f32 getRoofY() { return mRoofY; }
     static bool roofCheck(const cXyz*);
 
-    static dBgS_ObjRoofChk mRoofCheck;
-    static f32 mRoofY;
+    static DUSK_GAME_DATA dBgS_ObjRoofChk mRoofCheck;
+    static DUSK_GAME_DATA f32 mRoofY;
 };
 
 class dBgS_GndChk;
 class fopAcM_gc_c {
 public:
     static bool gndCheck(const cXyz*);
-    static dBgS_ObjGndChk mGndCheck;
-    static f32 mGroundY;
+    static DUSK_GAME_DATA dBgS_ObjGndChk mGndCheck;
+    static DUSK_GAME_DATA f32 mGroundY;
 
     static bool getTriPla(cM3dGPla* i_plane) {
         return dComIfG_Bgsp().GetTriPla(mGndCheck, i_plane);
@@ -900,8 +907,8 @@ public:
     static int getPolyAtt0() { return dComIfG_Bgsp().GetPolyAtt0(mWaterCheck); }
 
     static bool waterCheck(const cXyz*);
-    static dBgS_WtrChk mWaterCheck;
-    static f32 mWaterY;
+    static DUSK_GAME_DATA dBgS_WtrChk mWaterCheck;
+    static DUSK_GAME_DATA f32 mWaterY;
 };
 
 #endif

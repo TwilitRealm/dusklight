@@ -15,7 +15,7 @@ class daObj_AutoMata_Param_c {
 public:
     virtual ~daObj_AutoMata_Param_c() {}
 
-    static daObj_AutoMata_HIOParam const m;
+    static DUSK_GAME_DATA daObj_AutoMata_HIOParam const m;
 };
 
 #if DEBUG
@@ -44,7 +44,7 @@ public:
  *
  */
 class daObj_AutoMata_c : public fopAc_ac_c {
-private:
+public:
     /* 0x568 */ OBJ_AUTOMATA_HIO_CLASS* mpHIO;
     /* 0x56C */ mDoExt_McaMorfSO* mpMorf;
     /* 0x570 */ Z2Creature mCreature;

@@ -9,7 +9,8 @@
 namespace {
 #if defined(_WIN32)
 void* pl_dlopen(const std::filesystem::path& p) {
-    return LoadLibraryW(p.wstring().c_str());
+    return LoadLibraryExW(p.wstring().c_str(), nullptr,
+        LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 }
 void* pl_dlsym(void* h, const char* name) {
     return reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(h), name));
@@ -30,11 +31,7 @@ std::string pl_dlerror() {
 #else
 #include <dlfcn.h>
 void* pl_dlopen(const std::filesystem::path& p) {
-    int flags = RTLD_LAZY | RTLD_LOCAL;
-#if defined(RTLD_DEEPBIND)
-    flags |= RTLD_DEEPBIND;
-#endif
-    return dlopen(p.c_str(), flags);
+    return dlopen(p.c_str(), RTLD_LAZY | RTLD_LOCAL);
 }
 void* pl_dlsym(void* h, const char* name) {
     return dlsym(h, name);
@@ -47,11 +44,10 @@ std::string pl_dlerror() {
     return e ? e : "(unknown error)";
 }
 #endif
-}
+}  // namespace
 
 namespace dusk::mods::loader {
-NativeModule::NativeModule() noexcept : handle(nullptr) {
-}
+NativeModule::NativeModule() noexcept : handle(nullptr) {}
 
 NativeModule::NativeModule(NativeModule&& other) noexcept {
     handle = other.handle;

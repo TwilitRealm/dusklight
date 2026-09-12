@@ -60,9 +60,8 @@ public:
 
     u32 getPathID() { return fopAcM_GetParam(this) >> 0x10 & 0xFF; }
 
-    static actionFunc ActionTable[7][2];
+    static DUSK_GAME_DATA actionFunc ActionTable[7][2];
 
-private:
     /* 0xAC8 */ J3DModel* mpModel;
     /* 0xACC */ J3DModel* mpModel2;
     /* 0xAD0 */ J3DAnmTransformKey* mpAnmKey;

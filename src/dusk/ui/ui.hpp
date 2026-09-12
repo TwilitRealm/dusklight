@@ -4,11 +4,15 @@
 #include <SDL3/SDL_events.h>
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "nav_types.hpp"
+
+#include "Z2AudioLib/Z2SeMgr.h"
 
 namespace dusk::ui {
 class Document;
@@ -17,6 +21,7 @@ using clock = std::chrono::steady_clock;
 
 enum class DocumentScope : u8 {
     None,
+    CommandConsole,
     Prelaunch,
     Window,
     MenuBar,
@@ -30,6 +35,7 @@ struct Toast {
     Rml::String title;
     Rml::String content;
     clock::duration duration;
+    Rml::String modId;
 };
 
 // Button clicked/pressed
@@ -84,10 +90,32 @@ void update() noexcept;
 
 Document& push_document(
     std::unique_ptr<Document> doc, bool show = true, bool passive = false) noexcept;
+
+namespace detail {
+Document& pop_to_or_push_document(bool (*matches)(Document&),
+    const std::function<std::unique_ptr<Document>()>& create,
+    const std::function<void(Document&)>& configure);
+}
+
+template <typename T, typename Configure, typename... Args>
+T& pop_to_or_push(Configure&& configure, Args&&... args) {
+    return static_cast<T&>(detail::pop_to_or_push_document(
+        [](Document& document) { return dynamic_cast<T*>(&document) != nullptr; },
+        [&]() -> std::unique_ptr<Document> {
+            return std::make_unique<T>(std::forward<Args>(args)...);
+        },
+        [&](Document& document) {
+            std::invoke(std::forward<Configure>(configure), static_cast<T&>(document));
+        }));
+}
+
+void bring_document_to_front(Document& doc) noexcept;
 bool register_scoped_styles(DocumentScope scope, std::string id, const std::string& rcss) noexcept;
 void unregister_scoped_styles(DocumentScope scope, std::string_view id) noexcept;
 void apply_scoped_styles(Document& doc) noexcept;
 void uncover_top_document() noexcept;
+Document* find_document(DocumentScope scope) noexcept;
+void close_all_documents() noexcept;
 bool any_document_visible() noexcept;
 bool is_prelaunch_open() noexcept;
 bool game_obscured_below(const Document& doc) noexcept;
@@ -96,11 +124,14 @@ Document* top_document() noexcept;
 std::filesystem::path resource_path(const std::filesystem::path& filename) noexcept;
 std::string escape(std::string_view str) noexcept;
 Rml::Element* append(Rml::Element* parent, const Rml::String& tag) noexcept;
+Rml::Element* append_text(Rml::Element* parent, const Rml::String& text) noexcept;
+Rml::Element* append_text_element(
+    Rml::Element* parent, const Rml::String& tag, const Rml::String& text) noexcept;
+void clear_children(Rml::Element* parent) noexcept;
+void set_text_content(Rml::Element* parent, const Rml::String& text) noexcept;
 
 NavCommand map_nav_event(const Rml::Event& event) noexcept;
 Insets safe_area_insets(Rml::Context* context) noexcept;
-
-std::vector<std::unique_ptr<Document>>& get_document_stack() noexcept;
 
 void push_toast(Toast toast) noexcept;
 std::deque<Toast>& get_toasts() noexcept;
@@ -109,5 +140,7 @@ bool consume_menu_notification_request() noexcept;
 
 const char* battery_icon(SDL_PowerState state, int level) noexcept;
 const char* connection_state_icon(SDL_JoystickConnectionState state) noexcept;
+
+void apply_scale() noexcept;
 
 }  // namespace dusk::ui

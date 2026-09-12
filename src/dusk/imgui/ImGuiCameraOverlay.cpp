@@ -1,12 +1,15 @@
-#include "f_op/f_op_camera_mng.h"
-#include "SSystem/SComponent/c_xyz.h"
-#include "d/d_com_inf_game.h"
-
-#include "imgui.h"
 #include "ImGuiConfig.hpp"
 #include "ImGuiConsole.hpp"
 #include "ImGuiMenuTools.hpp"
+
 #include "dusk/settings.h"
+
+#include "d/d_com_inf_game.h"
+#include "f_op/f_op_camera_mng.h"
+
+#include "SSystem/SComponent/c_xyz.h"
+
+#include <imgui.h>
 
 namespace dusk {
     void ImGuiMenuTools::ShowCameraOverlay() {
@@ -64,10 +67,15 @@ namespace dusk {
             if (eventRunning) {
                 ImGui::SetTooltip("Cannot enable while paused or during an active event.");
             } else {
-                ImGui::SetTooltip("Detach camera and fly freely.\n"
-                                  "WASD/Arrows/Left stick: move, Mouse/C-stick: look\n"
-                                  "Ctrl/L: down, Space/R: up, Shift/Z: fast\n"
-                                "Q Key/Y: roll left, R Key/X: roll right");
+                ImGui::SetTooltip("Detach camera and fly freely.\n\n"
+                                  "Controls:\n"
+                                  "WASD/Arrows/Left stick - Move\n"
+                                  "Right Click+Mouse/C-stick - Look\n"
+                                  "Ctrl/L - Down\n"
+                                  "Space/R - Up\n"
+                                  "Shift/Z - Faster\n"
+                                  "Q Key/Y - Roll Left\n"
+                                  "R Key/X - Roll Right");
             }
         }
         if (eventRunning) {

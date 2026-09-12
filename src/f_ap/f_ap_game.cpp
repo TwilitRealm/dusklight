@@ -1,36 +1,37 @@
 #include "f_ap/f_ap_game.h"
-#include <cstring>
-#include "DynamicLink.h"
-#include "JSystem/J3DGraphLoader/J3DModelLoader.h"
-#include "JSystem/J3DGraphLoader/J3DModelSaver.h"
-#include "JSystem/JHostIO/JORFile.h"
-#include "JSystem/JKernel/JKRAram.h"
-#include "JSystem/JKernel/JKRAramArchive.h"
-#include "JSystem/JKernel/JKRSolidHeap.h"
-#include "JSystem/JUtility/JUTDbPrint.h"
 #include "SSystem/SComponent/c_counter.h"
-#include "d/actor/d_a_alink.h"
-#include "d/actor/d_a_grass.h"
-#include "d/actor/d_a_midna.h"
-#include "d/d_model.h"
-#include "d/d_tresure.h"
-#include "dusk/achievements.h"
-#include "dusk/frame_interpolation.h"
-#include "dusk/livesplit.h"
-#include "dusk/logging.h"
-#include "dusk/mod_loader.hpp"
 #include "f_op/f_op_camera_mng.h"
 #include "f_op/f_op_draw_tag.h"
 #include "f_op/f_op_overlap_mng.h"
 #include "f_op/f_op_scene_mng.h"
-#include "m_Do/m_Do_graphic.h"
 #include "m_Do/m_Do_main.h"
+#include "m_Do/m_Do_graphic.h"
+#include "DynamicLink.h"
+#include "JSystem/JKernel/JKRSolidHeap.h"
+#include "JSystem/JKernel/JKRAram.h"
+#include "JSystem/JKernel/JKRAramArchive.h"
+#include "JSystem/JUtility/JUTDbPrint.h"
+#include "JSystem/JHostIO/JORFile.h"
+#include "JSystem/J3DGraphLoader/J3DModelLoader.h"
+#include "JSystem/J3DGraphLoader/J3DModelSaver.h"
+#include "d/actor/d_a_alink.h"
+#include "d/actor/d_a_midna.h"
+#include "d/d_model.h"
+#include "d/actor/d_a_grass.h"
+#include "d/d_tresure.h"
+#include <cstring>
 
 #if TARGET_PC
-#include "tracy/Tracy.hpp"
-#include <dusk/gamepad_color.h>
-#include <dusk/autosave.h>
+#include "dusk/achievements.h"
+#include "dusk/autosave.h"
+#include "dusk/game_mode.hpp"
+#include "dusk/gamepad_color.h"
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/logging.h"
 #include "dusk/menu_pointer.h"
+#include "dusk/mod_loader.hpp"
+
+#include <tracy/Tracy.hpp>
 #endif
 
 fapGm_HIO_c::fapGm_HIO_c() {
@@ -734,15 +735,15 @@ void fapGm_After() {
 
 #ifdef TARGET_PC
 static void fapGm_Before() {
-    dusk::frame_interp::begin_record();
+    dusk::interp::begin_record();
 }
 
 static void fapGm_AfterRecord() {
-    dusk::frame_interp::end_record();
+    dusk::interp::end_record();
     fapGm_After();
 }
 
-BOOL isRecording = false;
+DUSK_GAME_DATA BOOL isRecording = false;
 
 static void duskExecute() {
     dusk::menu_pointer::begin_game_frame();
@@ -759,23 +760,7 @@ static void duskExecute() {
         isRecording = false;
     }
 
-    if (mDoCPd_c::getHoldR(PAD_1) && mDoCPd_c::getTrigX(PAD_1)) {
-        if (const auto link = g_dComIfG_gameInfo.play.getPlayer(0)) {
-            dynamic_cast<daAlink_c*>(link)->handleWolfHowl();
-        }
-    }
 
-    if ((mDoCPd_c::getHold(PAD_1) & (PAD_TRIGGER_R | PAD_TRIGGER_L)) == PAD_TRIGGER_R && mDoCPd_c::getTrigY(PAD_1)) {
-        if (const auto link = g_dComIfG_gameInfo.play.getPlayer(0)) {
-            dynamic_cast<daAlink_c*>(link)->handleQuickTransform();
-        }
-    }
-
-    if (dusk::getSettings().game.moonJump && (mDoCPd_c::getHoldR(PAD_1) && mDoCPd_c::getHoldA(PAD_1))) {
-        if (const auto link = g_dComIfG_gameInfo.play.getPlayer(0)) {
-            link->speed.y = 56.0f;
-        }
-    }
 
     if (dusk::getSettings().game.fastSpinner && mDoCPd_c::getHoldR(PAD_1)) {
         if (const auto link = g_dComIfG_gameInfo.play.getPlayer(0)) {
@@ -844,14 +829,19 @@ void fapGm_Execute() {
 #endif
 
     cCt_Counter(0);
-#ifdef TARGET_PC
-    dusk::speedrun::onGameFrame();
+#if TARGET_PC
+    dComIfGp_particle_calcMenu();
+    const dusk::gamemode::GameMode* gameMode =
+        dusk::gamemode::getGameModeManager().getCurrentGameMode();
+    if (gameMode) {
+        gameMode->invokeOnTickFunction();
+    }
     dusk::AchievementSystem::get().tick();
     dusk::menu_pointer::end_game_frame();
 #endif
 }
 
-fapGm_HIO_c g_HIO;
+DUSK_GAME_DATA fapGm_HIO_c g_HIO;
 
 void fapGm_Create() {
     // unused, unknown purpose

@@ -60,10 +60,9 @@ public:
     u8 getSwBit1() { return fopAcM_GetParamBit(this, 12, 8); }
     s8 getNameNo() { return fopAcM_GetParamBit(this, 0, 4); }
 
-    static dCcD_SrcCyl const s_CcDCyl;
-    static exeProc s_exeProc[3];
+    static DUSK_GAME_DATA dCcD_SrcCyl const s_CcDCyl;
+    static DUSK_GAME_DATA exeProc s_exeProc[3];
     
-private:
     /* 0x568 */ int mVibrationTimer;
     /* 0x578 */ u8 mMode;
     /* 0x579 */ bool field_0x579;

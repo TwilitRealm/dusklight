@@ -71,7 +71,7 @@ protected:
 // Shared shell for small-style windows such as Modal and PresetWindow
 class WindowSmall : public Document {
 public:
-    WindowSmall(const Rml::String& windowClass, const Rml::String& dialogClass);
+    explicit WindowSmall(const Rml::String& windowClass);
 
     void show() override;
     void hide(bool close) override;

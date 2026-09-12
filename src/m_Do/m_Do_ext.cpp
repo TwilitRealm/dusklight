@@ -24,12 +24,28 @@
 #include "m_Do/m_Do_mtx.h"
 #include <cstdio>
 #include <cstring>
-#include "dusk/logging.h"
-#include "dusk/frame_interpolation.h"
 
-u8 mDoExt::CurrentHeapAdjustVerbose;
-u8 mDoExt::HeapAdjustVerbose;
-u8 mDoExt::HeapAdjustQuiet;
+#if TARGET_PC
+#include "dusk/game_clock.h"
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/line.h"
+#include "dusk/logging.h"
+#include "dusk/version.hpp"
+#endif
+
+DUSK_GAME_DATA u8 mDoExt::CurrentHeapAdjustVerbose;
+DUSK_GAME_DATA u8 mDoExt::HeapAdjustVerbose;
+DUSK_GAME_DATA u8 mDoExt::HeapAdjustQuiet;
+
+#if TARGET_PC
+namespace {
+enum InterpKind : u8 {
+    LINE_NONE,
+    LINE_UNIFORM_WIDTH,
+    LINE_PER_POINT_WIDTH,
+};
+}  // namespace
+#endif
 
 static void mDoExt_setJ3DData(Mtx mtx, const J3DTransformInfo* transformInfo, u16 param_2) {
     bool local_28;
@@ -309,6 +325,11 @@ static void mDoExt_modelDiff(J3DModel* i_model) {
     modelMtxErrorCheck(i_model);
     i_model->calcMaterial();
     i_model->diff();
+#if TARGET_PC
+    if (!dusk::game_clock::is_sim_frame()) {
+        return;
+    }
+#endif
     i_model->entry();
 }
 
@@ -351,10 +372,11 @@ void mDoExt_modelUpdateDL(J3DModel* i_model) {
 
 void mDoExt_modelEntryDL(J3DModel* i_model) {
 #if TARGET_PC
-    if (!dusk::frame_interp::is_sim_frame()) {
+    if (!dusk::game_clock::is_sim_frame()) {
         // FRAME INTERP NOTE: This fixes issue #355 where some lights would flicker.
         // This is likely better solved by updating J3DMaterial::needsInterpCallBack,
         // but it's unclear what exactly needs to be added.
+        i_model->calcMaterial();
         i_model->diff();
         return;
     }
@@ -691,7 +713,7 @@ JKRExpHeap* mDoExt_getDbPrintHeap() {
     return DbPrintHeap;
 }
 
-JKRExpHeap* gameHeap;
+DUSK_GAME_DATA JKRExpHeap* gameHeap;
 static intptr_t safeGameHeapSize = -1;
 
 JKRExpHeap* mDoExt_createGameHeap(u32 heapSize, JKRHeap* parentHeap) {
@@ -724,8 +746,8 @@ size_t mDoExt_getSafeGameHeapSize() {
     return safeGameHeapSize;
 }
 
-JKRExpHeap* zeldaHeap;
-intptr_t safeZeldaHeapSize = -1;
+DUSK_GAME_DATA JKRExpHeap* zeldaHeap;
+DUSK_GAME_DATA intptr_t safeZeldaHeapSize = -1;
 
 JKRExpHeap* mDoExt_createZeldaHeap(u32 heapSize, JKRHeap* parentHeap) {
     JUT_ASSERT(1815, zeldaHeap == NULL || heapSize == 0);
@@ -758,8 +780,8 @@ intptr_t mDoExt_getSafeZeldaHeapSize() {
     return safeZeldaHeapSize;
 }
 
-JKRExpHeap* commandHeap;
-intptr_t safeCommandHeapSize = -1;
+DUSK_GAME_DATA JKRExpHeap* commandHeap;
+DUSK_GAME_DATA intptr_t safeCommandHeapSize = -1;
 
 JKRExpHeap* mDoExt_createCommandHeap(u32 heapSize, JKRHeap* parentHeap) {
     JUT_ASSERT(1894, commandHeap == 0 || heapSize == 0);
@@ -785,8 +807,8 @@ intptr_t mDoExt_getSafeCommandHeapSize() {
     return safeCommandHeapSize;
 }
 
-JKRExpHeap* archiveHeap;
-intptr_t safeArchiveHeapSize = -1;
+DUSK_GAME_DATA JKRExpHeap* archiveHeap;
+DUSK_GAME_DATA intptr_t safeArchiveHeapSize = -1;
 
 JKRExpHeap* mDoExt_createArchiveHeap(u32 heapSize, JKRHeap* parentHeap) {
     JUT_ASSERT(1966, archiveHeap == 0 || heapSize == 0);
@@ -824,7 +846,7 @@ JKRExpHeap* mDoExt_getArchiveHeapPtr() {
 }
 
 static JKRExpHeap* j2dHeap;
-intptr_t safeJ2dHeapSize = -1;
+DUSK_GAME_DATA intptr_t safeJ2dHeapSize = -1;
 
 JKRExpHeap* mDoExt_createJ2dHeap(u32 heapSize, JKRHeap* parentHeap) {
     JUT_ASSERT(2059, j2dHeap == 0 || heapSize == 0);
@@ -2238,7 +2260,7 @@ void mDoExt_invJntPacket::draw() {
             } while (shapePkt != NULL);
         }
     } else {
-        static u8 l_invisibleMat[] ATTRIBUTE_ALIGN(32) = {
+        ATTRIBUTE_ALIGN(32) static u8 l_invisibleMat[] = {
             0x10, 0x00, 0x00, 0x10, 0x0E, 0x00, 0x00, 0x04, 0x00, 0x10, 0x00, 0x00, 0x10, 0x10, 0x00,
             0x00, 0x04, 0x00, 0x61, 0x28, 0x38, 0x00, 0x00, 0x61, 0xC0, 0x08, 0xFF, 0xFC, 0x61, 0xC1,
             0x08, 0xFF, 0xF0, 0x61, 0xF3, 0x7F, 0x00, 0x00, 0x61, 0x43, 0x00, 0x00, 0x41, 0x61, 0x40,
@@ -2353,10 +2375,16 @@ int mDoExt_3DlineMat0_c::init(u16 param_0, u16 param_1, int param_2) {
 
     field_0x4 = NULL;
     field_0x16 = 0;
+#if TARGET_PC
+    mInterpWidth = 0.0f;
+    mInterpTaper = 0;
+    mInterpKind = LINE_NONE;
+    dusk::interp::line::reset(this);
+#endif
     return 1;
 }
 
-static u8 l_matDL[132] ATTRIBUTE_ALIGN(32) = {
+ATTRIBUTE_ALIGN(32) static u8 l_matDL[132] = {
     0x08, 0x30, 0x3C, 0xF3, 0xCF, 0x00, 0x10, 0x00, 0x00, 0x10, 0x18, 0x3C, 0xF3, 0xCF, 0x00,
     0x10, 0x00, 0x00, 0x10, 0x0E, 0x00, 0x00, 0x7F, 0x32, 0x10, 0x00, 0x00, 0x10, 0x10, 0x00,
     0x00, 0x05, 0x00, 0x10, 0x00, 0x00, 0x10, 0x0C, 0xFF, 0xFF, 0xFF, 0xFF, 0x61, 0x28, 0x38,
@@ -2412,7 +2440,7 @@ void mDoExt_3DlineMat0_c::draw() {
     }
 
 #if TARGET_PC
-    if (!dusk::frame_interp::is_enabled())
+    if (!dusk::interp::is_enabled())
 #endif
     {
         field_0x16 ^= (u8)1;
@@ -2431,6 +2459,12 @@ void mDoExt_3DlineMat0_c::update(int param_0, f32 param_1, GXColor& param_2, u16
     } else {
         field_0x14 = (u16)param_0;
     }
+
+#if TARGET_PC
+    mInterpWidth = param_1;
+    mInterpTaper = param_3;
+    mInterpKind = LINE_UNIFORM_WIDTH;
+#endif
 
     view_class* sp_2c = dComIfGd_getView();
 
@@ -2550,6 +2584,8 @@ void mDoExt_3DlineMat0_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
         field_0x14 = (u16)param_0;
     }
 
+    IF_DUSK(mInterpKind = LINE_PER_POINT_WIDTH);
+
     view_class* sp_34 = dComIfGd_getView();
 
     mDoExt_3Dline_c* sp_30 = field_0x18;
@@ -2667,7 +2703,10 @@ int mDoExt_3DlineMat1_c::init(u16 param_0, u16 param_1, ResTIMG* param_2, int pa
     field_0x4 = 0;
     mIsDrawn = 0;
 #if TARGET_PC
-    mInterpLineKind = 0;
+    mInterpWidth = 0.0f;
+    mInterpTaper = 0;
+    mInterpKind = LINE_NONE;
+    dusk::interp::line::reset(this);
 #endif
 
     GXInitTexObj(&mTextureObject, (void*)((intptr_t)param_2 + param_2->imageOffset), param_2->width,
@@ -2681,7 +2720,7 @@ int mDoExt_3DlineMat1_c::init(u16 param_0, u16 param_1, ResTIMG* param_2, int pa
     return 1;
 }
 
-static u8 l_mat1DL[141] ATTRIBUTE_ALIGN(32) = {
+ATTRIBUTE_ALIGN(32) static u8 l_mat1DL[141] = {
     0x10, 0x00, 0x00, 0x10, 0x40, 0xFF, 0xFF, 0x42, 0x80, 0x08, 0x30, 0x3C, 0xF3, 0xCF, 0x00, 0x10,
     0x00, 0x00, 0x10, 0x18, 0x3C, 0xF3, 0xCF, 0x00, 0x10, 0x00, 0x00, 0x10, 0x0E, 0x00, 0x00, 0x7F,
     0x32, 0x10, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x05, 0x00, 0x10, 0x00, 0x00, 0x10, 0x0C, 0xFF,
@@ -2744,18 +2783,14 @@ void mDoExt_3DlineMat1_c::draw() {
     }
     GXSetTexCoordScaleManually(GX_TEXCOORD0, 0, 0, 0);
 #if TARGET_PC
-    if (!dusk::frame_interp::is_enabled())
+    if (!dusk::interp::is_enabled())
 #endif
     {
         mIsDrawn ^= (u8)1;
     }
 }
 
-#if TARGET_PC
-void mDoExt_3DlineMat1_c::update(int param_0, f32 param_1, GXColor& param_2, u16 param_3, dKy_tevstr_c* param_4, const cXyz* presentationEye) {
-#else
 void mDoExt_3DlineMat1_c::update(int param_0, f32 param_1, GXColor& param_2, u16 param_3, dKy_tevstr_c* param_4) {
-#endif
     mColor = param_2;
     this->mpTevStr = param_4;
     if (param_0 < 0) {
@@ -2767,9 +2802,9 @@ void mDoExt_3DlineMat1_c::update(int param_0, f32 param_1, GXColor& param_2, u16
     }
 
 #if TARGET_PC
-    mInterpLineKind = 1;
-    mInterpLineF = param_1;
-    mInterpLineU16 = param_3;
+    mInterpWidth = param_1;
+    mInterpTaper = param_3;
+    mInterpKind = LINE_UNIFORM_WIDTH;
 #endif
 
     view_class* sp_3c = dComIfGd_getView();
@@ -2825,12 +2860,7 @@ void mDoExt_3DlineMat1_c::update(int param_0, f32 param_1, GXColor& param_2, u16
             local_f31 += local_f30 * 0.02f * (8.0f / param_1);
         }
 
-#if TARGET_PC
-        const cXyz& lineEye = (presentationEye != nullptr && dusk::frame_interp::is_enabled()) ? *presentationEye : sp_3c->lookat.eye;
-        sp_13c = *local_r27 - lineEye;
-#else
         sp_13c = *local_r27 - sp_3c->lookat.eye;
-#endif
         sp_130 = sp_130.outprod(sp_13c);
         sp_130.normalizeZP();
 
@@ -2865,11 +2895,7 @@ void mDoExt_3DlineMat1_c::update(int param_0, f32 param_1, GXColor& param_2, u16
                 local_f31 += local_f30 * 0.02f * (8.0f / param_1);
             }
 
-#if TARGET_PC
-            sp_13c = local_r27[0] - lineEye;
-#else
             sp_13c = local_r27[0] - sp_3c->lookat.eye;
-#endif
             sp_130 = sp_130.outprod(sp_13c);
             sp_130.normalizeZP();
 
@@ -2942,11 +2968,7 @@ void mDoExt_3DlineMat2_c::setMaterial() {
     GXLoadNrmMtxImm(cMtx_getIdentity(), 0);
 }
 
-#if TARGET_PC
-void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* param_4, const cXyz* presentationEye) {
-#else
-void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* param_4
-#endif
+void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* param_4) {
     mColor = param_2;
     this->mpTevStr = param_4;
     if (param_0 < 0) {
@@ -2957,9 +2979,7 @@ void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
         field_0x34 = param_0;
     }
 
-#if TARGET_PC
-    mInterpLineKind = 2;
-#endif
+    IF_DUSK(mInterpKind = LINE_PER_POINT_WIDTH);
 
     view_class* stack_3c = dComIfGd_getView();
     mDoExt_3Dline_c* sp_38 = mpLines;
@@ -2986,12 +3006,6 @@ void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
     for (s32 sp_14 = 0; sp_14 < mNumLines; sp_14++) {
         local_r27 = sp_38[0].field_0x0;
         size_p = sp_38->field_0x4;
-#if TARGET_PC
-        if (presentationEye != nullptr && dusk::frame_interp::is_enabled() && size_p == NULL) {
-            sp_38 += 1;
-            continue;
-        }
-#endif
         JUT_ASSERT(5875, size_p != NULL);
         sp_24 = sp_38->field_0x8[mIsDrawn];
         sp_28 = sp_24;
@@ -3005,12 +3019,7 @@ void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
         sp_130 = local_r27[1] - local_r27[0];
         local_f30 = sp_130.abs();
         local_f31 += local_f30 * 0.1f;
-#if TARGET_PC
-        const cXyz& lineEye = (presentationEye != nullptr && dusk::frame_interp::is_enabled()) ? *presentationEye : stack_3c->lookat.eye;
-        sp_13c = local_r27[0] - lineEye;
-#else
         sp_13c = local_r27[0] - stack_3c->lookat.eye;
-#endif
         sp_130 = sp_130.outprod(sp_13c);
         sp_130.normalizeZP();
         local_r30->x = sp_130.x * 64.0f;
@@ -3032,11 +3041,7 @@ void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
             sp_130 = local_r27[1] - local_r27[0];
             local_f30 = sp_130.abs();
             local_f31 += local_f30 * 0.1f;
-#if TARGET_PC
-            sp_13c = local_r27[0] - lineEye;
-#else
             sp_13c = local_r27[0] - stack_3c->lookat.eye;
-#endif
             sp_130 = sp_130.outprod(sp_13c);
             sp_130.normalizeZP();
             local_r30 += 2;
@@ -3081,15 +3086,41 @@ void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
 }
 
 #if TARGET_PC
-void mDoExt_3DlineMat1_c::refreshGeometryForPresentationEye(const cXyz& eye) {
-    if (!dusk::frame_interp::is_enabled()) {
+namespace {
+
+template <typename Material>
+void refresh_3dline_geometry(Material* material, dusk::interp::line::Points points, u8 kind,
+                             f32 width, u16 taper, GXColor& color, dKy_tevstr_c* tevStr) {
+    if (!dusk::interp::is_enabled()) {
         return;
     }
-    if (mInterpLineKind == 1) {
-        update(field_0x34, mInterpLineF, mColor, mInterpLineU16, mpTevStr, &eye);
-    } else if (mInterpLineKind == 2) {
-        update(field_0x34, mColor, mpTevStr, &eye);
+
+    dusk::interp::line::write(material, points);
+    if (kind == LINE_UNIFORM_WIDTH) {
+        material->update(points.point_count, width, color, taper, tevStr);
+    } else if (kind == LINE_PER_POINT_WIDTH) {
+        material->update(points.point_count, color, tevStr);
     }
+}
+
+}  // namespace
+
+void mDoExt_3DlineMat0_c::captureInterpPoints() {
+    dusk::interp::line::capture(this, {field_0x18, field_0x10, field_0x14});
+}
+
+void mDoExt_3DlineMat0_c::refreshGeometryForPresentation() {
+    refresh_3dline_geometry(this, {field_0x18, field_0x10, field_0x14}, mInterpKind,
+                            mInterpWidth, mInterpTaper, field_0x8, field_0xc);
+}
+
+void mDoExt_3DlineMat1_c::captureInterpPoints() {
+    dusk::interp::line::capture(this, {mpLines, mNumLines, field_0x34});
+}
+
+void mDoExt_3DlineMat1_c::refreshGeometryForPresentation() {
+    refresh_3dline_geometry(this, {mpLines, mNumLines, field_0x34}, mInterpKind,
+                            mInterpWidth, mInterpTaper, mColor, mpTevStr);
 }
 #endif
 
@@ -3099,6 +3130,7 @@ void mDoExt_3DlineMatSortPacket::setMat(mDoExt_3DlineMat_c* i_3DlineMat) {
     }
     i_3DlineMat->field_0x4 = mp3DlineMat;
     mp3DlineMat = i_3DlineMat;
+    IF_DUSK(i_3DlineMat->captureInterpPoints());
 }
 
 void mDoExt_3DlineMatSortPacket::draw() {
@@ -3645,12 +3677,22 @@ void mDoExt_cylinderMPacket::draw() {
     GXSetCullMode(GX_CULL_BACK);
     GXSetClipMode(GX_CLIP_ENABLE);
 
+#if TARGET_PC
+    Mtx modelViewMtx;
+    cMtx_concat(j3dSys.getViewMtx(), mMatrix, modelViewMtx);
+    GXLoadPosMtxImm(modelViewMtx, 0);
+
+    Mtx normalMtx;
+    cMtx_inverseTranspose(modelViewMtx, normalMtx);
+    GXLoadNrmMtxImm(normalMtx, 0);
+#else
     cMtx_concat(j3dSys.getViewMtx(), mMatrix, mMatrix);
 
     GXLoadPosMtxImm(mMatrix, 0);
     cMtx_inverseTranspose(mMatrix, mMatrix);
 
     GXLoadNrmMtxImm(mMatrix, 0);
+#endif
     GXSetCurrentMtx(0);
 
     GXDrawCylinder(8);
@@ -3711,7 +3753,15 @@ static ResFONT* mDoExt_resfont0;
 
 static void mDoExt_initFont0() {
     static char const fontdata[] = "rodan_b_24_22.bfn";
-#if REGION_JPN
+#if TARGET_PC
+    if (dusk::version::isRegionJpn()) {
+        mDoExt_initFontCommon(&mDoExt_font0, &mDoExt_resfont0, mDoExt_getZeldaHeap(),
+                              fontdata, dComIfGp_getFontArchive(), 0, 200, 512);
+    } else {
+        mDoExt_initFontCommon(&mDoExt_font0, &mDoExt_resfont0, mDoExt_getZeldaHeap(),
+                              fontdata, dComIfGp_getFontArchive(), 1, 0, 0);
+    }
+#elif REGION_JPN
     mDoExt_initFontCommon(&mDoExt_font0, &mDoExt_resfont0, mDoExt_getZeldaHeap(),
                           fontdata, dComIfGp_getFontArchive(), 0, 200, 512);
 #else
@@ -3738,7 +3788,13 @@ void mDoExt_removeMesgFont() {
             JKR_DELETE(mDoExt_font0);
             mDoExt_font0 = NULL;
             if (mDoExt_resfont0 != NULL) {
-#if REGION_JPN
+#if TARGET_PC
+                if (dusk::version::isRegionJpn()) {
+                    JKRFileLoader::removeResource(mDoExt_resfont0, NULL);
+                } else {
+                    JKRFree(mDoExt_resfont0);
+                }
+#elif REGION_JPN
                 JKRFileLoader::removeResource(mDoExt_resfont0, NULL);
 #else
                 JKRFree(mDoExt_resfont0);
@@ -3850,7 +3906,7 @@ J3DModel* mDoExt_J3DModel__create(J3DModelData* i_modelData, u32 i_modelFlag, u3
     return NULL;
 }
 
-DummyCheckHeap* dch;
+DUSK_GAME_DATA DummyCheckHeap* dch;
 
 DummyCheckHeap::DummyCheckHeap() {
     mAlloc = NULL;
@@ -3958,7 +4014,7 @@ void DummyCheckHeap_check() {
     }
 }
 
-u32 aram_cache_size;
+DUSK_GAME_DATA u32 aram_cache_size;
 
 u32 mDoExt_getAraCacheSize() {
     return aram_cache_size;

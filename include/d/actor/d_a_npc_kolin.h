@@ -18,7 +18,7 @@ class daNpc_Kolin_Param_c {
 public:
     virtual ~daNpc_Kolin_Param_c() {}
 
-    static daNpc_Kolin_HIOParam const m;
+    static DUSK_GAME_DATA daNpc_Kolin_HIOParam const m;
 };
 
 #if DEBUG
@@ -120,8 +120,8 @@ public:
     virtual void changeAnm(int*, int*);
     virtual void changeBck(int*, int*);
 
-    static char DUSK_CONST* DUSK_CONST mCutNameList[11];
-    static cutFunc DUSK_CONST mCutList[11];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mCutNameList[11];
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mCutList[11];
 
     u32 getFlowNodeNo() {
         u16 nodeNo = home.angle.x;
@@ -161,7 +161,6 @@ public:
         return 0;
     }
 
-private:
     /* 0x0E40 */ NPC_KOLIN_HIO_CLASS* mpHIO;
     /* 0x0E44 */ J3DModel* mpClothModel;
     /* 0x0E48 */ dCcD_Cyl field_0xe48;

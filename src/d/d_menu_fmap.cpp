@@ -1,29 +1,34 @@
 #include "d/dolzel.h" // IWYU pragma: keep
 
-#include <cstdio>
-#include <cstring>
+#include "d/d_menu_fmap.h"
+#include "SSystem/SComponent/c_math.h"
 #include "JSystem/JKernel/JKRAramArchive.h"
 #include "JSystem/JKernel/JKRExpHeap.h"
 #include "JSystem/JKernel/JKRMemArchive.h"
-#include "SSystem/SComponent/c_math.h"
-#include "d/actor/d_a_midna.h"
-#include "d/actor/d_a_player.h"
+#include <cstdio>
+#include <cstring>
+#include "f_op/f_op_msg_mng.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_lib.h"
-#include "d/d_menu_fmap.h"
 #include "d/d_menu_fmap2D.h"
 #include "d/d_menu_fmap_map.h"
 #include "d/d_menu_window.h"
-#include "d/d_meter2_draw.h"
-#include "d/d_meter2_info.h"
 #include "d/d_meter_HIO.h"
 #include "d/d_meter_map.h"
+#include "d/d_meter2_draw.h"
+#include "d/d_meter2_info.h"
 #include "d/d_msg_object.h"
 #include "d/d_msg_scrn_explain.h"
 #include "d/d_stage.h"
+#include "d/actor/d_a_player.h"
+#include "d/actor/d_a_midna.h"
+
+#if TARGET_PC
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/memory.h"
-#include "dusk/string.hpp"
-#include "f_op/f_op_msg_mng.h"
+#include "dusk/version.hpp"
+#include "helpers/string.hpp"
+#endif
 
 static dMf_HIO_c g_fmHIO;
 
@@ -93,7 +98,7 @@ static dMenu_Fmap_c::process move_process[30] = {
     &dMenu_Fmap_c::howl_demo3_move,
 };
 
-dMf_HIO_c* dMf_HIO_c::mMySelfPointer;
+DUSK_GAME_DATA dMf_HIO_c* dMf_HIO_c::mMySelfPointer;
 
 dMf_HIO_c::dMf_HIO_c() {
     mMySelfPointer = this;
@@ -136,7 +141,7 @@ const char* dMenuFmap_getStartStageName(void* i_fieldData) {
     return dComIfGp_getStartStageName();
 }
 
-dMenu_Fmap_c* dMenu_Fmap_c::MyClass;
+DUSK_GAME_DATA dMenu_Fmap_c* dMenu_Fmap_c::MyClass;
 
 dMenu_Fmap_c::dMenu_Fmap_c(JKRExpHeap* i_heap, STControl* i_stick, CSTControl* i_cstick,
                            u8 i_process, u8 i_regionCursor, u8 i_stageCursor, f32 i_stageTransX,
@@ -778,7 +783,6 @@ void dMenu_Fmap_c::all_map_proc() {
             {
                 setAreaName(mTitleName[mpDraw2DBack->getSelectRegion()]);
                 mpDraw2DBack->setSpotCursor(0);
-
             } else {
                 setAreaNameZero();
             }
@@ -1148,7 +1152,7 @@ void dMenu_Fmap_c::zoom_spot_to_region_init() {
     field_0x1ec = 1.0f;
 #if TARGET_PC
     // Frame interp note: field_0x122d used to be set every draw, causing flickering. Do it here instead.
-    if (dusk::frame_interp::is_enabled()) {
+    if (dusk::interp::is_enabled()) {
         mpDraw2DBack->resetScrollArrowMask();
     }
 #endif
@@ -1213,7 +1217,8 @@ void dMenu_Fmap_c::spot_map_proc() {
     {
         mpDraw2DBack->stageMapMove(mpStick, 1, true);
     } else if (dMw_Z_TRIGGER() && mpDraw2DTop->isWarpAccept()) {
-#if VERSION >= VERSION_GCN_JPN
+#if TARGET_PC || VERSION >= VERSION_GCN_JPN
+        IF_DUSK_BLOCK(dusk::version::isRegionJpn())
         //! JPN version added a check to make sure if Arbiter's Grounds is cleared that
         //! the Mirror Chamber Statue has been spun before allowing portal warping from the map screen.
         if (dComIfGs_isEventBit(dSv_event_flag_c::saveBitLabels[265]) && !dComIfGs_isEventBit(dSv_event_flag_c::saveBitLabels[361])) {
@@ -1223,7 +1228,7 @@ void dMenu_Fmap_c::spot_map_proc() {
             mPrevProcessAlt = mProcess;
             setProcess(PROC_PORTAL_WARP_FORBID);
             Z2GetAudioMgr()->seStart(Z2SE_SYS_ERROR, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
-        } else 
+        } IF_DUSK_BLOCK_END else
 #endif
         if (mpDraw2DTop->checkPlayerWarpAccept()) {
             mIsWarpMap = true;
@@ -1267,7 +1272,7 @@ void dMenu_Fmap_c::spot_map_proc() {
         f32 pos_y = mpDraw2DBack->getMapAreaGlobalCenterPosY() - mDoGph_gInf_c::getHeightF() * 0.5f;
         mpMenuFmapMap->getPointStagePathInnerNo(getNowFmapRegionData(), pos_x, pos_y,
                                                 mStayStageNo, &stage_no, &room_no);
-        
+
         if (mStageCursor != stage_no || mResetAreaName) {
             mStageCursor = stage_no;
             mRoomCursor = room_no;

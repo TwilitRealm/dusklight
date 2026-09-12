@@ -32,7 +32,7 @@ static void dummy1(mDoExt_btkAnm* btk, cXyz& pos) {
     dDbVw_drawLineOpa(pos, pos, color, 0, 0);
 }
 
-Quaternion ZeroQuat = {
+DUSK_GAME_DATA Quaternion ZeroQuat = {
     0.0f,
     0.0f,
     0.0f,
@@ -300,7 +300,7 @@ BOOL dLib_checkActorInRectangle(fopAc_ac_c* param_0, fopAc_ac_c* param_1, cXyz c
 }
 
 u32 dLib_getExpandSizeFromAramArchive(JKRAramArchive* i_aramArchive, char const* param_2) {
-    u8 header[32] ATTRIBUTE_ALIGN(32);
+    ATTRIBUTE_ALIGN(32) u8 header[32];
     JUT_ASSERT(1252, i_aramArchive != NULL);
     u32 address = i_aramArchive->getAramAddress(param_2);
     if (address == 0) {
@@ -311,16 +311,21 @@ u32 dLib_getExpandSizeFromAramArchive(JKRAramArchive* i_aramArchive, char const*
     JUT_ASSERT(1260, readAddress == header);
     JKRArchive::SDIFileEntry* entry = i_aramArchive->findFsResource(param_2, 0);
     JUT_ASSERT(1263, entry != NULL);
+#if TARGET_PC
+    if (u32 size; i_aramArchive->getOverlayFileSize(entry, &size)) {
+        return ALIGN_NEXT(size, 32);
+    }
+#endif
     u32 uVar1 = ALIGN_NEXT(JKRDecompExpandSize(header), 32);
     u32 uVar5 = ALIGN_NEXT(entry->data_size, 32);
     return uVar1 > uVar5 ? uVar1 : uVar5;
 }
 
-OSTime dLib_time_c::m_diffTime;
+DUSK_GAME_DATA OSTime dLib_time_c::m_diffTime;
 
-OSTime dLib_time_c::m_stopTime;
+DUSK_GAME_DATA OSTime dLib_time_c::m_stopTime;
 
-bool dLib_time_c::m_timeStopped;
+DUSK_GAME_DATA bool dLib_time_c::m_timeStopped;
 
 OSTime dLib_time_c::getTime() {
     if (!m_timeStopped) {

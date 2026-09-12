@@ -1,0 +1,43 @@
+#pragma once
+
+#include <mods/api.h>
+
+#ifdef __cplusplus
+#include <mods/service.hpp>
+#endif
+
+/*
+ * Logging into the game's console and log files. Messages are attributed to the calling mod
+ * (prefixed with its ID).
+ */
+
+#define LOG_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "log"
+#define LOG_SERVICE_MAJOR 1u
+#define LOG_SERVICE_MINOR 0u
+
+typedef enum LogLevel {
+    LOG_LEVEL_TRACE = 0,
+    LOG_LEVEL_DEBUG = 1,
+    LOG_LEVEL_INFO = 2,
+    LOG_LEVEL_WARN = 3,
+    LOG_LEVEL_ERROR = 4,
+} LogLevel;
+
+typedef struct LogService {
+    ServiceHeader header;
+
+    /*
+     * Write a log message at the given level.
+     * `message` is a plain UTF-8 string and is copied before returning.
+     */
+    void (*write)(ModContext* ctx, LogLevel level, const char* message);
+
+    /* Per-level shorthands for write. */
+    void (*trace)(ModContext* ctx, const char* message);
+    void (*debug)(ModContext* ctx, const char* message);
+    void (*info)(ModContext* ctx, const char* message);
+    void (*warn)(ModContext* ctx, const char* message);
+    void (*error)(ModContext* ctx, const char* message);
+} LogService;
+
+MOD_DECLARE_SERVICE(LogService, svc_log, LOG_SERVICE_ID, LOG_SERVICE_MAJOR, LOG_SERVICE_MINOR);

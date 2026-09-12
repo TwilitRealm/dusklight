@@ -8,7 +8,9 @@
 #include "JSystem/JKernel/JKRSolidHeap.h"
 #include <cstring>
 
-#include "dusk/string.hpp"
+#if TARGET_PC
+#include "helpers/string.hpp"
+#endif
 
 void dBgp_c::material_c::draw() {
     material_c* material = this;
@@ -222,8 +224,8 @@ dBgp_c::share_c::share_c() {
     mCount = 0;
 }
 
-JKRSolidHeap* dBgp_c::mShareHeap;
-dBgp_c::share_c* dBgp_c::mShare;
+DUSK_GAME_DATA JKRSolidHeap* dBgp_c::mShareHeap;
+DUSK_GAME_DATA dBgp_c::share_c* dBgp_c::mShare;
 
 void dBgp_c::share_c::set(u16 i_id) {
     JUT_ASSERT(441, mCount != static_cast<u16>(~0));

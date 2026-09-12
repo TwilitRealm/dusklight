@@ -10,9 +10,10 @@
 #include <gx.h>
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
+
+#include <tracy/Tracy.hpp>
 #endif
-#include "tracy/Tracy.hpp"
 
 #if TARGET_PC
 #define JPA_DRAW_CTX_PARAM , ParticleDrawCtx* ctx
@@ -551,7 +552,7 @@ static void submit_particle_quad(
 void JPAInterpBillboard(JPAEmitterWorkData* work, JPABaseParticle* ptcl) {
     Mtx ptclPosMtx;
     MTXTrans(ptclPosMtx, ptcl->mPosition.x, ptcl->mPosition.y, ptcl->mPosition.z);
-    dusk::frame_interp::record_final_mtx(ptclPosMtx, ptcl);
+    dusk::interp::record_final_mtx(ptclPosMtx, ptcl);
 }
 
 void JPAInterpRotBillboard(JPAEmitterWorkData* work, JPABaseParticle* ptcl) {
@@ -563,7 +564,7 @@ void JPAInterpRotBillboard(JPAEmitterWorkData* work, JPABaseParticle* ptcl) {
     ptclPosMtx[0][1] = -sinRot;
     ptclPosMtx[1][0] = sinRot;
     ptclPosMtx[1][1] = cosRot;
-    dusk::frame_interp::record_final_mtx(ptclPosMtx, ptcl);
+    dusk::interp::record_final_mtx(ptclPosMtx, ptcl);
 }
 #endif
 
@@ -576,7 +577,7 @@ void JPADrawBillboard(JPAEmitterWorkData* work, JPABaseParticle* ptcl JPA_DRAW_C
     JGeometry::TVec3<f32> pos;
 #if TARGET_PC
     Mtx ptclPosMtx;
-    if (dusk::frame_interp::lookup_replacement(ptcl, ptclPosMtx)) {
+    if (dusk::interp::lookup_replacement(ptcl, ptclPosMtx)) {
         pos.set(ptclPosMtx[0][3], ptclPosMtx[1][3], ptclPosMtx[2][3]);
         MTXMultVec(work->mPosCamMtx, &pos, &pos);
     } else
@@ -616,7 +617,7 @@ void JPADrawRotBillboard(JPAEmitterWorkData* work, JPABaseParticle* ptcl JPA_DRA
 #if TARGET_PC
     Mtx ptclPosMtx;
     MTXTrans(ptclPosMtx, ptcl->mPosition.x, ptcl->mPosition.y, ptcl->mPosition.z);
-    if (dusk::frame_interp::lookup_replacement(ptcl, ptclPosMtx)) {
+    if (dusk::interp::lookup_replacement(ptcl, ptclPosMtx)) {
         pos.set(ptclPosMtx[0][3], ptclPosMtx[1][3], ptclPosMtx[2][3]);
         sinRot = ptclPosMtx[1][0];
         cosRot = ptclPosMtx[0][0];
@@ -993,7 +994,7 @@ void JPAInterpDirection(JPAEmitterWorkData* work, JPABaseParticle* ptcl) {
     posMtx[2][2] = axisZ.z;
     posMtx[2][3] = ptcl->mPosition.z;
     p_plane[work->mPlaneType](posMtx, scaleX, scaleY);
-    dusk::frame_interp::record_final_mtx(posMtx, ptcl);
+    dusk::interp::record_final_mtx(posMtx, ptcl);
 }
 
 void JPAInterpRotDirection(JPAEmitterWorkData* work, JPABaseParticle* ptcl) {
@@ -1036,7 +1037,7 @@ void JPAInterpRotDirection(JPAEmitterWorkData* work, JPABaseParticle* ptcl) {
     mtx2[2][2] = axisZ.z;
     mtx2[2][3] = ptcl->mPosition.z;
     MTXConcat(mtx2, mtx1, mtx1);
-    dusk::frame_interp::record_final_mtx(mtx1, ptcl);
+    dusk::interp::record_final_mtx(mtx1, ptcl);
 }
 #endif
 
@@ -1049,7 +1050,7 @@ void JPADrawDirection(JPAEmitterWorkData* work, JPABaseParticle* ptcl JPA_DRAW_C
 
     Mtx posMtx;
 #if TARGET_PC
-    if (!dusk::frame_interp::lookup_replacement(ptcl, posMtx) &&
+    if (!dusk::interp::lookup_replacement(ptcl, posMtx) &&
         !make_direction_mtx(work, ptcl, posMtx))
     {
         return;
@@ -1112,7 +1113,7 @@ void JPADrawRotDirection(JPAEmitterWorkData* work, JPABaseParticle* ptcl JPA_DRA
     Mtx mtx1;
     Mtx mtx2;
 #if TARGET_PC
-    if (!dusk::frame_interp::lookup_replacement(ptcl, mtx1) &&
+    if (!dusk::interp::lookup_replacement(ptcl, mtx1) &&
         !make_rot_direction_mtx(work, ptcl, mtx1))
     {
         return;
@@ -1580,36 +1581,36 @@ static void makeColorTable(GXColor** o_color_table, JPAClrAnmKeyData const* i_da
     *o_color_table = p_clr_tbl;
 }
 
-GXBlendMode JPABaseShape::st_bm[3] = {
+DUSK_GAME_DATA GXBlendMode JPABaseShape::st_bm[3] = {
     GX_BM_NONE,
     GX_BM_BLEND,
     GX_BM_LOGIC,
 };
 
-GXBlendFactor JPABaseShape::st_bf[10] = {
+DUSK_GAME_DATA GXBlendFactor JPABaseShape::st_bf[10] = {
     GX_BL_ZERO,      GX_BL_ONE,           GX_BL_SRCCLR, GX_BL_INVSRCCLR,
     GX_BL_DSTCLR, GX_BL_INVDSTCLR, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA,
     GX_BL_DSTALPHA, GX_BL_INVDSTALPHA,
 };
 
-GXLogicOp JPABaseShape::st_lo[16] = {
+DUSK_GAME_DATA GXLogicOp JPABaseShape::st_lo[16] = {
     GX_LO_CLEAR,   GX_LO_SET,     GX_LO_COPY,   GX_LO_INVCOPY, GX_LO_NOOP, GX_LO_INV,
     GX_LO_AND,     GX_LO_NAND,    GX_LO_OR,     GX_LO_NOR,      GX_LO_XOR,  GX_LO_EQUIV,
     GX_LO_REVAND, GX_LO_INVAND, GX_LO_REVOR, GX_LO_INVOR,
 };
 
-GXCompare JPABaseShape::st_c[8] = {
+DUSK_GAME_DATA GXCompare JPABaseShape::st_c[8] = {
     GX_NEVER, GX_LESS, GX_LEQUAL, GX_EQUAL, GX_NEQUAL, GX_GEQUAL, GX_GREATER, GX_ALWAYS,
 };
 
-GXAlphaOp JPABaseShape::st_ao[4] = {
+DUSK_GAME_DATA GXAlphaOp JPABaseShape::st_ao[4] = {
     GX_AOP_AND,
     GX_AOP_OR,
     GX_AOP_XOR,
     GX_AOP_XNOR,
 };
 
-GXTevColorArg JPABaseShape::st_ca[6][4] = {
+DUSK_GAME_DATA GXTevColorArg JPABaseShape::st_ca[6][4] = {
     {
         GX_CC_ZERO,
         GX_CC_TEXC,
@@ -1648,7 +1649,7 @@ GXTevColorArg JPABaseShape::st_ca[6][4] = {
     },
 };
 
-GXTevAlphaArg JPABaseShape::st_aa[2][4] = {
+DUSK_GAME_DATA GXTevAlphaArg JPABaseShape::st_aa[2][4] = {
     {
         GX_CA_ZERO,
         GX_CA_TEXA,

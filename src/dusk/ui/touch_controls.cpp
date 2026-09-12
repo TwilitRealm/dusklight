@@ -44,7 +44,7 @@ constexpr float kPressedScale = 0.94f;
 constexpr size_t kEquipTargetCount = 4;
 
 std::array<EquipTarget, kEquipTargetCount> sEquipTargets{};
-std::array<ControlOverride, static_cast<std::size_t>(Control::COUNT)> sControlOverrides{};
+std::array<ControlOverride, static_cast<size_t>(Control::COUNT)> sControlOverrides{};
 TouchControls* sTouchControls = nullptr;
 
 struct ControlInfo {
@@ -58,7 +58,7 @@ struct ControlInfo {
     std::optional<ActionBinds> holdAction;
 };
 
-constexpr std::array<ControlInfo, static_cast<std::size_t>(Control::COUNT)> kControls = {{
+constexpr std::array<ControlInfo, static_cast<size_t>(Control::COUNT)> kControls = {{
     {
         .id = "button-a",
         .padButton = PAD_BUTTON_A,
@@ -119,12 +119,12 @@ constexpr std::array<ControlInfo, static_cast<std::size_t>(Control::COUNT)> kCon
 }};
 
 constexpr const ControlInfo* control_info(Control control) noexcept {
-    const auto index = static_cast<std::size_t>(control);
+    const auto index = static_cast<size_t>(control);
     return index < kControls.size() ? &kControls[index] : nullptr;
 }
 
 bool control_override_active(Control control) noexcept {
-    const auto index = static_cast<std::size_t>(control);
+    const auto index = static_cast<size_t>(control);
     return index < sControlOverrides.size() && sControlOverrides[index] != ControlOverride::Default;
 }
 
@@ -133,6 +133,7 @@ Rml::String touch_controls_document_source() {
     return Rml::String{R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/touch_controls.rcss" />
 </head>
 <body id="root">
@@ -360,7 +361,7 @@ bool get_equip_target(int slot, EquipTarget& target) noexcept {
 }
 
 void set_control_override(Control control, ControlOverride override) noexcept {
-    const auto index = static_cast<std::size_t>(control);
+    const auto index = static_cast<size_t>(control);
     if (index >= sControlOverrides.size()) {
         return;
     }
@@ -381,7 +382,7 @@ TouchControls::TouchControls()
       mActionBar(mDocument != nullptr ? mDocument->GetElementById("action-bar") : nullptr) {
     sTouchControls = this;
     if (mDocument != nullptr) {
-        for (std::size_t i = 0; i < kControls.size(); ++i) {
+        for (size_t i = 0; i < kControls.size(); ++i) {
             const auto& info = kControls[i];
             auto& elements = mControlElements[i];
             elements.root = info.id != nullptr ? mDocument->GetElementById(info.id) : nullptr;
@@ -404,7 +405,7 @@ TouchControls::TouchControls()
     });
 
     auto listenControl = [this](Control control) {
-        const auto index = static_cast<std::size_t>(control);
+        const auto index = static_cast<size_t>(control);
         auto* element = index < mControlElements.size() ? mControlElements[index].root : nullptr;
         if (element == nullptr) {
             return;
@@ -428,7 +429,7 @@ TouchControls::TouchControls()
             }
         });
     };
-    for (std::size_t i = 0; i < kControls.size(); ++i) {
+    for (size_t i = 0; i < kControls.size(); ++i) {
         listenControl(static_cast<Control>(i));
     }
 
@@ -571,7 +572,7 @@ bool TouchControls::fire_control_action(Control control, ControlAction action) n
         return false;
     }
 
-    const auto actionIndex = static_cast<std::size_t>(*actionBind);
+    const auto actionIndex = static_cast<size_t>(*actionBind);
     if (actionIndex >= mQueuedActions.size()) {
         return false;
     }
@@ -581,7 +582,7 @@ bool TouchControls::fire_control_action(Control control, ControlAction action) n
 }
 
 bool TouchControls::start_control_touch(SDL_FingerID id, Control control) noexcept {
-    const auto index = static_cast<std::size_t>(control);
+    const auto index = static_cast<size_t>(control);
     if (index >= mControlTouches.size()) {
         return false;
     }
@@ -602,7 +603,7 @@ bool TouchControls::start_control_touch(SDL_FingerID id, Control control) noexce
 }
 
 void TouchControls::release_control(Control control) noexcept {
-    const auto index = static_cast<std::size_t>(control);
+    const auto index = static_cast<size_t>(control);
     if (index < mControlTouches.size()) {
         mControlTouches[index] = {};
     }
@@ -628,7 +629,7 @@ void TouchControls::release_control(Control control) noexcept {
 
 void TouchControls::sync_control_button_mask() noexcept {
     u16 buttonMask = 0;
-    for (std::size_t i = 0; i < mControlTouches.size() && i < kControls.size(); ++i) {
+    for (size_t i = 0; i < mControlTouches.size() && i < kControls.size(); ++i) {
         if (mControlTouches[i].active) {
             buttonMask |= kControls[i].padButton;
         }
@@ -637,7 +638,7 @@ void TouchControls::sync_control_button_mask() noexcept {
 }
 
 void TouchControls::set_control_visual(Control control, bool pressed) noexcept {
-    const auto index = static_cast<std::size_t>(control);
+    const auto index = static_cast<size_t>(control);
     auto* element = index < mControlElements.size() ? mControlElements[index].root : nullptr;
     if (index >= mControlVisualPressed.size()) {
         return;
@@ -650,7 +651,7 @@ void TouchControls::set_control_visual(Control control, bool pressed) noexcept {
 }
 
 void TouchControls::apply_control_transform(Control control) noexcept {
-    const auto index = static_cast<std::size_t>(control);
+    const auto index = static_cast<size_t>(control);
     if (index >= mControlElements.size()) {
         return;
     }
@@ -693,7 +694,7 @@ void TouchControls::clear_motion_touch_input() noexcept {
 }
 
 void TouchControls::clear_control_input() noexcept {
-    for (std::size_t i = 0; i < mControlTouches.size(); ++i) {
+    for (size_t i = 0; i < mControlTouches.size(); ++i) {
         release_control(static_cast<Control>(i));
     }
     mQueuedActions.reset();
@@ -815,12 +816,12 @@ void TouchControls::sync_virtual_input() noexcept {
 
     for (const auto& control : kControls) {
         if (control.tapAction) {
-            const bool queued = mQueuedActions.test(static_cast<std::size_t>(*control.tapAction));
+            const bool queued = mQueuedActions.test(static_cast<size_t>(*control.tapAction));
             setVirtualActionBind(
                 *control.tapAction, kPort, queued, queued && visible() && !mWasSuppressed);
         }
         if (control.holdAction) {
-            const bool queued = mQueuedActions.test(static_cast<std::size_t>(*control.holdAction));
+            const bool queued = mQueuedActions.test(static_cast<size_t>(*control.holdAction));
             setVirtualActionBind(
                 *control.holdAction, kPort, queued, queued && visible() && !mWasSuppressed);
         }
@@ -869,7 +870,7 @@ void TouchControls::sync_control_layouts() noexcept {
 
         const auto layout = resolve_control_layout(props, docSize);
         if (info.hasControl) {
-            const auto index = static_cast<std::size_t>(info.control);
+            const auto index = static_cast<size_t>(info.control);
             if (index >= mControlElements.size()) {
                 continue;
             }
@@ -898,7 +899,7 @@ void TouchControls::sync_visual_state() noexcept {
     if (mWasSuppressed || !getSettings().game.enableTouchControls) {
         clear_motion_touch_input();
         for (const auto control : {Control::L, Control::R}) {
-            const auto& elements = mControlElements[static_cast<std::size_t>(control)];
+            const auto& elements = mControlElements[static_cast<size_t>(control)];
             if (elements.root != nullptr) {
                 elements.root->SetPseudoClass("hidden", true);
             }
@@ -908,8 +909,8 @@ void TouchControls::sync_visual_state() noexcept {
     }
 
     const bool hideGameplayControls = game_controls_suppressed();
-    const auto& lTrigger = mControlElements[static_cast<std::size_t>(Control::L)];
-    const auto& rTrigger = mControlElements[static_cast<std::size_t>(Control::R)];
+    const auto& lTrigger = mControlElements[static_cast<size_t>(Control::L)];
+    const auto& rTrigger = mControlElements[static_cast<size_t>(Control::R)];
     const bool lHidden = hideGameplayControls && !control_override_active(Control::L);
     const bool rHidden = hideGameplayControls && !control_override_active(Control::R);
 
@@ -936,7 +937,7 @@ void TouchControls::sync_action_bar_state() noexcept {
         if (mActionBar != nullptr) {
             mActionBar->SetPseudoClass("hidden", true);
         }
-        const auto& skip = mControlElements[static_cast<std::size_t>(Control::SKIP)];
+        const auto& skip = mControlElements[static_cast<size_t>(Control::SKIP)];
         if (skip.root != nullptr) {
             skip.root->SetPseudoClass("hidden", true);
         }
@@ -955,7 +956,7 @@ void TouchControls::sync_action_bar_state() noexcept {
         !skipVisible &&
         (!controls_available(false) || dComIfGp_event_runCheck() ||
             (dComIfGp_getMsgObjectClass() != nullptr && dMsgObject_isTalkNowCheck()));
-    const auto& skip = mControlElements[static_cast<std::size_t>(Control::SKIP)];
+    const auto& skip = mControlElements[static_cast<size_t>(Control::SKIP)];
     if (mActionBar != nullptr) {
         mActionBar->SetPseudoClass("hidden", hidden || skipVisible);
     }
@@ -986,7 +987,7 @@ void TouchControls::sync_action_bar_state() noexcept {
 void TouchControls::sync_control_displays() noexcept {
     if (mWasSuppressed || !getSettings().game.enableTouchControls) {
         for (const auto control : {Control::A, Control::B, Control::X, Control::Y, Control::Z}) {
-            const auto& elements = mControlElements[static_cast<std::size_t>(control)];
+            const auto& elements = mControlElements[static_cast<size_t>(control)];
             if (elements.root != nullptr) {
                 elements.root->SetPseudoClass("hidden", true);
             }
@@ -1001,11 +1002,11 @@ void TouchControls::sync_control_displays() noexcept {
     const auto yState = xy_button_state(Control::Y);
     const auto zState = z_button_state();
 
-    const auto& a = mControlElements[static_cast<std::size_t>(Control::A)];
-    const auto& b = mControlElements[static_cast<std::size_t>(Control::B)];
-    const auto& x = mControlElements[static_cast<std::size_t>(Control::X)];
-    const auto& y = mControlElements[static_cast<std::size_t>(Control::Y)];
-    const auto& z = mControlElements[static_cast<std::size_t>(Control::Z)];
+    const auto& a = mControlElements[static_cast<size_t>(Control::A)];
+    const auto& b = mControlElements[static_cast<size_t>(Control::B)];
+    const auto& x = mControlElements[static_cast<size_t>(Control::X)];
+    const auto& y = mControlElements[static_cast<size_t>(Control::Y)];
+    const auto& z = mControlElements[static_cast<size_t>(Control::Z)];
 
     if (a.root != nullptr) {
         a.root->SetPseudoClass("hidden", false);
@@ -1091,7 +1092,7 @@ void TouchControls::sync_control_displays() noexcept {
             return;
         }
         countElement->SetClass("visible", !label.empty());
-        countElement->SetInnerRML(label);
+        set_text_content(countElement, label);
     };
 
     syncCount(x.count, mButtonXCountLabel, Control::X, xState);
@@ -1144,7 +1145,7 @@ void TouchControls::update() {
 }
 
 bool TouchControls::release_control_touch(SDL_FingerID id, bool cancelled) noexcept {
-    for (std::size_t i = 0; i < mControlTouches.size(); ++i) {
+    for (size_t i = 0; i < mControlTouches.size(); ++i) {
         auto& touch = mControlTouches[i];
         if (!touch.active || touch.id != id) {
             continue;
@@ -1165,7 +1166,7 @@ bool TouchControls::release_control_touch(SDL_FingerID id, bool cancelled) noexc
 
 void TouchControls::sync_control_long_presses() noexcept {
     const auto now = clock::now();
-    for (std::size_t i = 0; i < mControlTouches.size(); ++i) {
+    for (size_t i = 0; i < mControlTouches.size(); ++i) {
         auto& touch = mControlTouches[i];
         if (!touch.active || touch.longPressFired || now - touch.startTime < kHoldActionDuration) {
             continue;
@@ -1370,8 +1371,8 @@ void TouchControls::handle_mouse_move(Rml::Event& event) noexcept {
         --mMenuPointerMouseSuppressions;
         return;
     }
-    if (!visible() || mWasSuppressed || !menu_pointer::active() ||
-        !menu_pointer::enabled() || event.GetTargetElement() != mRoot)
+    if (!visible() || mWasSuppressed || !menu_pointer::active() || !menu_pointer::enabled() ||
+        event.GetTargetElement() != mRoot)
     {
         return;
     }
@@ -1387,8 +1388,8 @@ void TouchControls::handle_mouse_down(Rml::Event& event) noexcept {
         --mMenuPointerMouseSuppressions;
         return;
     }
-    if (!visible() || mWasSuppressed || !menu_pointer::active() ||
-        !menu_pointer::enabled() || event.GetTargetElement() != mRoot)
+    if (!visible() || mWasSuppressed || !menu_pointer::active() || !menu_pointer::enabled() ||
+        event.GetTargetElement() != mRoot)
     {
         return;
     }
@@ -1408,8 +1409,7 @@ void TouchControls::handle_mouse_up(Rml::Event& event) noexcept {
         --mMenuPointerMouseSuppressions;
         return;
     }
-    if (!visible() || mWasSuppressed ||
-        !menu_pointer::enabled() ||
+    if (!visible() || mWasSuppressed || !menu_pointer::enabled() ||
         (!menu_pointer::active() && !menu_pointer::mouse_capture_active()) ||
         event.GetTargetElement() != mRoot)
     {

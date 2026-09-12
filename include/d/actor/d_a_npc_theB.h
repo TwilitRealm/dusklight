@@ -19,7 +19,7 @@ struct daNpcTheB_HIOParam {
 struct daNpcTheB_Param_c {
     virtual ~daNpcTheB_Param_c() {}
 
-    static daNpcTheB_HIOParam const m;
+    static DUSK_GAME_DATA daNpcTheB_HIOParam const m;
 };
 
 #if DEBUG
@@ -149,9 +149,8 @@ public:
         }
     }
 
-    static cutFunc mEvtSeqList[6];
+    static DUSK_GAME_DATA cutFunc mEvtSeqList[6];
 
-private:
     /* 0xB48 */ Z2Creature mSound;
     /* 0xBD8 */ daNpcF_MatAnm_c* mpMatAnm;
     /* 0xBDC */ daNpcF_Lookat_c mLookat;

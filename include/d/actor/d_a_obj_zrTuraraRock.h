@@ -30,7 +30,6 @@ public:
     int Draw();
     int Delete();
 
-private:
     /* 0x568 */ dCcD_Stts mCcStatus;
     /* 0x5A4 */ dCcD_Sph mCcSph;
     /* 0x6DC */ request_of_phase_process_class mPhaseReq;
@@ -45,8 +44,8 @@ private:
 public:
     u8 getScale() { return fopAcM_GetParamBit(this, 0, 8); }
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcSph mCcDSph;
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcSph mCcDSph;
 };
 
 STATIC_ASSERT(sizeof(daZrTuraRc_c) == 0x938);

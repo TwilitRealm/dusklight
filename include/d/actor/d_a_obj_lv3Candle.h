@@ -29,7 +29,6 @@ public:
     int getSwBit() { return fopAcM_GetParamBit(this, 0, 8); }
     int getType() { return fopAcM_GetParamBit(this, 8, 8); }
 
-private:
     /* 0x568 */ request_of_phase_process_class mPhaseReq;
     /* 0x570 */ J3DModel* mpModel;
     /* 0x574 */ u8 mType;
@@ -44,8 +43,8 @@ private:
     /* 0x730 */ u8 mTgHit;
     /* 0x734 */ Z2SoundObjSimple mSound;
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcSph mCcDSph;
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcSph mCcDSph;
 
 };  // Size: 0x754
 

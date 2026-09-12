@@ -12,7 +12,7 @@ class daNpcIns_Param_c {
 public:
     virtual ~daNpcIns_Param_c() {}
 
-    static daNpcIns_HIOParam const m;
+    static DUSK_GAME_DATA daNpcIns_HIOParam const m;
 };
 
 #if DEBUG
@@ -119,9 +119,8 @@ public:
     inline void playExpression();
     BOOL chkAction(actionFunc action) { return action == mAction; }
 
-    static eventFunc mEvtSeqList[1];
+    static DUSK_GAME_DATA eventFunc mEvtSeqList[1];
 
-private:
     /* 0xB48 */ Z2Creature mSound;
     /* 0xBD8 */ J3DModel* mpUmbrellaModel;
     /* 0xBDC */ J3DModel* mpKagoModel;

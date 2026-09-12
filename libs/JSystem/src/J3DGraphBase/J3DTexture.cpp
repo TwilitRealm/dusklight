@@ -49,7 +49,7 @@ void J3DTexture::loadGX(u16 idx, GXTexMapID texMapID) const {
 }
 
 #if TARGET_PC
-void J3DTexture::loadGXTexObj(u16 idx) {
+void J3DTexture::initGXTexObj(u16 idx) {
     J3D_ASSERT_RANGE(29, idx < mNum);
     ResTIMG* timg = getResTIMG(idx);
 
@@ -89,7 +89,7 @@ void J3DTexture::entryNum(u16 num) {
     delete[] mpImgDataPtr;
     delete[] mpTlutDataPtr;
     mpTexObj = new TGXTexObj[num]();
-    mpTlutObj = new GXTlutObj[num]();
+    mpTlutObj = new TGXTlutObj[num]();
     mpImgDataPtr = new u8*[num]();
     mpTlutDataPtr = new u8*[num]();
 

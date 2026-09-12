@@ -65,7 +65,6 @@ public:
         (this->*mpActionFunc[1])();
     }
 
-private:
     /* 0x5A0 */ J3DModel* mpModel;
     /* 0x5A4 */ request_of_phase_process_class mPhaseReq;
     /* 0x5AC */ daObjMirrorScrew_actionFunc* mpActionFunc;
@@ -80,8 +79,8 @@ private:
     /* 0x5D0 */ u8 field_0x5d0[8];
     /* 0x5D8 */ cBgS_PolyInfo field_0x5d8;
 
-    static attr const M_attr;
-    static daObjMirrorScrew_actionFunc ActionTable[2][2];
+    static DUSK_GAME_DATA attr const M_attr;
+    static DUSK_GAME_DATA daObjMirrorScrew_actionFunc ActionTable[2][2];
 };
 
 STATIC_ASSERT(sizeof(daObjMirrorScrew_c) == 0x5E8);

@@ -25,7 +25,7 @@ Button::Button(Rml::Element* parent, Props props, const Rml::String& tagName)
 
 void Button::set_text(const Rml::String& text) {
     if (mProps.text != text) {
-        mRoot->SetInnerRML(escape(text));
+        set_text_content(mRoot, text);
         mProps.text = text;
     }
 }

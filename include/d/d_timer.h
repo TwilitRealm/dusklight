@@ -52,7 +52,7 @@ public:
     s32 createStart(u16);
     bool checkStartAnimeEnd();
     void playBckAnimation(f32);
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC || VERSION == VERSION_GCN_JPN
     bool isLeadByte(int);
 #endif
     void drawPikari(int);
@@ -77,7 +77,6 @@ public:
         mTimerTransY = y;
     }
 
-private:
     /* 0x004 */ J2DScreen* mpScreen;
     /* 0x008 */ J2DScreen* mpGetInScreen;
     /* 0x00C */ J2DAnmTransform* mpGetInBck;
@@ -145,7 +144,6 @@ public:
 
     u8 isReadyFlag() { return m_is_ready; }
 
-private:
     /* 0x0FC */ dDlst_TimerScrnDraw_c* mp_tm_scrn;
     /* 0x100 */ JKRExpHeap* mp_heap;
     /* 0x104 */ u8 field_0x104[4];

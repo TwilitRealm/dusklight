@@ -1,10 +1,6 @@
 #include "JSystem/JSystem.h" // IWYU pragma: keep
 
 #include "JSystem/JParticle/JPAResource.h"
-
-#include <cstring>
-
-#include <gx.h>
 #include "JSystem/JKernel/JKRHeap.h"
 #include "JSystem/JParticle/JPABaseShape.h"
 #include "JSystem/JParticle/JPAChildShape.h"
@@ -15,10 +11,14 @@
 #include "JSystem/JParticle/JPAKeyBlock.h"
 #include "JSystem/JParticle/JPAParticle.h"
 #include "JSystem/JParticle/JPAResourceManager.h"
+#include <gx.h>
 #include "global.h"
-#include "tracy/Tracy.hpp"
 
 #if TARGET_PC
+#include "dusk/interp/frame_interpolation.h"
+
+#include <tracy/Tracy.hpp>
+
 #define JPA_DRAW_CTX_ARG , &ctx
 #else
 #define JPA_DRAW_CTX_ARG
@@ -44,7 +44,7 @@ JPAResource::JPAResource() {
     mUsrIdx = fldNum = keyNum = texNum = mpCalcEmitterFuncListNum = mpDrawEmitterFuncListNum = mpDrawEmitterChildFuncListNum = mpCalcParticleFuncListNum = mpDrawParticleFuncListNum = mpCalcParticleChildFuncListNum = mpDrawParticleChildFuncListNum = 0;
 }
 
-static u8 jpa_pos[324] ATTRIBUTE_ALIGN(32) = {
+ATTRIBUTE_ALIGN(32) static u8 jpa_pos[324] = {
     0x00, 0x00, 0x00, 0x32, 0x00, 0x00, 0x32, 0xCE, 0x00, 0x00, 0xCE, 0x00, 0xE7, 0x00, 0x00, 0x19,
     0x00, 0x00, 0x19, 0xCE, 0x00, 0xE7, 0xCE, 0x00, 0xCE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xCE,
     0x00, 0xCE, 0xCE, 0x00, 0x00, 0x19, 0x00, 0x32, 0x19, 0x00, 0x32, 0xE7, 0x00, 0x00, 0xE7, 0x00,
@@ -68,7 +68,7 @@ static u8 jpa_pos[324] ATTRIBUTE_ALIGN(32) = {
     0x00, 0x00, 0x00, 0xCE,
 };
 
-static u8 jpa_crd[32] ATTRIBUTE_ALIGN(32) = {
+ATTRIBUTE_ALIGN(32) static u8 jpa_crd[32] = {
     0x00, 0x00, 0x01, 0x00, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x00, 0x02, 0x01, 0x00, 0x01,
     0x00, 0x00, 0x01, 0x00, 0x01, 0x02, 0x00, 0x02, 0x00, 0x00, 0x02, 0x00, 0x02, 0x02, 0x00, 0x02,
 };
@@ -839,7 +839,7 @@ bool JPAResource::calc(JPAEmitterWorkData* work, JPABaseEmitter* emtr) {
 
 #ifdef TARGET_PC
         if (((pBsp && pBsp->getDirType() == 3) || (pCsp && pCsp->getDirType() == 3)) &&
-            dusk::frame_interp::is_enabled())
+            dusk::interp::is_enabled())
         {
             // ensure mGlobalEmtrDir is valid
             calcWorkData_d(work);

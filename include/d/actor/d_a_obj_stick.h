@@ -16,7 +16,7 @@ class daObj_Stick_Param_c {
 public:
     virtual ~daObj_Stick_Param_c() {}
 
-    static const daObj_Stick_HIOParam m;
+    static DUSK_GAME_DATA const daObj_Stick_HIOParam m;
 };
 
 #if DEBUG
@@ -45,7 +45,7 @@ public:
  *
  */
 class daObj_Stick_c : public fopAc_ac_c {
-private:
+public:
     /* 0x568 */ OBJ_STICK_HIO_CLASS* mpHIO;
     /* 0x56c */ request_of_phase_process_class mPhase;
     /* 0x574 */ J3DModel* mpModel;
@@ -73,7 +73,7 @@ public:
 
     u32 getType() { return 0; }
 
-    static dCcD_SrcSph mCcDSph;
+    static DUSK_GAME_DATA dCcD_SrcSph mCcDSph;
 };
 
 STATIC_ASSERT(sizeof(daObj_Stick_c) == 0x950);

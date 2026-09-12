@@ -112,13 +112,12 @@ public:
 
     inline void setAction(Mode_e i_action);
 
-    static daTagTWGate_Attr_c const mAttr;
+    static DUSK_GAME_DATA daTagTWGate_Attr_c const mAttr;
 #if DEBUG
     static daTagTWGate_Hio_c mHio;
 #endif
-    static const actionFunc ActionTable[][2];
+    static DUSK_GAME_DATA const actionFunc ActionTable[][2];
 
-private:
     /* 0x568 */ mDoExt_McaMorfSO* mpMorf;
     /* 0x56C */ request_of_phase_process_class mPhaseZevArc;
     /* 0x574 */ request_of_phase_process_class mPhaseMdRes;

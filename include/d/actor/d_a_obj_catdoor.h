@@ -80,7 +80,6 @@ public:
         Z2GetAudioMgr()->seStart(Z2SE_OBJ_GZ_NE_DOOR_OP, &current.pos, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
     }
 
-private:
     /* 0x568 */ request_of_phase_process_class mPhaseReq;
     /* 0x570 */ daObjCatDoor_Door_c mDoor1;
     /* 0x660 */ daObjCatDoor_Door_c mDoor2;
@@ -88,7 +87,7 @@ private:
     /* 0x790 */ s16 mRotSpeed;
 
 public:
-    static const daObjCatDoor_Attr_c M_attr;
+    static DUSK_GAME_DATA const daObjCatDoor_Attr_c M_attr;
 };
 
 #endif /* D_A_OBJ_CATDOOR_H */

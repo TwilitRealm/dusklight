@@ -1,32 +1,40 @@
-*, *:before, *:after {
-    box-sizing: border-box;
-}
-
 body {
+    --color-prelaunch-accent: #FEE685;
+    --color-prelaunch-muted: #A6A09B;
+    --color-disc-error: #FFC9C9;
+    --color-disc-mismatch: #FFD6A7;
+    --color-ready: #D8F999;
+    --menu-button-decorator: horizontal-gradient(rgba(var(--color-black-rgb), 0%) rgba(var(--color-black-rgb), 0%));
+    --menu-button-decorator-hover: horizontal-gradient(#FEE685FF #FEE68500);
+
     width: 100%;
     height: 100%;
-    font-family: "Fira Sans";
+    font-family: var(--font-family-body);
     font-weight: normal;
-    font-size: 20dp;
-    color: #FFFFFF;
+    font-size: var(--font-size-2xl);
+    color: var(--color-white);
     filter: opacity(0);
     transition: filter 1s 0.2s linear-in-out;
     z-index: -1;
 }
 
-.gradient {
+body.mirrored {
+    --menu-button-decorator-hover: horizontal-gradient(#FEE68500 #FEE685FF);
+}
+
+prelaunch-gradient {
     position: absolute;
     width: 100%;
     height: 100%;
     /* The color gradient from the Figma bands really badly. A fully black gradient does as well, but not as badly. */
-    decorator: horizontal-gradient(#000000FF #00000000);
+    decorator: horizontal-gradient(rgba(var(--color-black-rgb), 100%) rgba(var(--color-black-rgb), 0%));
 }
 
-body.mirrored .gradient {
-    decorator: horizontal-gradient(#00000000 #000000FF);
+body.mirrored prelaunch-gradient {
+    decorator: horizontal-gradient(rgba(var(--color-black-rgb), 0%) rgba(var(--color-black-rgb), 100%));
 }
 
-.background {
+prelaunch-background {
     position: absolute;
     width: 100%;
     height: 100%;
@@ -39,11 +47,11 @@ body[open] {
     filter: opacity(1);
 }
 
-body[open] .background {
+body[open] prelaunch-background {
     opacity: 1;
 }
 
-body.disc-ready .background {
+body.disc-ready prelaunch-background {
     opacity: 0;
 }
 
@@ -84,7 +92,7 @@ hero {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4dp;
+    gap: var(--space-xs);
 }
 
 body.mirrored hero {
@@ -96,8 +104,8 @@ hero img {
 }
 
 eyebrow {
-    font-family: "Alegreya SC";
-    font-size: 32dp;
+    font-family: var(--font-family-display);
+    font-size: var(--font-size-6xl);
 }
 
 @media (min-width: 1216dp) {
@@ -107,46 +115,114 @@ eyebrow {
     }
 }
 
-eyebrow span {
+eyebrow studio-name {
     font-weight: bold;
 }
 
-#menu-list {
+menu-list {
     display: flex;
     flex-direction: column;
-    gap: 12dp;
+    gap: var(--space-md);
     align-items: flex-start;
 }
 
 #menu-list button {
     width: 428dp;
     height: 54dp;
-    padding: 8dp 16dp;
-    border-radius: 8dp;
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--radius-panel);
     text-align: left;
     text-transform: uppercase;
-    font-family: "Fira Sans Condensed";
-    font-size: 32dp;
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-6xl);
     font-weight: normal;
     cursor: pointer;
     /* Define a fully transparent gradient as the default state, otherwise a white flash occurs */
-    decorator: horizontal-gradient(#00000000 #00000000);
+    decorator: var(--menu-button-decorator);
 }
 
 #menu-list button:disabled {
     opacity: 0.75;
     cursor: default;
-    decorator: horizontal-gradient(#00000000 #00000000);
+    decorator: var(--menu-button-decorator);
 }
 
 #menu-list button.anim-done {
     transition: decorator color opacity 0.1s linear-in-out;
 }
 
+#menu-list button.game-mode-button {
+    position: relative;
+    padding: 0;
+    overflow: visible;
+}
+
+#menu-list game-mode-label-viewport {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-panel);
+    pointer-events: none;
+    z-index: 0;
+}
+
+#menu-list game-mode-label {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: var(--space-sm) var(--space-lg);
+    opacity: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity 0.24s cubic-in-out;
+}
+
+#menu-list game-mode-label.active {
+    opacity: 1;
+}
+
+#menu-list game-mode-previous,
+#menu-list game-mode-next {
+    display: none;
+    position: absolute;
+    top: 0;
+    width: 48dp;
+    height: 54dp;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-white);
+    font-family: var(--font-family-icons);
+    font-weight: normal;
+    font-size: 30dp;
+    z-index: 1;
+}
+
+#menu-list game-mode-previous {
+    left: -48dp;
+    decorator: text("&#xe5cb;" center center);
+}
+
+#menu-list game-mode-next {
+    right: -48dp;
+    decorator: text("&#xe5cc;" center center);
+}
+
+#menu-list button.game-mode-button.can-cycle game-mode-previous,
+#menu-list button.game-mode-button.can-cycle game-mode-next {
+    display: flex;
+}
+
 #menu-list button:hover,
 #menu-list button:focus-visible {
-    color: black;
-    decorator: horizontal-gradient(#FEE685FF #FEE68500);
+    color: var(--color-black);
+    decorator: var(--menu-button-decorator-hover);
 }
 
 body.mirrored #menu-list {
@@ -157,11 +233,6 @@ body.mirrored #menu-list button {
     text-align: right;
 }
 
-body.mirrored #menu-list button:hover,
-body.mirrored #menu-list button:focus-visible {
-    decorator: horizontal-gradient(#FEE68500 #FEE685FF);
-}
-
 disc-info {
     position: absolute;
     left: 96dp;
@@ -169,8 +240,8 @@ disc-info {
     bottom: 72dp;
     display: flex;
     flex-direction: column;
-    gap: 12dp;
-    font-size: 24dp;
+    gap: var(--space-md);
+    font-size: var(--font-size-4xl);
     font-effect: glow(0dp 4dp 0dp 4dp black);
     text-align: left;
 }
@@ -188,9 +259,9 @@ version-info {
     bottom: 72dp;
     display: flex;
     flex-direction: column;
-    gap: 12dp;
+    gap: var(--space-md);
     text-align: right;
-    font-size: 24dp;
+    font-size: var(--font-size-4xl);
     font-effect: glow(0dp 4dp 0dp 4dp black);
     text-align: right;
 }
@@ -204,40 +275,40 @@ body.mirrored version-info {
 #disc-status {
     display: flex;
     align-items: center;
-    gap: 8dp;
+    gap: var(--space-sm);
 }
 
 #disc-status[status=good] {
-    color: #D8F999;
+    color: var(--color-ready);
 }
 
 #disc-status[status=bad] {
-    color: #FFC9C9;
+    color: var(--color-disc-error);
 }
 
 #disc-status[status=verifying] {
-    color: #FFFFFF;
+    color: var(--color-white);
 }
 
 #disc-status[status=mismatch] {
-    color: #FFD6A7;
+    color: var(--color-disc-mismatch);
 }
 
 #disc-status[status=unknown] {
-    color: rgba(224, 219, 200, 65%);
+    color: rgba(var(--color-text-rgb), 65%);
 }
 
 #disc-status[status=pending] {
-    color: #FEE685;
+    color: var(--color-prelaunch-accent);
 }
 
 #disc-status icon {
     display: none;
     width: 24dp;
     height: 24dp;
-    font-family: "Material Symbols Rounded";
+    font-family: var(--font-family-icons);
     font-weight: normal;
-    font-size: 24dp;
+    font-size: var(--font-size-4xl);
 }
 
 #disc-status[status] icon {
@@ -269,24 +340,24 @@ body.mirrored version-info {
 }
 
 #disc-version {
-    font-size: 20dp;
+    font-size: var(--font-size-2xl);
 }
 
-.update {
+update-status {
     display: none;
-    color: #A6A09B;
+    color: var(--color-prelaunch-muted);
     align-items: center;
     justify-content: flex-end;
-    gap: 8dp;
-    font-size: 20dp;
+    gap: var(--space-sm);
+    font-size: var(--font-size-2xl);
 }
 
-.update[state=checking],
-.update[state=failed] {
+update-status[state=checking],
+update-status[state=failed] {
     display: block;
 }
 
-.update[state=available] {
+update-status[state=available] {
     display: flex;
 }
 
@@ -296,33 +367,33 @@ body.mirrored version-info {
     padding: 0dp;
     border-width: 0dp;
     background-color: transparent;
-    color: #D8F999;
+    color: var(--color-ready);
     cursor: pointer;
     text-transform: uppercase;
     font-weight: bold;
-    decorator: horizontal-gradient(#00000000 #00000000);
+    decorator: var(--menu-button-decorator);
 }
 
-.update[state=available] #update-download {
+update-status[state=available] #update-download {
     display: flex;
     align-items: center;
-    gap: 2dp;
+    gap: var(--space-2xs);
 }
 
 #update-download icon {
     display: block;
     width: 18dp;
     height: 18dp;
-    font-family: "Material Symbols Rounded";
+    font-family: var(--font-family-icons);
     font-weight: normal;
     decorator: text("&#xe5c8;" center center);
 }
 
-.detail {
-    color: #A6A09B;
+disc-version {
+    color: var(--color-prelaunch-muted);
 }
 
-body.mirrored .update {
+body.mirrored update-status {
     justify-content: flex-start;
 }
 
@@ -368,12 +439,20 @@ body.animate-in .intro-item {
 
 /* Mobile layout */
 @media (max-height: 640dp) {
-    .gradient {
-        decorator: horizontal-gradient(#00000000 #000000FF);
+    body {
+        --menu-button-decorator-hover: horizontal-gradient(#FEE68500 #FEE685FF);
     }
 
-    body.mirrored .gradient {
-        decorator: horizontal-gradient(#000000FF #00000000);
+    body.mirrored {
+        --menu-button-decorator-hover: horizontal-gradient(#FEE685FF #FEE68500);
+    }
+
+    prelaunch-gradient {
+        decorator: horizontal-gradient(rgba(var(--color-black-rgb), 0%) rgba(var(--color-black-rgb), 100%));
+    }
+
+    body.mirrored prelaunch-gradient {
+        decorator: horizontal-gradient(rgba(var(--color-black-rgb), 100%) rgba(var(--color-black-rgb), 0%));
     }
 
     menu {
@@ -385,7 +464,7 @@ body.animate-in .intro-item {
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-        gap: 16dp;
+        gap: var(--space-lg);
     }
 
     body.mirrored menu {
@@ -398,7 +477,7 @@ body.animate-in .intro-item {
         flex: 1 1 0;
         min-width: 0;
         max-width: 48%;
-        margin-left: 32dp;
+        margin-left: var(--space-2xl);
     }
 
     body.mirrored hero {
@@ -422,22 +501,12 @@ body.animate-in .intro-item {
         text-align: right;
     }
 
-    #menu-list button:hover,
-    #menu-list button:focus-visible {
-        decorator: horizontal-gradient(#FEE68500 #FEE685FF);
-    }
-
     body.mirrored #menu-list {
         align-items: flex-start;
     }
 
     body.mirrored #menu-list button {
         text-align: left;
-    }
-
-    body.mirrored #menu-list button:hover,
-    body.mirrored #menu-list button:focus-visible {
-        decorator: horizontal-gradient(#FEE685FF #FEE68500);
     }
 
     eyebrow {
@@ -450,8 +519,8 @@ body.animate-in .intro-item {
         bottom: 32dp;
         top: auto;
         text-align: right;
-        font-size: 16dp;
-        gap: 8dp;
+        font-size: var(--font-size-md);
+        gap: var(--space-sm);
     }
 
     #disc-status {
@@ -459,11 +528,11 @@ body.animate-in .intro-item {
     }
 
     #disc-status icon {
-        font-size: 20dp;
+        font-size: var(--font-size-2xl);
     }
 
     #disc-version {
-        font-size: 16dp;
+        font-size: var(--font-size-md);
     }
 
     version-info {
@@ -472,12 +541,12 @@ body.animate-in .intro-item {
         bottom: auto;
         top: 32dp;
         text-align: right;
-        font-size: 16dp;
-        gap: 8dp;
+        font-size: var(--font-size-md);
+        gap: var(--space-sm);
     }
 
-    .update {
-        font-size: 16dp;
+    update-status {
+        font-size: var(--font-size-md);
     }
 
     body.mirrored disc-info {

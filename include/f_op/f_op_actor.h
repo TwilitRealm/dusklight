@@ -318,6 +318,11 @@ public:
     /* 0x566 */ s8 field_0x566;
     /* 0x567 */ s8 field_0x567;
 
+#if TARGET_PC
+    u32 mItemGiveTag;
+    u8 mItemGiveOriginalNo;
+#endif
+
 #if !__MWERKS__
     s8 actor_last_base_field;
 #endif
@@ -332,7 +337,7 @@ public:
     static u32 getStopStatus() { return stopStatus; }
     static void setStopStatus(u32 status) { stopStatus = status; }
 
-    static u32 stopStatus;
+    static DUSK_GAME_DATA u32 stopStatus;
 };  // Size: 0x568
 
 STATIC_ASSERT(sizeof(fopAc_ac_c) == 0x568);
@@ -431,6 +436,6 @@ public:
 
 BOOL fopAc_IsActor(void* i_actor);
 
-extern actor_method_class g_fopAc_Method;
+DUSK_GAME_EXTERN actor_method_class g_fopAc_Method;
 
 #endif

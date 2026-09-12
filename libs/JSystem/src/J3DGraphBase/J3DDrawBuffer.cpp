@@ -8,7 +8,10 @@
 #include "JSystem/J3DGraphBase/J3DDrawBuffer.h"
 #include "JSystem/J3DGraphBase/J3DMaterial.h"
 #include "JSystem/JKernel/JKRHeap.h"
-#include "tracy/Tracy.hpp"
+
+#if TARGET_PC
+#include <tracy/Tracy.hpp>
+#endif
 
 void J3DDrawBuffer::calcZRatio() {
     mZRatio = (mZFar - mZNear) / (f32)mEntryTableSize;
@@ -205,17 +208,17 @@ int J3DDrawBuffer::entryImm(J3DPacket* pPacket, u16 index) {
     return 1;
 }
 
-J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
+DUSK_GAME_DATA J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
     &J3DDrawBuffer::entryMatSort,   &J3DDrawBuffer::entryMatAnmSort,  &J3DDrawBuffer::entryZSort,
     &J3DDrawBuffer::entryModelSort, &J3DDrawBuffer::entryInvalidSort, &J3DDrawBuffer::entryNonSort,
 };
 
-J3DDrawBuffer::drawFunc J3DDrawBuffer::drawFuncTable[2] = {
+DUSK_GAME_DATA J3DDrawBuffer::drawFunc J3DDrawBuffer::drawFuncTable[2] = {
     &J3DDrawBuffer::drawHead,
     &J3DDrawBuffer::drawTail,
 };
 
-int J3DDrawBuffer::entryNum;
+DUSK_GAME_DATA int J3DDrawBuffer::entryNum;
 
 void J3DDrawBuffer::draw() const {
     J3D_ASSERT_RANGE(411, mDrawMode < J3DDrawBufDrawMode_MAX);

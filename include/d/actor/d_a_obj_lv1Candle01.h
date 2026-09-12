@@ -27,7 +27,6 @@ public:
     int Draw();
     int Delete();
 
-private:
     /* 0x5A0 */ request_of_phase_process_class mPhase;
     /* 0x5A8 */ J3DModel* mpModel;
     /* 0x5AC */ dCcD_Stts mStts;
@@ -42,8 +41,8 @@ private:
     /* 0x768 */ u8 mTgHit;
     /* 0x76C */ Z2SoundObjSimple mSound;
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcCyl mCcDCyl;
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcCyl mCcDCyl;
 };
 
 STATIC_ASSERT(sizeof(daLv1Cdl01_c) == 0x78C);

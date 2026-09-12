@@ -1,24 +1,26 @@
 #include "ImGuiStateShare.hpp"
-#include "ImGuiMenuTools.hpp"
+
 #include "ImGuiConsole.hpp"
+#include "ImGuiMenuTools.hpp"
 
-#include "imgui.h"
-#include "fmt/format.h"
-#include "absl/strings/escaping.h"
-#include "nlohmann/json.hpp"
-
-#include "d/d_com_inf_game.h"
-#include "dusk/main.h"
+#include "dusk/autosave.h"
 #include "dusk/io.hpp"
 #include "dusk/logging.h"
+#include "dusk/main.h"
 #include "dusk/settings.h"
+
+#include "d/d_com_inf_game.h"
 #include "f_op/f_op_overlap_mng.h"
-#include "../file_select.hpp"
-#include "aurora/lib/window.hpp"
+
+#include <absl/strings/escaping.h>
+#include <aurora/lib/window.hpp>
+#include <borealis/file_select.hpp>
+#include <fmt/format.h>
+#include <imgui.h>
+#include <nlohmann/json.hpp>
+#include <zstd.h>
 
 #include <unordered_set>
-#include <zstd.h>
-#include <dusk/autosave.h>
 
 namespace dusk {
 
@@ -39,15 +41,6 @@ static constexpr size_t PACKET_SAVE_ONLY = sizeof(StateSharePacket) + sizeof(dSv
 static constexpr auto STATES_FILENAME = "states.json";
 
 static bool ValidateEncodedState(const std::string&);
-
-void ImGuiStateShare::onMergeFileSelected(void* userdata, const char* path, const char* /*error*/) {
-    auto* self = static_cast<ImGuiStateShare*>(userdata);
-    if (path != nullptr) {
-        self->m_pendingMergePath = path;
-    }
-}
-
-
 
 static std::filesystem::path GetStatesFilePath() {
     return ConfigPath / STATES_FILENAME;
@@ -381,8 +374,18 @@ void ImGuiStateShare::draw(bool& open) {
 
     ImGui::SameLine();
     if (ImGui::Button("Load Pack")) {
-        static constexpr SDL_DialogFileFilter filter = {"State pack", "json"};
-        ShowFileSelect(&onMergeFileSelected, this, aurora::window::get_sdl_window(), &filter, 1, nullptr, false);
+        borealis::file_select::open_file(
+            {
+                .parentWindow = aurora::window::get_sdl_window(),
+                .filters = {{"State pack", "json"}},
+            },
+            [this](borealis::file_select::Result result) {
+                if (result.status == borealis::file_select::Status::Selected &&
+                    !result.locations.empty())
+                {
+                    m_pendingMergePath = std::move(result.locations.front());
+                }
+            });
     }
 
     if (!m_states.empty()) {

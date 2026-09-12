@@ -14,7 +14,11 @@
 #include "Z2AudioLib/Z2Instances.h"
 #include <cstring>
 
-const daNpc_grA_HIOParam daNpc_grA_Param_c::m = {
+#if TARGET_PC
+#include "mods/items.h"
+#endif
+
+DUSK_GAME_DATA const daNpc_grA_HIOParam daNpc_grA_Param_c::m = {
     {90.0f,  -4.0f,  1.0f,   850.0f,  255.0f, 280.0f, 40.0f, 100.0f, 0.0f, 0.0f, 20.0f,
      -20.0f, 40.0f,  -30.0f, 40.0f,   -40.0f, 0.4f,   12.0f, 4,      6,    6,    6,
      60.0f,  500.0f, 300.0f, -300.0f, 0x3c,   8,      0,     0,      0,    0,    0},
@@ -288,7 +292,7 @@ void daNpc_grA_HIO_c::genMessage(JORMContext* context) {
 }
 #endif
 
-char DUSK_CONST* DUSK_CONST daNpc_grA_c::mEvtCutNameList[12] = {
+DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST daNpc_grA_c::mEvtCutNameList[12] = {
     "",
     "TALK_SPA",
     "GRDS_ROLL",
@@ -303,7 +307,7 @@ char DUSK_CONST* DUSK_CONST daNpc_grA_c::mEvtCutNameList[12] = {
     "ROLL_ROCK_CRASH",
 };
 
-daNpc_grA_c::cut_type DUSK_CONST daNpc_grA_c::mEvtCutList[] = {
+DUSK_GAME_DATA daNpc_grA_c::cut_type DUSK_CONST daNpc_grA_c::mEvtCutList[] = {
     NULL, 
     &daNpc_grA_c::ECut_talkSpa,
     &daNpc_grA_c::ECut_grDSRoll,
@@ -1323,7 +1327,7 @@ BOOL daNpc_grA_c::isDelete() {
             return FALSE;
         }
         fopAcM_createItemForBoss(&current.pos, 0x21, fopAcM_GetRoomNo(this), NULL, NULL, 0.0f, 0.0f,
-                                 0x80);
+                                 0x80 IF_DUSK_ARG(ITEM_CHECK_GORON_SPRINGWATER_RUSH));
         return TRUE;
     }
     return TRUE;
@@ -2812,7 +2816,7 @@ BOOL daNpc_grA_c::ECut_carrySpaWater(int i_staffID) {
             c.y += 200.0f;
             csXyz c2(0, fopAcM_searchPlayerAngleY(this), 0);
             fopAcM_createItemForBoss(&c, 0x21, fopAcM_GetRoomNo(this), &c2, NULL, 0.0f, 20.0f,
-                                     0x80);
+                                     0x80 IF_DUSK_ARG(ITEM_CHECK_GORON_SPRINGWATER_RUSH));
         } break;
         }
     }
@@ -4018,8 +4022,54 @@ BOOL daNpc_grA_c::talk(void*) {
         }
         if (r26 && talkProc(NULL, TRUE, NULL)) {
             if (mFlow.getEventId(&sp8) == 1) {
-                field_0x1480 =
-                    fopAcM_createItemForPresentDemo(&current.pos, sp8, 0, -1, -1, NULL, NULL);
+#if TARGET_PC
+                const u8 originalItem = sp8;
+                u32 itemGiveTag = 0;
+                bool isItemCheck = false;
+                if (originalItem == dItemNo_BOMB_IN_BAG_e) {
+                    const auto itemCheck =
+                        dusk::mods::item_check_commit("goron_reward:F_SP113", originalItem, this);
+                    sp8 = itemCheck.itemNo;
+                    itemGiveTag = itemCheck.tag;
+                    isItemCheck = true;
+                } else {
+                    const char* stage = dComIfGp_getStartStageName();
+                    const bool isAdultGoronShop = (strcmp(stage, "R_SP160") == 0 && originalItem == dItemNo_HYLIA_SHIELD_e) ||
+                                                  (strcmp(stage, "F_SP116") == 0 && originalItem == dItemNo_ARROW_30_e);
+                    if (isAdultGoronShop) {
+                        const auto itemCheck = dusk::mods::item_check_commit(
+                            dusk::mods::item_give_tag_shop(originalItem), originalItem, this);
+                        sp8 = itemCheck.itemNo;
+                        itemGiveTag = itemCheck.tag;
+                        isItemCheck = true;
+                    }
+                }
+
+                if (isItemCheck && sp8 == dItemNo_NONE_e) {
+                    dusk::mods::item_check_complete({itemGiveTag, dItemNo_NONE_e}, this);
+                    r29 = 1;
+                    if (mType == 0xb) {
+                        field_0x1691 = 1;
+                    }
+                } else {
+                    field_0x1480 = fopAcM_createItemForPresentDemo(
+                        &current.pos, sp8, 0, -1, -1, NULL, NULL, itemGiveTag);
+                    if (field_0x1480 != fpcM_ERROR_PROCESS_ID_e) {
+                        s16 r25 =
+                            dComIfGp_getEventManager().getEventIdx(this, "DEFAULT_GETITEM", 0xff);
+                        dComIfGp_getEvent()->reset(this);
+                        fopAcM_orderChangeEventId(this, r25, 1, -1);
+                        field_0x9ec = 1;
+                        r29 = 1;
+                        mOrderNewEvt = 1;
+                        if (mType == 0xb) {
+                            field_0x1691 = 1;
+                        }
+                    }
+                }
+#else
+                field_0x1480 = fopAcM_createItemForPresentDemo(&current.pos, sp8, 0, -1, -1, NULL,
+                    NULL);
                 if (field_0x1480 != fpcM_ERROR_PROCESS_ID_e) {
                     s16 r25 = dComIfGp_getEventManager().getEventIdx(this, "DEFAULT_GETITEM", 0xff);
                     dComIfGp_getEvent()->reset(this);
@@ -4031,6 +4081,7 @@ BOOL daNpc_grA_c::talk(void*) {
                         field_0x1691 = 1;
                     }
                 }
+#endif
             } else {
                 if (mType == 0xa && field_0x1486 == 0 && daNpcF_chkEvtBit(0x187)) {
                     dComIfGp_getEvent()->reset(this);

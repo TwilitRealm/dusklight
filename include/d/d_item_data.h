@@ -86,9 +86,9 @@ struct dItem_data {
 
     static u16 getFieldHeapSize(u8 index) { return field_item_res[index].mHeapSize; } 
 
-    static dItem_itemResource item_resource[255];
-    static dItem_fieldItemResource field_item_res[255];
-    static dItem_itemInfo item_info[255];
+    static DUSK_GAME_DATA dItem_itemResource item_resource[255];
+    static DUSK_GAME_DATA dItem_fieldItemResource field_item_res[255];
+    static DUSK_GAME_DATA dItem_itemInfo item_info[255];
 };
 
 enum {
@@ -142,7 +142,12 @@ enum {
     /* 0x2F */ dItemNo_WEAR_KOKIRI_e,
     /* 0x30 */ dItemNo_ARMOR_e,
     /* 0x31 */ dItemNo_WEAR_ZORA_e,
+#if TARGET_PC
     /* 0x32 */ dItemNo_MAGIC_LV1_e,
+    dItemNo_SHADOW_CRYSTAL_e = dItemNo_MAGIC_LV1_e,
+#else
+    /* 0x32 */ dItemNo_MAGIC_LV1_e,
+#endif
     /* 0x33 */ dItemNo_DUNGEON_EXIT_2_e,
     /* 0x34 */ dItemNo_WALLET_LV1_e,
     /* 0x35 */ dItemNo_WALLET_LV2_e,

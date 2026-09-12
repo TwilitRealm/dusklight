@@ -22,7 +22,7 @@ class daNpcRafrel_Param_c {
 public:
     virtual ~daNpcRafrel_Param_c() {}
 
-    static const daNpcRafrel_HIOParam m;
+    static DUSK_GAME_DATA const daNpcRafrel_HIOParam m;
 };
 
 class daNpcRafrel_HIO_c : public mDoHIO_entry_c {
@@ -105,9 +105,8 @@ public:
 
     s16 getMessageNo() { return (fopAcM_GetParam(this) >> 8) & 0xFFFF; }
 
-    static int (daNpcRafrel_c::*mEvtSeqList[])(int);
+    static DUSK_GAME_DATA int (daNpcRafrel_c::*mEvtSeqList[])(int);
 
-private:
     /* 0xB48 */ Z2Creature mSound;
     /* 0xBD8 */ J3DModel* mpItemModel;
     /* 0xBDC */ daNpcF_MatAnm_c* mpMatAnm;

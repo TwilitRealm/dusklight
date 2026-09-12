@@ -57,13 +57,12 @@ public:
     void setUsingIronBall(bool isUsingIronBall) { mUsingIronBall = isUsingIronBall; }
     void setMarkState(u8 state) { mMarkState = state; }
 
-    static Z2CreatureLink* mLinkPtr;
+    static DUSK_GAME_DATA Z2CreatureLink* mLinkPtr;
     static Z2CreatureLink* getLink() { return mLinkPtr; }
 
     friend class Z2LinkSoundStarter;
     friend struct Z2RideSoundStarter;
 
-private:
     /* 0x90 Z2LinkSoundStarter */
     /* 0x94 */ Z2SoundObjSimple mKantera;
     /* 0xB4 */ Vec field_0xb4;
@@ -123,7 +122,6 @@ public:
 
     virtual void deleteObject();
 
-private:
     /* 0x90 */  // Z2RideSoundStarter mSoundStarter;
     /* 0x98 */ bool mLinkRiding;
 };  // Size: 0x9C
@@ -136,7 +134,6 @@ public:
     Z2SoundHandlePool* startFireSound(u16);
     Z2SoundHandlePool* startSound(JAISoundID soundID, u32 mapinfo, s8 reverb);
 
-private:
     /* 0x20 */ f32 field_0x20;
 };
 

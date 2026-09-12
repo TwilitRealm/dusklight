@@ -76,10 +76,11 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: dusklight-${{env.DUSK_VERSION}}-linux-${{matrix.preset}}-${{matrix.artifact_arch}}
+          name: dusklight-${{env.APP_VERSION}}-linux-${{matrix.preset}}-${{matrix.artifact_arch}}
           path: |
             build/install/Dusklight-*.AppImage
             build/install/debug.tar.*
+            build/install/sdk/
 
   build-apple:
     name: Build Apple (${{matrix.name}})
@@ -144,10 +145,11 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: dusklight-${{env.DUSK_VERSION}}-${{matrix.artifact_name}}
+          name: dusklight-${{env.APP_VERSION}}-${{matrix.artifact_name}}
           path: |
             build/install/Dusklight.app
             build/install/debug.tar.*
+            build/install/sdk/
 
   build-android:
     name: Build Android (${{matrix.name}})
@@ -203,18 +205,24 @@ jobs:
       - name: Build native library
         run: cmake --build --preset ${{matrix.preset}} --target dusklight
 
-      - name: Stage stripped JNI library
-        run: ANDROID_STAGE_ABIS="${{matrix.abi}}" platforms/android/scripts/stage-jni-libs.sh
+      - name: Build bundled mods
+        run: cmake --build --preset ${{matrix.preset}} --target dusklight_mods
 
       - name: Build APK
         working-directory: platforms/android
         run: ./gradlew :app:assembleRelease --rerun-tasks
 
+      - name: Stage artifacts
+        run: |
+          mkdir -p upload/sdk
+          cp build/*/stub-android-*.so upload/sdk/
+          cp platforms/android/app/build/outputs/apk/release/app-${{matrix.abi}}-release-unsigned.apk upload/
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: dusklight-${{env.DUSK_VERSION}}-android-${{matrix.artifact_arch}}
-          path: platforms/android/app/build/outputs/apk/release/app-${{matrix.abi}}-release-unsigned.apk
+          name: dusklight-${{env.APP_VERSION}}-android-${{matrix.artifact_arch}}
+          path: upload/
 
   build-windows:
     name: Build Windows (${{matrix.name}})
@@ -275,9 +283,11 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: dusklight-${{env.DUSK_VERSION}}-win32-msvc-${{matrix.artifact_arch}}
+          name: dusklight-${{env.APP_VERSION}}-win32-msvc-${{matrix.artifact_arch}}
           path: |
             build/install/*.exe
             build/install/*.dll
             build/install/res/
+            build/install/mods/
             build/install/debug.7z
+            build/install/sdk/

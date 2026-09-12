@@ -17,7 +17,7 @@ enum Event_Cut_Nums {
 
 static NPC_ZRC_HIO_CLASS l_HIO;
 
-daNpc_zrC_HIOParam const daNpc_zrC_Param_c::m = {
+DUSK_GAME_DATA daNpc_zrC_HIOParam const daNpc_zrC_Param_c::m = {
     50.0f,    // mAttnOffsetY
     -3.0f,    // mGravity
     1.0f,     // mScale
@@ -171,12 +171,12 @@ static DUSK_CONSTEXPR char DUSK_CONST* l_resNames[7] = {
 
 static DUSK_CONSTEXPR char DUSK_CONST* l_myName = "zrC";
 
-char DUSK_CONST* DUSK_CONST daNpc_zrC_c::mEvtCutNameList[2] = {
+DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST daNpc_zrC_c::mEvtCutNameList[2] = {
     "",
     "EARRING_GET",
 };
 
-daNpc_zrC_c::EventFn DUSK_CONST daNpc_zrC_c::mEvtCutList[2] = {
+DUSK_GAME_DATA daNpc_zrC_c::EventFn DUSK_CONST daNpc_zrC_c::mEvtCutList[2] = {
     NULL,
     &daNpc_zrC_c::ECut_earringGet,
 };
@@ -1681,8 +1681,9 @@ BOOL daNpc_zrC_c::ECut_earringGet(int i_staffID) {
         case 40: {
             int item_no = 0;
             if (mFlow.getEventId(&item_no) == 1) {
-                mItemID = fopAcM_createItemForPresentDemo(&current.pos, item_no,
-                                                          0, -1, -1, NULL, NULL);
+                DUSK_ITEM_CHECK("coral_earring", item_no, this);
+                mItemID = fopAcM_createItemForPresentDemo(
+                    &current.pos, item_no, 0, -1, -1, NULL, NULL DUSK_GIVE_TAG("coral_earring"));
             }
             break;
         }

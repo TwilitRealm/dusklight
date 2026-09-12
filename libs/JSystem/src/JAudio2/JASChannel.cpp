@@ -12,13 +12,13 @@
 #include "JSystem/JMath/JMATrigonometric.h"
 #include "JSystem/JGeometry.h"
 
-OSMessageQueue JASChannel::sBankDisposeMsgQ;
+DUSK_GAME_DATA OSMessageQueue JASChannel::sBankDisposeMsgQ;
 
-OSMessage JASChannel::sBankDisposeMsg[16];
+DUSK_GAME_DATA OSMessage JASChannel::sBankDisposeMsg[16];
 
-OSMessage JASChannel::sBankDisposeList[16];
+DUSK_GAME_DATA OSMessage JASChannel::sBankDisposeList[16];
 
-int JASChannel::sBankDisposeListSize;
+DUSK_GAME_DATA int JASChannel::sBankDisposeListSize;
 
 JASChannel::JASChannel(Callback i_callback, void* i_callbackData) :
     mStatus(STATUS_STOP),
@@ -173,11 +173,7 @@ void JASChannel::updateEffectorParam(JASDsp::TChannel* i_channel, u16* i_mixerVo
 
     f32 pan = 0.5f;
     f32 dolby = 0.0f;
-#if TARGET_PC
-    u32 effectiveOutputMode = dusk::audio::EnableHrtf ? JAS_OUTPUT_SURROUND : JASDriver::getOutputMode();
-#else
     u32 effectiveOutputMode = JASDriver::getOutputMode();
-#endif
     switch (effectiveOutputMode) {
     case JAS_OUTPUT_MONO:
         break;

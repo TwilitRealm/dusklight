@@ -1,11 +1,13 @@
 #include "achievements.hpp"
 
-#include "Z2AudioLib/Z2SeMgr.h"
-#include "dusk/achievements.h"
-#include "fmt/format.h"
-#include "m_Do/m_Do_audio.h"
 #include "nav_types.hpp"
 #include "pane.hpp"
+
+#include "dusk/achievements.h"
+
+#include "m_Do/m_Do_audio.h"
+
+#include <fmt/format.h>
 
 namespace dusk::ui {
 namespace {
@@ -16,47 +18,39 @@ struct CategoryInfo {
 };
 
 constexpr CategoryInfo kCategories[] = {
-    {AchievementCategory::Challenge,  "Challenge"},
+    {AchievementCategory::Challenge, "Challenge"},
     {AchievementCategory::Collection, "Collection"},
-    {AchievementCategory::Minigame,   "Minigame"},
-    {AchievementCategory::Misc,       "Misc"},
-    {AchievementCategory::Glitched,   "Glitched"},
+    {AchievementCategory::Minigame, "Minigame"},
+    {AchievementCategory::Misc, "Misc"},
+    {AchievementCategory::Glitched, "Glitched"},
 };
 
-Rml::String build_achievement_info_rml(const Achievement& a) {
-    Rml::String s = fmt::format(
-        R"(<div class="achievement-header">)"
-        R"(<span class="achievement-name{}">{}</span>)"
-        R"(<span class="achievement-badge{}">{}</span>)"
-        R"(</div>)"
-        R"(<p class="achievement-desc">{}</p>)",
-        a.unlocked ? " unlocked" : "",
-        a.name,
-        a.unlocked ? " unlocked" : " locked",
-        a.unlocked ? "Unlocked" : "Locked",
-        a.description
-    );
+void append_achievement_info(Rml::Element* parent, const Achievement& a) {
+    auto* header = append(parent, "achievement-header");
+    auto* name = append(header, "achievement-name");
+    name->SetClass("unlocked", a.unlocked);
+    append_text(name, a.name);
+    auto* badge = append(header, "achievement-badge");
+    badge->SetClass(a.unlocked ? "unlocked" : "locked", true);
+    append_text(badge, a.unlocked ? "Unlocked" : "Locked");
 
+    auto* description = append(parent, "p");
+    description->SetClass("achievement-desc", true);
+    append_text(description, a.description);
     if (a.isCounter) {
-        float fraction = a.goal > 0 ? float(a.progress) / float(a.goal) : 1.0f;
-        s += fmt::format(
-            R"(<progress value="{:.3f}" class="{}"/>)"
-            R"(<span class="achievement-progress">{} / {}</span>)",
-            fraction,
-            a.unlocked ? "progress-done" : "progress-ongoing",
-            a.progress,
-            a.goal
-        );
+        const float fraction = a.goal > 0 ? float(a.progress) / float(a.goal) : 1.0f;
+        auto* progress = append(parent, "progress");
+        progress->SetAttribute("value", fraction);
+        progress->SetClass(a.unlocked ? "progress-done" : "progress-ongoing", true);
+        append_text(
+            append(parent, "achievement-progress"), fmt::format("{} / {}", a.progress, a.goal));
     }
-
-    return s;
 }
 
 class AchievementRow : public FluentComponent<AchievementRow> {
 public:
     AchievementRow(Rml::Element* parent, const Achievement& a)
-        : FluentComponent(createRowRoot(parent))
-    {
+        : FluentComponent(createRowRoot(parent)) {
         auto& btn = add_child<Button>(Button::Props{"×"});
         mClearButton = &btn;
         btn.root()->SetClass("achievement-clear", true);
@@ -80,13 +74,10 @@ public:
             return false;
         });
 
-        Component::listen(btn.root(), Rml::EventId::Blur, [this](Rml::Event&) {
-            resetConfirm();
-        });
+        Component::listen(btn.root(), Rml::EventId::Blur, [this](Rml::Event&) { resetConfirm(); });
 
-        auto* infoDiv = append(mRoot, "div");
-        infoDiv->SetClass("achievement-info", true);
-        infoDiv->SetInnerRML(build_achievement_info_rml(a));
+        auto* infoDiv = append(mRoot, "achievement-info");
+        append_achievement_info(infoDiv, a);
     }
 
     bool focus() override { return mClearButton->focus(); }
@@ -94,8 +85,7 @@ public:
 private:
     static Rml::Element* createRowRoot(Rml::Element* parent) {
         auto* doc = parent->GetOwnerDocument();
-        auto elem = doc->CreateElement("div");
-        elem->SetClass("achievement-row", true);
+        auto elem = doc->CreateElement("achievement-row");
         return parent->AppendChild(std::move(elem));
     }
 
@@ -114,8 +104,7 @@ AchievementsWindow::AchievementsWindow() {
     const auto all = AchievementSystem::get().getAchievements();
 
     {
-        auto elem = mDocument->CreateElement("div");
-        elem->SetClass("achievement-total", true);
+        auto elem = mDocument->CreateElement("achievement-total");
         mTotalEl = mRoot->AppendChild(std::move(elem));
         updateTotal();
     }
@@ -185,8 +174,6 @@ AchievementsWindow::AchievementsWindow() {
                 *confirmingAll = false;
                 clearAllPtr->set_text("Clear All Achievements");
             });
-
-            pane.finalize();
         });
     }
 }
@@ -217,7 +204,9 @@ void AchievementsWindow::updateTotal() {
         return;
     }
     const auto all = AchievementSystem::get().getAchievements();
-    const int total = std::count_if(all.begin(), all.end(), [](const Achievement& achievement){ return achievement.category != AchievementCategory::Glitched;});
+    const int total = std::count_if(all.begin(), all.end(), [](const Achievement& achievement) {
+        return achievement.category != AchievementCategory::Glitched;
+    });
     int unlocked = 0;
     for (const auto& a : all) {
         if (a.unlocked) {
@@ -225,7 +214,7 @@ void AchievementsWindow::updateTotal() {
         }
     }
     const int pct = total > 0 ? (unlocked * 100 / total) : 0;
-    mTotalEl->SetInnerRML(fmt::format("{}%", pct));
+    set_text_content(mTotalEl, fmt::format("{}%", pct));
 }
 
 }  // namespace dusk::ui

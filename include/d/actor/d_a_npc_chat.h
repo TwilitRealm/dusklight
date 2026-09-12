@@ -11,7 +11,7 @@ class daNpcChat_Param_c {
 public:
     virtual ~daNpcChat_Param_c() {}
 
-    static daNpcChat_HIOParam const m;
+    static DUSK_GAME_DATA daNpcChat_HIOParam const m;
 };
 
 #if DEBUG
@@ -102,9 +102,8 @@ public:
     void setFear() { mFear = true; }
     void setTalkFlag() { mTalkFlag = true; }
 
-    static eventFunc DUSK_CONST mEvtSeqList[1];
+    static DUSK_GAME_DATA eventFunc DUSK_CONST mEvtSeqList[1];
 
-private:
     /* 0xB48 */ Z2CreatureCitizen mSound;
     /* 0xBEC */ u8 field_0xbec[0xbf0 - 0xbec];
     /* 0xBF0 */ J3DModel* mObjModel;

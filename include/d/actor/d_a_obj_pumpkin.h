@@ -28,7 +28,7 @@ class daObj_Pumpkin_Param_c {
 public:
     virtual ~daObj_Pumpkin_Param_c() {}
 
-    static const daObj_Pumpkin_HIOParam m;
+    static DUSK_GAME_DATA const daObj_Pumpkin_HIOParam m;
 };
 
 #if DEBUG
@@ -56,7 +56,7 @@ public:
  *
  */
 class daObj_Pumpkin_c : public fopAc_ac_c {
-private:
+public:
     /* 0x568 */ OBJ_PUMPKIN_HIO_CLASS* mpHIO;
     /* 0x56C */ request_of_phase_process_class mPhaseReq;
     /* 0x574 */ J3DModel* mpModel;

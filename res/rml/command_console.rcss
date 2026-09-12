@@ -1,0 +1,93 @@
+body {
+    --console-command-color: #FFD966;
+
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+console {
+    position: absolute;
+    bottom: 10dp;
+    left: 10dp;
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(var(--color-black-rgb), 60%);
+    pointer-events: auto;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    color: var(--color-white);
+    transition: background-color 0.8s linear-in-out;
+}
+
+output {
+    display: block;
+    overflow: hidden;
+    max-height: 480dp;
+    padding: var(--space-xs) var(--space-sm);
+    line-height: 1.4em;
+}
+
+output[open] {
+    height: 480dp;
+    max-height: 480dp;
+    overflow-y: auto;
+}
+
+console:not([open]) {
+    pointer-events: none;
+}
+
+console:not([open])[fading] {
+    background-color: rgba(var(--color-black-rgb), 0%);
+}
+
+console[open] {
+    background-color: rgba(var(--color-black-rgb), 60%);
+    transition: none;
+}
+
+line {
+    display: block;
+    white-space: nowrap;
+    opacity: 1;
+    transition: opacity 0.8s linear-in-out;
+}
+
+output:not([open]) line[fading] {
+    opacity: 0;
+}
+
+output:not([open]) line[expired] {
+    display: none;
+}
+
+output[open] line {
+    opacity: 1;
+    transition: none;
+}
+
+line.cmd {
+    color: var(--console-command-color);
+}
+
+console input {
+    display: none;
+    width: 100%;
+    background-color: rgba(var(--color-black-rgb), 40%);
+    border: 0dp;
+    border-top: 1dp rgba(var(--color-white-rgb), 20%);
+    color: var(--color-white);
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    padding: var(--space-xs) var(--space-sm);
+}
+
+console[open] input {
+    display: block;
+}

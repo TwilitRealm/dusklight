@@ -12,7 +12,7 @@
 #include "JSystem/J3DGraphAnimator/J3DMaterialAnm.h"
 
 class daNpcF_ActorMngr_c {
-private:
+public:
     /* 0x0 */ fpc_ProcID mActorID;
 
 public:
@@ -52,7 +52,7 @@ BOOL daNpcF_chkPassed(cXyz i_pos, dPnt* i_points, u16 i_idx, u16 i_num, BOOL i_i
 BOOL daNpcF_chkDoBtnEqSpeak(fopAc_ac_c* i_actor_p);
 
 class daNpcF_SPCurve_c {
-private:
+public:
     /* 0x00 */ u16 mNurbs;
     /* 0x02 */ u16 field_0x02;
     /* 0x04 */ u8 mIsReversed;
@@ -119,7 +119,7 @@ public:
 };  // Size: 0x630
 
 class daNpcF_MatAnm_c : public J3DMaterialAnm {
-private:
+public:
     /* 0x0F4 */ mutable f32 field_0xF4;
     /* 0x0F8 */ mutable f32 field_0xF8;
     /* 0x0FC */ f32 mNowOffsetX;
@@ -138,7 +138,7 @@ public:
 };
 
 class daNpcF_Lookat_c {
-private:
+public:
     /* 0x00 */ cXyz mJointPos[4];
     /* 0x30 */ cXyz* mAttnPos_p;
     /* 0x34 */ csXyz mAngularMoveDis[4];
@@ -394,19 +394,18 @@ public:
     void onHide() { mHide = true; }
     void offHide() { mHide = false; }
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcCyl mCcDCyl;
-    static dCcD_SrcSph mCcDSph;
-    static fopAc_ac_c* mFindActorPList[100];
-    static s32 mFindCount;
-    static s16 mSrchActorName;
-    static char mFileNameBuf[0x15];
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcCyl mCcDCyl;
+    static DUSK_GAME_DATA dCcD_SrcSph mCcDSph;
+    static DUSK_GAME_DATA fopAc_ac_c* mFindActorPList[100];
+    static DUSK_GAME_DATA s32 mFindCount;
+    static DUSK_GAME_DATA s16 mSrchActorName;
+    static DUSK_GAME_DATA char mFileNameBuf[0x15];
 };
 
 STATIC_ASSERT(sizeof(daNpcF_c) == 0xB48);
 
 class daNpcF_MoveBgActor_c : public daNpcF_c {
-private:
 public:
     // these functions are inferred based on daBaseNpc_moveBgActor_c -
     // defining them in this order fixes weak function order for this class in d_a_npc

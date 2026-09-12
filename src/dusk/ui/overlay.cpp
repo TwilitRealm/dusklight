@@ -1,22 +1,25 @@
 #include "overlay.hpp"
 
-#include "aurora/lib/logging.hpp"
 #include "controller_config.hpp"
+#include "window.hpp"
+
 #include "dusk/achievements.h"
 #include "dusk/action_bindings.h"
 #include "dusk/livesplit.h"
 #include "dusk/settings.h"
 #include "dusk/speedrun.h"
-#include "fmt/format.h"
-#include "magic_enum.hpp"
-#include "window.hpp"
 
+#include "m_Do/m_Do_main.h"
+
+#include <aurora/gfx.h>
+#include <borealis/log.hpp>
+#include <dolphin/pad.h>
+#include <fmt/format.h>
+#include <magic_enum.hpp>
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_timer.h>
+
 #include <algorithm>
-#include <aurora/gfx.h>
-#include <dolphin/pad.h>
-#include <m_Do/m_Do_main.h>
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -24,11 +27,12 @@
 
 namespace dusk::ui {
 namespace {
-aurora::Module Log{"dusk::ui::overlay"};
+constexpr borealis::Log Log{"dusk::ui::overlay"};
 
 const Rml::String kDocumentSource = R"RML(
 <rml>
 <head>
+    <link type="text/rcss" href="res/rml/theme.rcss" />
     <link type="text/rcss" href="res/rml/overlay.rcss" />
 </head>
 <body>
@@ -71,6 +75,9 @@ Rml::Element* create_toast(Rml::Element* parent, const Toast& toast) {
     }
 
     auto* elem = append(parent, "toast");
+    if (!toast.modId.empty()) {
+        elem->SetAttribute("mod-id", toast.modId);
+    }
     if (!toast.type.empty()) {
         elem->SetClass(toast.type, true);
     }
@@ -79,8 +86,7 @@ Rml::Element* create_toast(Rml::Element* parent, const Toast& toast) {
         if (toast.title.starts_with("<")) {
             heading->SetInnerRML(toast.title);
         } else {
-            auto* span = append(heading, "span");
-            span->SetInnerRML(toast.title);
+            append_text(append(heading, "toast-title"), toast.title);
         }
         if (toast.type == "achievement") {
             auto* icon = append(heading, "icon");
@@ -92,6 +98,9 @@ Rml::Element* create_toast(Rml::Element* parent, const Toast& toast) {
         } else if (toast.type == "warning") {
             auto* icon = append(heading, "icon");
             icon->SetClass("warning", true);
+        } else if (toast.type == "mod-installed") {
+            auto* icon = append(heading, "icon");
+            icon->SetClass("download-done", true);
         }
     }
     {
@@ -99,8 +108,7 @@ Rml::Element* create_toast(Rml::Element* parent, const Toast& toast) {
         if (toast.content.starts_with("<")) {
             message->SetInnerRML(toast.content);
         } else {
-            auto* span = append(message, "span");
-            span->SetInnerRML(toast.content);
+            append_text(append(message, "toast-message-text"), toast.content);
         }
     }
     {
@@ -115,14 +123,15 @@ Rml::Element* create_controller_warning(Rml::Element* parent) {
     elem->SetClass("controller-warning", true);
 
     auto* heading = append(elem, "heading");
-    auto* title = append(heading, "span");
-    title->SetInnerRML("No Device Assigned");
+    append_text(append(heading, "toast-title"), "No Device Assigned");
     auto* icon = append(heading, "icon");
     icon->SetClass("warning", true);
 
     auto* message = append(elem, "message");
-    auto* content = append(message, "span");
-    content->SetInnerRML("Configure <b>Port 1</b> in Settings.");
+    auto* content = append(message, "toast-message-text");
+    append_text(content, "Configure ");
+    append_text(append(content, "b"), "Port 1");
+    append_text(content, " in Settings.");
 
     return elem;
 }
@@ -157,12 +166,6 @@ Rml::String back_button_name() {
     return "Back";
 }
 
-#if defined(TARGET_ANDROID) || (defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST)
-constexpr auto kMenuNotificationPrefix = "3-finger tap or";
-#else
-constexpr auto kMenuNotificationPrefix = "Press <b>F1</b> or";
-#endif
-
 Rml::Element* create_menu_notification(Rml::Element* parent) {
     auto* elem = append(parent, "toast");
     elem->SetClass("menu-notification", true);
@@ -179,11 +182,18 @@ Rml::Element* create_menu_notification(Rml::Element* parent) {
 
     auto* message = append(elem, "message");
     auto* row = append(message, "row");
-    append(row, "span")->SetInnerRML(kMenuNotificationPrefix);
+    auto* prefix = append(row, "notification-prefix");
+#if defined(TARGET_ANDROID) || (defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST)
+    append_text(prefix, "3-finger tap or");
+#else
+    append_text(prefix, "Press ");
+    append_text(append(prefix, "b"), "F1");
+    append_text(prefix, " or");
+#endif
     auto* icon = append(row, "icon");
     icon->SetClass("controller", true);
-    append(row, "span")->SetInnerRML("<b>" + escape(padButton) + "</b>");
-    append(row, "span")->SetInnerRML("to open menu");
+    append_text(append(append(row, "notification-button"), "b"), padButton);
+    append_text(append(row, "notification-action"), "to open menu");
 
     return elem;
 }
@@ -200,10 +210,20 @@ void remove_element(Rml::Element*& elem) noexcept {
 
 }  // namespace
 
-static std::string FormatTime(OSTime ticks) {
-    OSCalendarTime t;
-    OSTicksToCalendarTime(ticks, &t);
-    return fmt::format("{0:02}:{1:02}:{2:02}.{3:03}", t.hour, t.min, t.sec, t.msec);
+static std::string FormatElapsedTime(OSTime ticksElapsed) {
+    using namespace std::chrono;
+
+    milliseconds ms{OSTicksToMilliseconds(ticksElapsed)};
+
+    const hours hr = duration_cast<hours>(ms);
+    ms -= hr;
+    const minutes min = duration_cast<minutes>(ms);
+    ms -= min;
+    const seconds sec = duration_cast<seconds>(ms);
+    ms -= sec;
+
+    return fmt::format(
+        "{0:02}:{1:02}:{2:02}.{3:03}", hr.count(), min.count(), sec.count(), ms.count());
 }
 
 Overlay::Overlay() : Document(kDocumentSource, true, DocumentScope::Overlay) {
@@ -252,7 +272,21 @@ void Overlay::update() {
         if (getSettings().video.enableFpsOverlay.getValue()) {
             const int idx = getSettings().video.fpsOverlayCorner.getValue();
             mFpsCounter->SetAttribute("open", "");
+            mFpsCounter->RemoveProperty(Rml::PropertyId::Bottom);
             mFpsCounter->SetAttribute("corner", kFpsCorners[idx]);
+
+            if (idx == 2) {
+                if (mPipelineProgress && mPipelineProgress->GetAttribute("open")) {
+                    // 12 (height of pipeline box off bottom) + height of pipeline box + 3 (padding
+                    // space)
+                    mFpsCounter->SetProperty(Rml::PropertyId::Bottom,
+                        Rml::Property(15 + mPipelineProgress->GetOffsetHeight(), Rml::Unit::PX));
+                } else {
+                    // Return fps counter to default height off the bottom
+                    mFpsCounter->SetProperty(
+                        Rml::PropertyId::Bottom, Rml::Property(12, Rml::Unit::PX));
+                }
+            }
 
             const Uint64 perfFreq = SDL_GetPerformanceFrequency();
             float fps = aurora_get_fps();
@@ -264,7 +298,7 @@ void Overlay::update() {
                 static_cast<double>(now - mFpsLastUpdate) >= 0.5 * static_cast<double>(perfFreq);
             if (refreshLabel) {
                 mFpsLastUpdate = now;
-                mFpsCounter->SetInnerRML(escape(fmt::format("{:.0f} FPS", fps)));
+                set_text_content(mFpsCounter, fmt::format("{:.0f} FPS", fps));
             }
         } else {
             mFpsCounter->RemoveAttribute("open");
@@ -275,7 +309,7 @@ void Overlay::update() {
     update_pipeline_progress();
 
 #if !(defined(__ANDROID__) || (defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST))
-    if (getSettings().game.speedrunMode && getSettings().game.liveSplitEnabled) {
+    if (dusk::speedrun::isActive() && getSettings().game.liveSplitEnabled) {
         dusk::speedrun::updateLiveSplit();
         if (dusk::speedrun::consumeConnectedEvent()) {
             push_toast({.title = "LiveSplit connected", .duration = std::chrono::seconds(3)});
@@ -287,46 +321,48 @@ void Overlay::update() {
 #endif
 
     if (mSpeedrunTimer != nullptr && mSpeedrunRta != nullptr && mSpeedrunIgt != nullptr) {
-        if (getSettings().game.speedrunMode) {
+        if (dusk::speedrun::isActive()) {
             // L+R+A+Start to reset timer
             if (mDoCPd_c::getHoldL(PAD_1) && mDoCPd_c::getHoldR(PAD_1) &&
                 mDoCPd_c::getHoldA(PAD_1) && mDoCPd_c::getTrigZ(PAD_1))
             {
-                m_speedrunInfo.reset();
+                dusk::speedrun::g_speedrunInfo.reset();
             }
 
             // L+R+A+Y to manually stop timer
             if (mDoCPd_c::getHoldL(PAD_1) && mDoCPd_c::getHoldR(PAD_1) &&
                 mDoCPd_c::getHoldA(PAD_1) && mDoCPd_c::getTrigY(PAD_1))
             {
-                if (m_speedrunInfo.m_isRunStarted) {
-                    m_speedrunInfo.m_endTimestamp = OSGetTime() - m_speedrunInfo.m_startTimestamp;
-                    m_speedrunInfo.m_isRunStarted = false;
+                if (speedrun::g_speedrunInfo.m_isRunStarted) {
+                    speedrun::g_speedrunInfo.stopRun();
                 }
             }
 
-            OSTime elapsedTime = 0;
-            if (m_speedrunInfo.m_isRunStarted) {
-                elapsedTime = OSGetTime() - m_speedrunInfo.m_startTimestamp;
-            } else if (m_speedrunInfo.m_endTimestamp != 0) {
-                elapsedTime = m_speedrunInfo.m_endTimestamp;
+            OSTime rtaElapsedTime = 0;
+            if (speedrun::g_speedrunInfo.m_isRunStarted) {
+                rtaElapsedTime = OSGetNativeTime() - speedrun::g_speedrunInfo.m_rtaStartTimestamp;
+            } else if (speedrun::g_speedrunInfo.m_rtaTimer != 0) {
+                rtaElapsedTime = speedrun::g_speedrunInfo.m_rtaTimer;
             }
 
-            if (!m_speedrunInfo.m_isPauseIGT) {
-                m_speedrunInfo.m_igtTimer = elapsedTime - m_speedrunInfo.m_totalLoadTime;
+            if (speedrun::g_speedrunInfo.m_isRunStarted && !speedrun::g_speedrunInfo.m_isPauseIGT) {
+                speedrun::g_speedrunInfo.m_igtTimer = OSGetTime() -
+                                                      speedrun::g_speedrunInfo.m_igtStartTimestamp -
+                                                      speedrun::g_speedrunInfo.m_totalLoadTime;
             }
 
             mSpeedrunTimer->SetAttribute("open", "");
 
             if (getSettings().game.showSpeedrunRTATimer) {
                 mSpeedrunRta->SetAttribute("open", "");
-                mSpeedrunRta->SetInnerRML(escape(fmt::format("RTA  {}", FormatTime(elapsedTime))));
+                set_text_content(
+                    mSpeedrunRta, fmt::format("RTA  {}", FormatElapsedTime(rtaElapsedTime)));
             } else {
                 mSpeedrunRta->RemoveAttribute("open");
             }
 
-            mSpeedrunIgt->SetInnerRML(
-                escape(fmt::format("IGT  {}", FormatTime(m_speedrunInfo.m_igtTimer))));
+            set_text_content(mSpeedrunIgt,
+                fmt::format("IGT  {}", FormatElapsedTime(speedrun::g_speedrunInfo.m_igtTimer)));
         } else {
             mSpeedrunTimer->RemoveAttribute("open");
         }
@@ -444,8 +480,8 @@ void Overlay::update_pipeline_progress() {
     if (queuedPipelines != mLastQueuedPipelines) {
         mLastQueuedPipelines = queuedPipelines;
         const auto noun = queuedPipelines == 1 ? "pipeline" : "pipelines";
-        mPipelineProgressLabel->SetInnerRML(
-            escape(fmt::format("Building {} {}", queuedPipelines, noun)));
+        set_text_content(
+            mPipelineProgressLabel, fmt::format("Building {} {}", queuedPipelines, noun));
     }
     mPipelineProgressBar->SetAttribute("value", progress);
 

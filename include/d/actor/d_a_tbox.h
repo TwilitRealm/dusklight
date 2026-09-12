@@ -148,7 +148,6 @@ public:
         field_0x9fc = 1;
     }
 
-private:
     /* 0x718 */ u8 field_0x718;
     /* 0x71C */ request_of_phase_process_class mPhase;
     /* 0x724 */ J3DModel* mpModel;
@@ -194,6 +193,9 @@ private:
     /* 0x9FC */ u8 field_0x9fc;
     /* 0x9FD */ u8 field_0x9fd;
     /* 0xA00 */ Mtx mDrawMtx;
+#if TARGET_PC
+    u8 mOriginalItemNo;
+#endif
 };
 
 STATIC_ASSERT(sizeof(daTbox_c) == 0xA30);

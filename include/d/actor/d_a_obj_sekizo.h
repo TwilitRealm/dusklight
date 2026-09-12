@@ -10,7 +10,7 @@ struct daObj_Sekizo_HIOParam {
 class daObj_Sekizo_Param_c {
 public:
     virtual ~daObj_Sekizo_Param_c() {}
-    static daObj_Sekizo_HIOParam const m;
+    static DUSK_GAME_DATA daObj_Sekizo_HIOParam const m;
 };
 
 #if DEBUG
@@ -50,7 +50,6 @@ public:
     void initBaseMtx();
     void setBaseMtx();
 
-private:
     /* 0x5A0 */ OBJ_SEKIZO_HIO_CLASS* mpHIO;
     /* 0x5A4 */ request_of_phase_process_class mPhaseReq;
     /* 0x5AC */ J3DModel* mpModel;

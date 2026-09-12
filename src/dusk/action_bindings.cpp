@@ -1,8 +1,9 @@
 #include "dusk/action_bindings.h"
 
-#include "aurora/lib/input.hpp"
 #include "dusk/settings.h"
 #include "dusk/ui/ui.hpp"
+
+#include <aurora/lib/input.hpp>
 
 namespace dusk {
 
@@ -39,6 +40,15 @@ bool isActionBound(ActionBinds action, u32 port) {
     }
 
     return getActionBindButton(action, port) != PAD_NATIVE_BUTTON_INVALID;
+}
+
+bool isActionBoundAnyPort(ActionBinds action) {
+    for (u32 port = 0; port < PAD_CHANMAX; ++port) {
+        if (isActionBound(action, port)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void updateActionBindings() {

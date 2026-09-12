@@ -114,9 +114,9 @@ public:
 
     bool checkBoomWindTgTimer() { return mBoomWindTgTimer == 0; }
 
-    static procFunc mFuncPtr[];
-    static const dCcD_SrcCyl m_cyl_src;
-    static s32 m_timer_max;
+    static DUSK_GAME_DATA procFunc mFuncPtr[];
+    static DUSK_GAME_DATA const dCcD_SrcCyl m_cyl_src;
+    static DUSK_GAME_DATA s32 m_timer_max;
 
     /* 0x92C */ s16 field_0x92c;
     /* 0x92E */ u16 field_0x92e;
@@ -145,6 +145,10 @@ public:
     /* 0x9BC */ u8 field_0x9bc[4];
     /* 0x9C0 */ u8 field_0x9c0;
     /* 0x9C1 */ u8 field_0x9c1;
+#if TARGET_PC
+    u8 mOriginalItemNo;
+    bool mItemOverridden;
+#endif
 };  // Size: 0x9C4
 
 #endif /* D_A_D_A_ITEM_STATIC_H */

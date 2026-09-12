@@ -61,7 +61,6 @@ public:
 
     u8 getGroupNo() { return mGroupNo; }
 
-private:
     /* 0x5AC */ request_of_phase_process_class mPhaseReq;
     /* 0x5B4 */ mDoExt_McaMorfSO* mpMorfSO;
     /* 0x5B8 */ Z2CreatureEnemy mSound;
@@ -101,7 +100,7 @@ private:
     /* 0xB9E */ u8 field_0xb9e;
     /* 0xB9F */ u8 mHIOInit;
 
-    static actionFunc l_actionmenu[9];
+    static DUSK_GAME_DATA actionFunc l_actionmenu[9];
 };
 
 STATIC_ASSERT(sizeof(daE_GE_c) == 0xBA0);

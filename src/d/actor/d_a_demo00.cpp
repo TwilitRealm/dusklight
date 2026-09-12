@@ -1090,20 +1090,21 @@ inline int daDemo00_c::execute() {
                             break;
                         }
                         case 1:
+#if TARGET_PC
+                            // Suppress demo22_01's M_077 write. On Dusklight, the transform flag
+                            // is set by the Shadow Crystal item.
+                            if (dSv_event_flag_c::saveBitLabels[sp0E] == dSv_event_flag_c::M_077) {
+                                break;
+                            }
+#endif
                             dComIfGs_onEventBit(dSv_event_flag_c::saveBitLabels[sp0E]);
                             break;
 
                         case 2: {
                             u16 sp0A = sp0E & 0x3FFF;
                             if ((sp0E & 0xC000) == 0) {
-#if !MOVIE_SUPPORT
-                                // If movie support isn't available, automatically reset.
-                                // TPHD-esque. Maybe not the best solution, but it works.
-                                dComIfGp_event_reset();
-#else
                                 fopAcM_create(fpcNm_MOVIE_PLAYER_e, sp0A, NULL, fopAcM_GetRoomNo(this), NULL, NULL, 0xFF);
                                 mDoGph_gInf_c::fadeOut(1.0f);
-#endif
                             } else {
                                 switch (sp0A) {
                                     case 0:

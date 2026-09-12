@@ -11,7 +11,7 @@ class daNpc_yamiS_Param_c {
 public:
     virtual ~daNpc_yamiS_Param_c() {}
 
-    static const daNpc_yamiS_HIOParam m;
+    static DUSK_GAME_DATA const daNpc_yamiS_HIOParam m;
 };
 
 #if DEBUG
@@ -124,10 +124,9 @@ public:
         field_0xe44.OffTgSetBit();
     }
 
-    static char DUSK_CONST* DUSK_CONST mCutNameList[2];
-    static cutFunc DUSK_CONST mCutList[2];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mCutNameList[2];
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mCutList[2];
 
-private:
     /* 0xE40 */ NPC_YAMIS_HIO_CLASS* mpHIO;
     /* 0xE44 */ dCcD_Cyl field_0xe44;
     /* 0xF80 */ u8 mType;

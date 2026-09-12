@@ -1,39 +1,45 @@
-#if DUSK_ENABLE_SENTRY_NATIVE
+#if BOREALIS_HAS_SENTRY
 
 #include "reporting.hpp"
 
 #include "button.hpp"
-#include "dusk/crash_reporting.h"
 #include "ui.hpp"
 
+#include <borealis/sentry.hpp>
 #include <dolphin/gx/GXAurora.h>
 
 namespace dusk::ui {
 
-CrashReportWindow::CrashReportWindow() : WindowSmall("modal", "modal-dialog") {
-    mDialog->SetClass("modal-dialog", true);
+CrashReportWindow::CrashReportWindow() : WindowSmall("modal") {
+    auto* header = append(mDialog, "modal-header");
 
-    auto* header = append(mDialog, "div");
-    header->SetClass("modal-header", true);
-
-    auto* title = append(header, "div");
-    title->SetClass("modal-title", true);
-    title->SetInnerRML("Send Crash Reports");
+    auto* title = append(header, "modal-title");
+    append_text(title, "Send Crash Reports");
 
     auto* headIcon = append(header, "icon");
     headIcon->SetClass("question-mark", true);
 
-    auto* intro = append(mDialog, "div");
-    intro->SetClass("modal-body", true);
-    intro->SetInnerRML(
-        "Dusklight can automatically send crash reports to the developers. Crash reports contain the "
-        "following:"
-        "<br/>• Operating system version<br/>• CPU architecture<br/>• GPU model & driver version"
-        "<br/>• File paths (may include account username)<br/>• Stack trace<br/><br/>"
-        "This can be changed in the Settings menu at any time.");
+    auto* intro = append(mDialog, "modal-body");
+    append_text(intro,
+        "Dusklight can automatically send crash reports to the developers. Crash reports contain "
+        "the following:");
+    for (const char* item :
+        {
+            "• Operating system version",
+            "• CPU architecture",
+            "• GPU model & driver version",
+            "• File paths (may include account username)",
+            "• Stack trace",
+        })
+    {
+        append(intro, "br");
+        append_text(intro, item);
+    }
+    append(intro, "br");
+    append(intro, "br");
+    append_text(intro, "This can be changed in the Settings menu at any time.");
 
-    auto* grid = append(mDialog, "div");
-    grid->SetClass("preset-grid", true);
+    auto* grid = append(mDialog, "preset-grid");
 
     struct OptionInfo {
         const char* name;
@@ -43,33 +49,32 @@ CrashReportWindow::CrashReportWindow() : WindowSmall("modal", "modal-dialog") {
 
     static constexpr OptionInfo kOptions[] = {
         {"Enable",
-            "Send crash reports to Dusklight developers. Reports will include the information described "
-            "above.",
-            [] { crash_reporting::set_consent(true); }},
+            "Send crash reports to Dusklight developers. Reports will include the information "
+            "described above.",
+            [] { borealis::sentry::set_consent(true); }},
         {"Disable",
             "Do not send crash reports. This may make it more difficult to resolve issues you "
             "encounter.",
-            [] { crash_reporting::set_consent(false); }},
+            [] { borealis::sentry::set_consent(false); }},
     };
 
     for (const auto& option : kOptions) {
-        auto* col = append(grid, "div");
-        col->SetClass("preset-col", true);
+        auto* col = append(grid, "preset-option");
 
         auto btn = std::make_unique<Button>(col, Rml::String(option.name));
         btn->on_nav_command([this, apply = option.apply](Rml::Event&, NavCommand cmd) {
             if (cmd == NavCommand::Confirm) {
                 apply();
                 hide(true);
+                mDoAud_seStartMenu(kSoundClick);
                 return true;
             }
             return false;
         });
         mButtons.push_back(std::move(btn));
 
-        auto* desc = append(col, "div");
-        desc->SetClass("preset-desc", true);
-        desc->SetInnerRML(option.desc);
+        auto* desc = append(col, "preset-description");
+        append_text(desc, option.desc);
     }
 }
 

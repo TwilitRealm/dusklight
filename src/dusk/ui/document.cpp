@@ -1,9 +1,10 @@
 #include "document.hpp"
 
-#include "aurora/rmlui.hpp"
 #include "ui.hpp"
 
 #include "m_Do/m_Do_audio.h"
+
+#include <aurora/rmlui.hpp>
 
 #include <algorithm>
 
@@ -84,6 +85,7 @@ void Document::show() {
             focus();
         }
     }
+    mPendingClose = false;
 }
 
 void Document::hide(bool close) {
@@ -99,6 +101,15 @@ void Document::update() {}
 
 bool Document::focus() {
     return false;
+}
+
+bool Document::has_focus() const {
+    if (mDocument == nullptr) {
+        return false;
+    }
+    auto* context = mDocument->GetContext();
+    const auto* focused = context != nullptr ? context->GetFocusElement() : nullptr;
+    return focused != nullptr && focused->GetOwnerDocument() == mDocument;
 }
 
 bool Document::set_document_styles(const Rml::String& rcss) {

@@ -1,15 +1,18 @@
 #include "JSystem/JSystem.h" // IWYU pragma: keep
 
-#include <cstring>
-#include <os.h>
+#include "JSystem/J3DGraphBase/J3DPacket.h"
 #include "JSystem/J3DGraphAnimator/J3DModel.h"
 #include "JSystem/J3DGraphBase/J3DDrawBuffer.h"
 #include "JSystem/J3DGraphBase/J3DMaterial.h"
-#include "JSystem/J3DGraphBase/J3DPacket.h"
 #include "JSystem/J3DGraphBase/J3DShapeMtx.h"
 #include "JSystem/JKernel/JKRHeap.h"
+#include <os.h>
+#include <cstring>
 #include "global.h"
-#include "tracy/Tracy.hpp"
+
+#if TARGET_PC
+#include <tracy/Tracy.hpp>
+#endif
 
 J3DError J3DDisplayListObj::newDisplayList(u32 maxSize) {
     mMaxSize = ALIGN_NEXT(maxSize, 0x20);
@@ -68,9 +71,9 @@ void J3DDisplayListObj::callDL() const {
     GXCallDisplayList(mpDisplayList[0], mSize);
 }
 
-GDLObj J3DDisplayListObj::sGDLObj;
+DUSK_GAME_DATA GDLObj J3DDisplayListObj::sGDLObj;
 
-s32 J3DDisplayListObj::sInterruptFlag;
+DUSK_GAME_DATA s32 J3DDisplayListObj::sInterruptFlag;
 
 void J3DDisplayListObj::beginDL() {
     swapBuffer();
@@ -209,9 +212,6 @@ bool J3DMatPacket::isSame(J3DMatPacket* pOther) const {
 
 void J3DMatPacket::draw() {
     ZoneScoped;
-#if TARGET_PC 
-    j3dSys.setTexture(mpTexture);
-#endif
     mpMaterial->load();
 
 #if DEBUG && TARGET_PC
@@ -225,9 +225,6 @@ void J3DMatPacket::draw() {
     callDL();
 
     J3DShapePacket* packet = getShapePacket();
-#if TARGET_PC
-    packet->mpModel->getVertexBuffer()->setArray();
-#endif
     packet->getShape()->loadPreDrawSetting();
 
     while (packet != NULL) {
@@ -339,6 +336,11 @@ int J3DShapePacket::newDifferedDisplayList(u32 diffFlags) {
 void J3DShapePacket::prepareDraw() const {
     mpModel->getVertexBuffer()->setArray();
     j3dSys.setModel(mpModel);
+#if TARGET_PC
+    if (mpModel->getMtxCalcMode() == 2) {
+        mpModel->prepare_presentation_view();
+    }
+#endif
     j3dSys.setShapePacket((J3DShapePacket*)this);
 
     J3DShapeMtx::setLODFlag(mpModel->checkFlag(J3DMdlFlag_EnableLOD) != 0);

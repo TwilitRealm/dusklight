@@ -23,29 +23,17 @@
       }
     },
     {
-      "name": "release",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL",
-        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": {
-          "type": "BOOL",
-          "value": true
-        }
-      }
-    },
-    {
       "name": "ci",
       "hidden": true,
       "cacheVariables": {
         "CMAKE_C_COMPILER_LAUNCHER": "sccache",
         "CMAKE_CXX_COMPILER_LAUNCHER": "sccache",
-        "DUSK_ENABLE_SENTRY_NATIVE": {
+        "BOREALIS_ENABLE_SENTRY": {
           "type": "BOOL",
           "value": true
         },
-        "DUSK_SENTRY_DSN": "$env{SENTRY_DSN}",
-        "DUSK_SENTRY_ENVIRONMENT": "production",
+        "BOREALIS_SENTRY_DSN": "$env{SENTRY_DSN}",
+        "BOREALIS_SENTRY_ENVIRONMENT": "production",
         "Rust_RUSTUP_INSTALL_MISSING_TARGET": {
           "type": "BOOL",
           "value": true
@@ -72,11 +60,7 @@
           "type": "BOOL",
           "value": false
         },
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install",
-        "DUSK_ENABLE_CODE_MODS": {
-          "type": "BOOL",
-          "value": true
-        }
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install"
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -163,10 +147,6 @@
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install",
-        "DUSK_ENABLE_CODE_MODS": {
-          "type": "BOOL",
-          "value": true
-        },
         "CMAKE_DISABLE_FIND_PACKAGE_PkgConfig": {
           "type": "BOOL",
           "value": true
@@ -208,16 +188,12 @@
     {
       "name": "windows-arm64-msvc",
       "displayName": "Windows ARM64 (MSVC)",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "inherits": [
+        "windows-msvc"
+      ],
       "architecture": {
         "value": "arm64",
         "strategy": "external"
-      },
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "cl",
-        "CMAKE_CXX_COMPILER": "cl",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install"
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -270,11 +246,7 @@
           "type": "BOOL",
           "value": false
         },
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install",
-        "DUSK_ENABLE_CODE_MODS": {
-          "type": "BOOL",
-          "value": true
-        }
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install"
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -330,6 +302,10 @@
           "type": "BOOL",
           "value": false
         },
+        "ENABLE_VISIBILITY": {
+          "type": "BOOL",
+          "value": true
+        },
         "Rust_CARGO_TARGET": "aarch64-apple-ios",
         "BUILD_SHARED_LIBS": {
           "type": "BOOL",
@@ -370,6 +346,10 @@
           "type": "BOOL",
           "value": false
         },
+        "ENABLE_VISIBILITY": {
+          "type": "BOOL",
+          "value": true
+        },
         "Rust_CARGO_TARGET": "aarch64-apple-tvos",
         "Rust_TOOLCHAIN": "nightly",
         "BUILD_SHARED_LIBS": {
@@ -406,10 +386,6 @@
           "type": "BOOL",
           "value": false
         },
-        "DUSK_ENABLE_CODE_MODS": {
-          "type": "BOOL",
-          "value": true
-        },
         "CMAKE_DISABLE_FIND_PACKAGE_PkgConfig": {
           "type": "BOOL",
           "value": true
@@ -445,11 +421,10 @@
       "hidden": true,
       "inherits": [
         "android-base",
-        "ci",
-        "release"
+        "ci"
       ],
       "cacheVariables": {
-        "DUSK_ENABLE_SENTRY_NATIVE": {
+        "BOREALIS_ENABLE_SENTRY": {
           "type": "BOOL",
           "value": false
         }

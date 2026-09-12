@@ -49,7 +49,6 @@ public:
 
     void moveHookOn() { field_0x60a = 1; }
 
-private:
     /* 0x5A8 */ cXyz field_0x5a8;
     /* 0x5B4 */ Mtx mMtx;
     /* 0x5E4 */ u8 field_0x5e4[4];
@@ -67,7 +66,7 @@ private:
     /* 0x60A */ u8 field_0x60a;
     /* 0x60B */ u8 field_0x60b;
 
-    static daObjChandelier_proc s_exeProc[5];
+    static DUSK_GAME_DATA daObjChandelier_proc s_exeProc[5];
 };
 
 STATIC_ASSERT(sizeof(daObjChandelier_c) == 0x60C);

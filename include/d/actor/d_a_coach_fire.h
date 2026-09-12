@@ -33,7 +33,7 @@ public:
 
     const CoachFireAttr& attr() { return M_attr; }
 
-    static CoachFireAttr const M_attr;
+    static DUSK_GAME_DATA CoachFireAttr const M_attr;
 
     inline ~daCoachFire_c();
 
@@ -42,7 +42,6 @@ public:
     void setNoHitTimer() { noHitTimer = 20; }
     inline int execute();
 
-private:
     /* 0x568 */ LIGHT_INFLUENCE mLightInfluence;
     /* 0x588 */ dCcD_Stts mStts;
     /* 0x5C4 */ dCcD_Sph mSph;

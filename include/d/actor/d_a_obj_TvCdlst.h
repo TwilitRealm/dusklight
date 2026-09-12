@@ -26,14 +26,13 @@ public:
     int Draw();
     int Delete();
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcCyl mCcDCyl;
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcCyl mCcDCyl;
 
     u8 getLightType() { return fopAcM_GetParamBit(this,8,8); }
     u8 getOnSw() { return fopAcM_GetParamBit(this,0,8); }
     u8 getOffSw() { return fopAcM_GetParamBit(this,0x10,8); }
 
-private:
     /* 0x568 */ request_of_phase_process_class mPhaseReq;
     /* 0x570 */ J3DModel* mpModel;
     /* 0x574 */ dCcD_Stts mStts;

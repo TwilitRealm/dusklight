@@ -15,49 +15,6 @@ class dMenu_Fishing_c;
 class dMenu_Skill_c;
 class dMenu_Insect_c;
 class dSelect_cursor_c;
-
-#if TARGET_PC
-struct PaneCache {
-    u64 tag;
-    f32 origTransX;
-    f32 origTransY;
-    bool cached;
-};
-
-static PaneCache mpScreenPanes[] = {
-    {MULTI_CHAR('sa_tex_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('op_tex_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('heart_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('wolf_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('item_0_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('item_1_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('item_2_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('fish_3_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('lett_4_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('maki_5_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('fuku_n0'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('fuku_n1'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('fuku_n2'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('tate_n0'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('tate_n1'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('ken_n0'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('ken_n1'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('kabu_6n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('t_t00'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('f_t00'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('itemn_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('infotxtn'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('sa_op_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('title_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('menu_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('w_er_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('center_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('info_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('lavel_n'), 0.0f, 0.0f, false},
-    {MULTI_CHAR('modelbgn'), 0.0f, 0.0f, false},
-};
-#endif
-
 class dMenu_Collect2D_c;
 class dMenu_Collect2DTop_c : public dDlst_base_c {
 public:
@@ -172,7 +129,6 @@ public:
     J2DPicture* getBlackTex() { return mpBlackTex; }
     u8 getSubWindowOpenCheck() { return mSubWindowOpenCheck; }
 
-private:
     /* 0x004 */ JKRExpHeap* mpHeap;
     /* 0x008 */ JKRExpHeap* mpSubHeap;
     /* 0x00C */ void* field_0xc;
@@ -266,9 +222,8 @@ public:
         mViewOffsetY = i_offset;
     }
 
-    static f32 mViewOffsetY;
+    static DUSK_GAME_DATA f32 mViewOffsetY;
 
-private:
     /* 0x004 */ JKRExpHeap* mpHeap;
     /* 0x008 */ JKRSolidHeap* mpSolidHeap;
     /* 0x00C */ dMenu_Collect2D_c* mpCollect2D;
@@ -303,7 +258,6 @@ public:
     bool isKeyCheck() { return mpCollect2D->isKeyCheck(); }
     bool isOutCheck() { return mpCollect2D->isOutCheck(); }
 
-private:
     /* 0x4 */ dMenu_Collect2D_c* mpCollect2D;
     /* 0x8 */ dMenu_Collect3D_c* mpCollect3D;
 };

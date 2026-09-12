@@ -10,6 +10,10 @@
 #include "Z2AudioLib/Z2Instances.h"
 #include <cstring>
 
+#if TARGET_PC
+#include "mods/items.h"
+#endif
+
 enum grC_RES_File_ID {
     /* BCK */
     /* 0x05 */ BCK_GRC_F_CHEERFUL = 0x5,
@@ -230,11 +234,11 @@ static DUSK_CONSTEXPR char DUSK_CONST* l_evtNames[1] = {
 
 static DUSK_CONSTEXPR char DUSK_CONST* l_myName = "grC";
 
-char DUSK_CONST* DUSK_CONST daNpc_grC_c::mEvtCutNameList = "";
+DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST daNpc_grC_c::mEvtCutNameList = "";
 
-daNpc_grC_c::EventFn DUSK_CONST daNpc_grC_c::mEvtCutList[1] = {NULL};
+DUSK_GAME_DATA daNpc_grC_c::EventFn DUSK_CONST daNpc_grC_c::mEvtCutList[1] = {NULL};
 
-daNpc_grC_HIOParam const daNpc_grC_Param_c::m = {
+DUSK_GAME_DATA daNpc_grC_HIOParam const daNpc_grC_Param_c::m = {
     40.0f,
     -3.0f,
     1.0f,
@@ -1476,8 +1480,27 @@ BOOL daNpc_grC_c::talk(void* param_1) {
                 rv = TRUE;
 
                 if (mFlow.getEventId(&i_itemNo) == 1) {
-                    mItemID = fopAcM_createItemForPresentDemo(&current.pos, i_itemNo, 0, -1, -1, NULL, NULL);
+#if TARGET_PC
+                    const bool isCastleTownShop =
+                        strcmp(dComIfGp_getStartStageName(), "R_SP160") == 0 &&
+                        (i_itemNo == dItemNo_RED_BOTTLE_e || i_itemNo == dItemNo_OIL_BOTTLE_e);
+                    u32 itemGiveTag = 0;
+                    if (isCastleTownShop) {
+                        const auto itemCheck = dusk::mods::item_check_commit(
+                            dusk::mods::item_give_tag_shop(i_itemNo), i_itemNo, this);
+                        i_itemNo = itemCheck.itemNo;
+                        itemGiveTag = itemCheck.tag;
+                    }
 
+                    if (isCastleTownShop && i_itemNo == dItemNo_NONE_e) {
+                        dusk::mods::item_check_complete({itemGiveTag, dItemNo_NONE_e}, this);
+                    } else {
+                        mItemID = fopAcM_createItemForPresentDemo(
+                            &current.pos, i_itemNo, 0, -1, -1, NULL, NULL, itemGiveTag);
+                    }
+#else
+                    mItemID = fopAcM_createItemForPresentDemo(&current.pos, i_itemNo, 0, -1, -1, NULL, NULL);
+#endif
                     if (mItemID != fpcM_ERROR_PROCESS_ID_e) {
                         s16 i_eventID = dComIfGp_getEventManager().getEventIdx(this, "DEFAULT_GETITEM", 0xFF);
                         dComIfGp_getEvent()->reset(this);

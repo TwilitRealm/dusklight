@@ -196,9 +196,6 @@ public:
     void copyReinPos();
     void setReinPosHandSubstance(int);
     void setReinPosNormalSubstance();
-#if TARGET_PC
-    void lerpControlPoints(f32 alpha);
-#endif
     void bgCheck();
     bool checkSpecialWallHitSubstance(cXyz const&) const;
     void setServiceWaitTimer();
@@ -351,8 +348,8 @@ public:
         m_modelData->getMaterialNodePointer(5)->getShape()->hide();
     }
 
-    static u16 const m_footJointTable[];
-    static f32 const m_callLimitDistance2;
+    static DUSK_GAME_DATA u16 const m_footJointTable[];
+    static DUSK_GAME_DATA f32 const m_callLimitDistance2;
 
     /* 0x0568 */ request_of_phase_process_class m_phase;
     /* 0x0570 */ J3DModel* m_model;
@@ -567,7 +564,7 @@ public:
 
 class daHorse_hio_c0 {
 public:
-    static const daHorse_hio_c1 m;
+    static DUSK_GAME_DATA const daHorse_hio_c1 m;
 };
 
 class daHorse_hio_c : public JORReflexible {

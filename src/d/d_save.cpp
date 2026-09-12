@@ -16,8 +16,6 @@
 #include <cstdio>
 #include <cstring>
 
-#include "dusk/version.hpp"
-
 #if PLATFORM_WII || PLATFORM_SHIELD
 #include <revolution/sc.h>
 #include <revolution/wpad.h>
@@ -28,11 +26,12 @@
 #endif
 
 #if TARGET_PC
+#include "dusk/game_mode.hpp"
 #include "dusk/settings.h"
-#include <f_ap/f_ap_game.h>
+#include "dusk/version.hpp"
+#include "helpers/string.hpp"
 
-#include "dusk/string.hpp"
-#define strcpy dusk::SafeStringCopy
+#define strcpy SafeStringCopy
 #endif
 
 static u8 dSv_item_rename(u8 i_itemNo) {
@@ -1016,7 +1015,12 @@ void dSv_player_info_c::init() {
 }
 
 void dSv_player_config_c::init() {
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+   if (dusk::version::isRegionJpn())
+       mRuby = 0;
+   else
+       mRuby = 1;
+#elif VERSION == VERSION_GCN_JPN
     mRuby = 0;
 #else
     mRuby = 1;
@@ -1081,7 +1085,7 @@ void dSv_player_config_c::setVibration(u8 i_status) {
 
 u8 dSv_player_config_c::getPalLanguage() const {
 #if TARGET_PC || VERSION == VERSION_GCN_PAL
-    IF_DUSK_BLOCK(dusk::version::getGameVersion() == dusk::version::GameVersion::GcnPal)
+    IF_DUSK_BLOCK(dusk::version::isRegionPal())
     switch (OSGetLanguage()) {
     case 0:
         return LANGUAGE_ENGLISH;
@@ -1823,7 +1827,7 @@ int dSv_info_c::memory_to_card(char* card_ptr, int dataNum) {
         savedata->getPlayer().getPlayerInfo().setTotalTime(play_time);
     }
 
-    savedata->getPlayer().getPlayerStatusB().setDateIpl(OSGetTime());
+    savedata->getPlayer().getPlayerStatusB().setDateIpl(DUSK_IF_ELSE(OSGetSystemTime(), OSGetTime()));
 
     memcpy(card_ptr, savedata, sizeof(dSv_save_c));
     card_ptr += 0x958;
@@ -2030,7 +2034,7 @@ void flagFile_c::listenPropertyEvent(const JORPropertyEvent* i_event) {
     }
     case 102: {
         OSCalendarTime time;
-        OSTicksToCalendarTime(OSGetTime(), &time);
+        OSTicksToCalendarTime(DUSK_IF_ELSE(OSGetSystemTime(), OSGetTime()), &time);
 
         const char* start_stage_name = dComIfGp_getStartStageName();
         char filename[64];
@@ -2089,7 +2093,7 @@ const
 #if PLATFORM_SHIELD
 s16
 #else
-u16
+DUSK_GAME_DATA u16
 #endif
 dSv_event_flag_c::saveBitLabels[822] = {
     UNUSED, TEST_001, TEST_002, TEST_003, TEST_004, F_0001, F_0002, F_0003, F_0004, F_0005, F_0006, 
@@ -2166,7 +2170,7 @@ dSv_event_flag_c::saveBitLabels[822] = {
     F_0816, F_0817, F_0818, F_0819, F_0820, KORO2_ALLCLEAR,
 };
 
-u16 const dSv_event_tmp_flag_c::tempBitLabels[185] = {
+DUSK_GAME_DATA u16 const dSv_event_tmp_flag_c::tempBitLabels[185] = {
     UNUSED, UNUSED, T_0002, T_0003, T_0004, T_0005, T_0006, T_0007, T_0001, T_0008, T_0009, T_0010,
     T_0011, T_0012, T_0013, T_0014, T_0015, T_0016, T_0017, T_0018, T_0019, T_0020, T_0021, T_0022,
     T_0023, T_0024, T_0025, T_0026, T_0027, T_0028, T_0029, T_0030, T_0031, T_0032, TREG_000, 

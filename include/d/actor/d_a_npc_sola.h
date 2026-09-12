@@ -11,7 +11,7 @@ class daNpc_solA_Param_c {
 public:
     virtual ~daNpc_solA_Param_c() {}
 
-    static daNpc_solA_HIOParam const m;
+    static DUSK_GAME_DATA daNpc_solA_HIOParam const m;
 };
 
 #if DEBUG
@@ -111,10 +111,9 @@ public:
     s32 getNeckJointNo() { return JNT_NECK; }
     s32 getBackboneJointNo() { return JNT_BACKBONE1; }
 
-    static char DUSK_CONST* DUSK_CONST mCutNameList[1];
-    static cutFunc DUSK_CONST mCutList[1];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mCutNameList[1];
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mCutList[1];
 
-private:
     /* 0xE40 */ NPC_SOLA_HIO_CLASS* mpHIO;
     /* 0xE44 */ dCcD_Cyl mCyl;
     /* 0xF80 */ u8 field_0xf80;

@@ -20,9 +20,13 @@
 #include "d/actor/d_a_obj_zraMark.h"
 #include <cstring>
 
+#if TARGET_PC
+#include "dusk/interp/frame_interpolation.h"
+#endif
+
 static NPC_ZRA_HIO_CLASS l_HIO;
 
-daNpc_zrA_HIOParam const daNpc_zrA_Param_c::m = {
+DUSK_GAME_DATA daNpc_zrA_HIOParam const daNpc_zrA_Param_c::m = {
     230.0f,   // mAttnOffsetY
     -3.0f,    // mGravity
     1.0f,     // mScale
@@ -410,7 +414,7 @@ static DUSK_CONSTEXPR char DUSK_CONST* l_myName[4] = {
     "zrWF",
 };
 
-char DUSK_CONST* DUSK_CONST daNpc_zrA_c::mEvtCutNameList[11] = {
+DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST daNpc_zrA_c::mEvtCutNameList[11] = {
     "",
     "TALK_SWIM",
     "BEFORE_BLAST_ZRR",
@@ -424,7 +428,7 @@ char DUSK_CONST* DUSK_CONST daNpc_zrA_c::mEvtCutNameList[11] = {
     "TALK_MULTI",
 };
 
-daNpc_zrA_c::EventFn DUSK_CONST daNpc_zrA_c::mEvtCutList[11] = {
+DUSK_GAME_DATA daNpc_zrA_c::EventFn DUSK_CONST daNpc_zrA_c::mEvtCutList[11] = {
     NULL,
     &daNpc_zrA_c::ECut_talkSwim,
     &daNpc_zrA_c::ECut_beforeBlastzrR,
@@ -686,6 +690,69 @@ int daNpc_zrA_c::Execute() {
     return execute();
 }
 
+#if TARGET_PC
+void daNpc_zrA_interp_callback(void* pUserWork) {
+    daNpc_zrA_c* i_this = static_cast<daNpc_zrA_c*>(pUserWork);
+    if (i_this == NULL || i_this->mAnm_p == NULL || i_this->checkHide()) {
+        return;
+    }
+
+    J3DModel* model = i_this->mAnm_p->getModel();
+    if (model == NULL) {
+        return;
+    }
+
+    J3DModelData* model_data = model->getModelData();
+    model_data->getMaterialNodePointer(1)->setMaterialAnm(i_this->mpMatAnm);
+
+    if (i_this->mTwilight) {
+        g_env_light.settingTevStruct(4, &i_this->current.pos, &i_this->tevStr);
+    } else {
+        g_env_light.settingTevStruct(0, &i_this->current.pos, &i_this->tevStr);
+    }
+    g_env_light.setLightTevColorType_MAJI(model, &i_this->tevStr);
+
+    if (i_this->mWaterAnmFlags & daNpcF_c::ANM_PLAY_BTK) {
+        i_this->mWaterBtkAnm.entry(model_data);
+    }
+    if (i_this->mWaterAnmFlags & daNpcF_c::ANM_PLAY_BPK) {
+        i_this->mWaterBpkAnm.entry(model_data);
+    }
+    if (i_this->mAnmFlags & daNpcF_c::ANM_PLAY_BTP) {
+        i_this->mBtpAnm.entry(model_data);
+    }
+    if (i_this->mAnmFlags & daNpcF_c::ANM_PLAY_BTK) {
+        i_this->mBtkAnm.entry(model_data);
+    }
+    if (i_this->mAnmFlags & daNpcF_c::ANM_PLAY_BRK) {
+        i_this->mBrkAnm.entry(model_data);
+    }
+
+    if (!i_this->mHide && !i_this->mTwilight) {
+        fopAcM_setEffectMtx(i_this, model_data);
+    }
+
+    model->calcMaterial();
+    model->diff();
+
+    if (i_this->mAnmFlags & daNpcF_c::ANM_PLAY_BTP) {
+        i_this->mBtpAnm.remove(model_data);
+    }
+    if (i_this->mAnmFlags & daNpcF_c::ANM_PLAY_BTK) {
+        i_this->mBtkAnm.remove(model_data);
+    }
+    if (i_this->mAnmFlags & daNpcF_c::ANM_PLAY_BRK) {
+        i_this->mBrkAnm.remove(model_data);
+    }
+    if (i_this->mWaterAnmFlags & daNpcF_c::ANM_PLAY_BPK) {
+        i_this->mWaterBpkAnm.remove(model_data);
+    }
+    if (i_this->mWaterAnmFlags & daNpcF_c::ANM_PLAY_BTK) {
+        i_this->mWaterBtkAnm.remove(model_data);
+    }
+}
+#endif
+
 int daNpc_zrA_c::Draw() {
     BOOL bvar2 = false;
     J3DModel* model = mAnm_p->getModel();
@@ -736,6 +803,8 @@ int daNpc_zrA_c::Draw() {
             } else {
                 mAnm_p->entryDL();
             }
+
+            IF_DUSK(dusk::interp::add_interpolation_callback(&daNpc_zrA_interp_callback, this));
 
             if (mAnmFlags & ANM_PLAY_BTP) {
                 mBtpAnm.remove(model_data);

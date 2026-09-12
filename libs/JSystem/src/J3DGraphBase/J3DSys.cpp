@@ -1,27 +1,32 @@
 #include "JSystem/JSystem.h" // IWYU pragma: keep
 
-#include "JSystem/J3DGraphBase/J3DFifo.h"
 #include "JSystem/J3DGraphBase/J3DSys.h"
 #include "JSystem/J3DGraphBase/J3DTevs.h"
 #include "JSystem/J3DGraphBase/J3DTexture.h"
-#include "dusk/gx_helper.h"
+#include "JSystem/J3DGraphBase/J3DFifo.h"
 #include "global.h"
-#include "tracy/Tracy.hpp"
 
-J3DSys j3dSys;
+#if TARGET_PC
+#include "dusk/interp/frame_interpolation.h"
+#include "helpers/gx_helper.h"
 
-Mtx J3DSys::mCurrentMtx;
+#include <tracy/Tracy.hpp>
+#endif
 
-Vec J3DSys::mCurrentS;
+DUSK_GAME_DATA J3DSys j3dSys;
 
-Vec J3DSys::mParentS;
+DUSK_GAME_DATA Mtx J3DSys::mCurrentMtx;
 
-J3DTexCoordScaleInfo J3DSys::sTexCoordScaleTable[8];
+DUSK_GAME_DATA Vec J3DSys::mCurrentS;
+
+DUSK_GAME_DATA Vec J3DSys::mParentS;
+
+DUSK_GAME_DATA J3DTexCoordScaleInfo J3DSys::sTexCoordScaleTable[8];
 
 #if TARGET_PC // Original game bug, array is too small.
-static u8 NullTexData[0x20] ATTRIBUTE_ALIGN(32) = {0};
+ATTRIBUTE_ALIGN(32) static u8 NullTexData[0x20] = {0};
 #else
-static u8 NullTexData[0x10] ATTRIBUTE_ALIGN(32) = {0};
+ATTRIBUTE_ALIGN(32) static u8 NullTexData[0x10] = {0};
 #endif
 
 static Mtx j3dIdentityMtx = {
@@ -35,7 +40,7 @@ static Mtx23 IndMtx = {
     0.0f, 0.5f, 0.0f,
 };
 
-u32 j3dDefaultViewNo;
+DUSK_GAME_DATA u32 j3dDefaultViewNo;
 
 static GXColor ColorBlack = {0x00, 0x00, 0x00, 0x00};
 
@@ -370,3 +375,13 @@ void J3DSys::reinitPixelProc() {
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     GXSetZCompLoc(GX_TRUE);
 }
+
+#if TARGET_PC
+void J3DSys::setViewMtx(const Mtx m) {
+    Mtx patched;
+    if (dusk::interp::lookup_replacement(m, patched)) {
+        m = patched;
+    }
+    MTXCopy(m, mViewMtx);
+}
+#endif

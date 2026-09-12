@@ -25,7 +25,6 @@ public:
     void onReserve() { mReserve = 1; }
     void offReserve() { mReserve = 0; }
 
-private:
     /* 0x04 */ J2DScreen* m_cursorYellowScrn;
     /* 0x08 */ J2DPane* m_cursorYellowAllPane;
     /* 0x0C */ J2DPane* m_cursorYellow0Pane;
@@ -126,7 +125,6 @@ public:
     bool getLockCntMax() { return m_lockCnt >= BOOMERANG_LOCK_MAX; }
     void onLockDistanceCancel() { onStateFlg0(FLG0_LOCK_DIST_CANCEL); }
 
-private:
     /* 0x568 */ J3DModel* mp_boomModel;
     /* 0x56C */ J3DModel* mp_shippuModel;
     /* 0x570 */ J3DAnmTextureSRTKey* m_windBtk;
@@ -190,12 +188,12 @@ STATIC_ASSERT(sizeof(daBoomerang_c) == 0xDE4);
 
 class daBoomerang_HIO_c0 {
 public:
-    static u16 const m_lockWaitTime;
-    static f32 const m_minCircleR;
-    static f32 const m_middleCircleR;
-    static f32 const m_maxCircleR;
-    static f32 const m_scale;
-    static f32 const m_lockWindScale;
+    static DUSK_GAME_DATA u16 const m_lockWaitTime;
+    static DUSK_GAME_DATA f32 const m_minCircleR;
+    static DUSK_GAME_DATA f32 const m_middleCircleR;
+    static DUSK_GAME_DATA f32 const m_maxCircleR;
+    static DUSK_GAME_DATA f32 const m_scale;
+    static DUSK_GAME_DATA f32 const m_lockWindScale;
 };
 
 #endif /* D_A_BOOMERANG_H */

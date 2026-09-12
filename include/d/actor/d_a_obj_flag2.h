@@ -81,9 +81,8 @@ public:
 
     const daObjFlag2_Attr_c& attr() const { return M_attr; }
 
-    static daObjFlag2_Attr_c const M_attr;
+    static DUSK_GAME_DATA daObjFlag2_Attr_c const M_attr;
 
-private:
     /* 0x0568 */ J3DModel* mModel;
     /* 0x056C */ request_of_phase_process_class mFlagPhase;
     /* 0x0574 */ request_of_phase_process_class mArcPhase;

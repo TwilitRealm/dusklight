@@ -11,7 +11,7 @@ class daNpc_Tkj_Param_c {
 public:
     virtual ~daNpc_Tkj_Param_c() {}
 
-    static const daNpc_Tkj_HIOParam m;
+    static DUSK_GAME_DATA const daNpc_Tkj_HIOParam m;
 };
 
 #if DEBUG
@@ -94,10 +94,9 @@ public:
 
     int getPath() { return (fopAcM_GetParam(this) & 0xFF00) >> 8; }
 
-    static char DUSK_CONST* DUSK_CONST mCutNameList[2];
-    static int (daNpcTkj_c::* DUSK_CONST mCutList[])(int);
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mCutNameList[2];
+    static DUSK_GAME_DATA int (daNpcTkj_c::* DUSK_CONST mCutList[])(int);
 
-private:
     /* 0xE40 */ NPC_TKJ_HIO_CLASS* mpHIO;
     /* 0xE44 */ dCcD_Cyl mCcCyl;
     /* 0xF80 */ u8 mType;

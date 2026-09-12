@@ -29,9 +29,8 @@ public:
     bool chkHit();
     void callEmt();
 
-    static dCcD_SrcCyl const s_CcDCyl;
+    static DUSK_GAME_DATA dCcD_SrcCyl const s_CcDCyl;
 
-private:
     /* 0x574 */ Mtx mMtx;
     /* 0x5A4 */ dBgW* field_0x5a4;
     /* 0x5A8 */ J3DModel* mpModel;

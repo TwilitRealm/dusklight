@@ -17,6 +17,7 @@
 #include "m_Do/m_Do_controller_pad.h"
 #include "d/d_camera.h"
 #if TARGET_PC
+#include "JSystem/JUtility/JUTPalette.h"
 #include "dusk/settings.h"
 #include <algorithm>
 #endif
@@ -24,6 +25,15 @@
 
 #if TARGET_PC
 #include "dusk/action_bindings.h"
+
+namespace {
+
+// Reads the user HUD scale setting, clamped to a safe range.
+f32 dGetUserHudScale() {
+    return std::clamp(dusk::getSettings().game.hudScale.getValue(), 0.5f, 2.0f);
+}
+
+}  // namespace
 #endif
 
 #if (PLATFORM_WII || PLATFORM_SHIELD)
@@ -326,7 +336,7 @@ f32 dMeterMap_c::getMapDispEdgeTop() {
               mMap->getTexelPerCm() * (mMap->getPackZ() + -mMap->getPackPlusZ()) -
               mMap->getTopEdgePlus();
     }
-    f32 rv = getMapDispEdgeBottomY_Layout() - tmp;
+    f32 rv = getMapDispEdgeBottomY_Layout() - tmp IF_DUSK(* dGetUserHudScale());
     return rv;
 }
 
@@ -635,10 +645,14 @@ void dMeterMap_c::draw() {
         mMapJ2DPicture->setAlpha(alpha);
 
         #if TARGET_PC
+        // Ensure minimap palette gets reuploaded since it is modified for the pulsating border
+        // effect.
+        JUTPalette* pPalette = mMapJ2DPicture->getTexture(0)->getPalette();
+        pPalette->dataUploaded();
+
         // Scale the minimap with the user HUD scale and shift down so its bottom-left
         // corner stays anchored to the same screen position as at scale 1.0.
-        const f32 userHudScale =
-            std::clamp(dusk::getSettings().game.hudScale.getValue(), 0.5f, 2.0f);
+        const f32 userHudScale = dGetUserHudScale();
         const f32 scaledSizeX = sizeX * userHudScale;
         const f32 scaledSizeY = sizeY * userHudScale;
         const f32 mapBottomShift = sizeY - scaledSizeY;

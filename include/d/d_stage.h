@@ -4,10 +4,14 @@
 #include "SSystem/SComponent/c_lib.h"
 #include "d/d_kankyo.h"
 #include "d/d_kankyo_data.h"
-#include "dusk/offset_ptr.h"
 #include "f_op/f_op_actor_mng.h"
 #include "global.h"
+
+#if TARGET_PC
+#include "helpers/offset_ptr.h"
+
 #include "os_report.h"
+#endif
 
 enum StageType {
     /* 0x0 */ ST_FIELD,
@@ -547,7 +551,6 @@ public:
     /* vt[91] */ virtual void setElst(dStage_Elst_c*) = 0;
     /* vt[92] */ virtual dStage_Elst_c* getElst(void) = 0;
 
-private:
     /* 0x04 */ s8 mRoomNo;
 };
 
@@ -1237,20 +1240,20 @@ public:
 
     static const int MEMORY_BLOCK_MAX = 19;
 
-    static JKRExpHeap* mMemoryBlock[MEMORY_BLOCK_MAX];
-    static char mArcBank[32][10];
-    static dStage_roomStatus_c mStatus[0x40];
-    static char mDemoArcName[10];
-    static fpc_ProcID mProcID;
-    static dStage_bankName* mArcBankName;
-    static dStage_bankData* mArcBankData;
-    static roomDzs_c m_roomDzs;
-    static s8 mStayNo;
-    static s8 mOldStayNo;
-    static s8 mNextStayNo;
-    static u8 m_time_pass;
-    static u8 mNoChangeRoom;
-    static s8 mRoomReadId;
+    static DUSK_GAME_DATA JKRExpHeap* mMemoryBlock[MEMORY_BLOCK_MAX];
+    static DUSK_GAME_DATA char mArcBank[32][10];
+    static DUSK_GAME_DATA dStage_roomStatus_c mStatus[0x40];
+    static DUSK_GAME_DATA char mDemoArcName[10];
+    static DUSK_GAME_DATA fpc_ProcID mProcID;
+    static DUSK_GAME_DATA dStage_bankName* mArcBankName;
+    static DUSK_GAME_DATA dStage_bankData* mArcBankData;
+    static DUSK_GAME_DATA roomDzs_c m_roomDzs;
+    static DUSK_GAME_DATA s8 mStayNo;
+    static DUSK_GAME_DATA s8 mOldStayNo;
+    static DUSK_GAME_DATA s8 mNextStayNo;
+    static DUSK_GAME_DATA u8 m_time_pass;
+    static DUSK_GAME_DATA u8 mNoChangeRoom;
+    static DUSK_GAME_DATA s8 mRoomReadId;
 
     #if DEBUG
     static void onNoArcBank() {
@@ -1261,7 +1264,6 @@ public:
     static u8 mNoArcBank;
     #endif
 
-private:
     /* 0x0 */ u8 field_0x0[4];
 };
 
@@ -1276,7 +1278,6 @@ public:
     s8 getDarkArea() const { return mDarkArea; }
     void setDarkArea(s8 darkArea) { mDarkArea = darkArea; }
 
-private:
     /* 0x0 */ char mName[8];
     /* 0x8 */ s16 mPoint;
     /* 0xA */ s8 mRoomNo;
@@ -1291,12 +1292,12 @@ public:
     }
     void set(const char*, s8, s16, s8, s8, u8);
     void offEnable() { enabled = 0; }
+    void onEnable() { enabled = 1; }
     BOOL isEnable() const { return enabled; }
     s8 getWipe() const { return wipe; }
     u8 getWipeSpeed() const { return wipe_speed; }
     dStage_startStage_c* getStartStage() { return this; }
 
-private:
     s8 enabled;
     s8 wipe;
     u8 wipe_speed;
@@ -1351,6 +1352,9 @@ enum dStage_SaveTbl {
 
 const char* dStage_getName2(s16, s8);
 dStage_objectNameInf* dStage_searchName(const char*);
+#if TARGET_PC
+dStage_objectNameInf* dStage_searchNameCI(const char*);
+#endif
 static int dStage_stageKeepTresureInit(dStage_dt_c*, void*, int, void*);
 static int dStage_filiInfo2Init(dStage_dt_c*, void*, int, void*);
 static int dStage_mapPathInitCommonLayer(dStage_dt_c*, void*, int, void*);

@@ -155,7 +155,6 @@ public:
     f32 getAnmTransition() { return mAnmTransition; }
     u32 getShapeId() { return mShape; }
 
-private:
     /* 0x04 */ u16 mFlags;
     /* 0x08 */ cXyz mTrans;
     /* 0x14 */ cXyz mScale;
@@ -220,7 +219,6 @@ public:
     f32 getFovy() { return mProjFovy; }
     f32 getRoll() { return mViewRoll; }
 
-private:
     /* 0x04 */ u8 mFlags;
     /* 0x08 */ f32 mProjNear;
     /* 0x0C */ f32 mProjFar;
@@ -247,7 +245,6 @@ public:
 
     void onEnable(u8 flag) { mFlags |= flag; }
 
-private:
     /* 0x04 */ u8 mFlags;
     /* 0x05 */ GXColor mColor;
 };
@@ -275,7 +272,6 @@ public:
 
     void onEnable(u8 flag) { mFlags |= flag; }
 
-private:
     /* 0x04 */ u8 mFlags;
     /* 0x08 */ JStage::TELight mLightType;
     /* 0x0C */ GXDistAttnFn mDistAttenFn;
@@ -309,7 +305,6 @@ public:
 
     void onEnable(u8 flag) { mFlags |= flag; }
 
-private:
     /* 0x04 */ u8 mFlags;
     /* 0x05 */ s8 mFogType;
     /* 0x08 */ f32 mStartZ;
@@ -327,7 +322,6 @@ public:
 
     void setObject(dDemo_object_c* i_object) { mpObject = i_object; }
 
-private:
     /* 0x4 */ dDemo_object_c* mpObject;
 };
 
@@ -381,26 +375,26 @@ public:
         return m_object->getActiveCamera();
     }
 
-    static s16 m_branchId;
+    static DUSK_GAME_DATA s16 m_branchId;
     static u16 m_branchNum;
-    static dDemo_system_c* m_system;
-    static JStudio::TControl* m_control;
-    static JStudio_JStage::TCreateObject* m_stage;
-    static JStudio_JAudio2::TCreateObject* m_audio;
-    static dDemo_particle_c* m_particle;
-    static JStudio::TCreateObject* m_message;
-    static JStudio::TFactory* m_factory;
-    static jmessage_tControl* m_mesgControl;
-    static dDemo_object_c* m_object;
-    static const u8* m_data;
-    static int m_frame;
-    static cXyz* m_translation;
-    static f32 m_rotationY;
-    static u32 m_frameNoMsg;
-    static s32 m_mode;
-    static u32 m_status;
-    static u16 m_branchType;
-    static const u8* m_branchData;
+    static DUSK_GAME_DATA dDemo_system_c* m_system;
+    static DUSK_GAME_DATA JStudio::TControl* m_control;
+    static DUSK_GAME_DATA JStudio_JStage::TCreateObject* m_stage;
+    static DUSK_GAME_DATA JStudio_JAudio2::TCreateObject* m_audio;
+    static DUSK_GAME_DATA dDemo_particle_c* m_particle;
+    static DUSK_GAME_DATA JStudio::TCreateObject* m_message;
+    static DUSK_GAME_DATA JStudio::TFactory* m_factory;
+    static DUSK_GAME_DATA jmessage_tControl* m_mesgControl;
+    static DUSK_GAME_DATA dDemo_object_c* m_object;
+    static DUSK_GAME_DATA const u8* m_data;
+    static DUSK_GAME_DATA int m_frame;
+    static DUSK_GAME_DATA cXyz* m_translation;
+    static DUSK_GAME_DATA f32 m_rotationY;
+    static DUSK_GAME_DATA u32 m_frameNoMsg;
+    static DUSK_GAME_DATA s32 m_mode;
+    static DUSK_GAME_DATA u32 m_status;
+    static DUSK_GAME_DATA u16 m_branchType;
+    static DUSK_GAME_DATA const u8* m_branchData;
 };
 
 #endif /* D_D_DEMO_H */

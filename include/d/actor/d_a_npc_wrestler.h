@@ -77,7 +77,7 @@ class daNpcWrestler_Param_c {
 public:
     virtual ~daNpcWrestler_Param_c() {}
 
-    static daNpcWrestler_HIOParam const m;
+    static DUSK_GAME_DATA daNpcWrestler_HIOParam const m;
 };
 
 class daNpcWrestler_HIO_Node_c: public JORReflexible {
@@ -230,9 +230,8 @@ public:
     inline void initDemoCamera_ReadyWrestler();
     inline void playExpression();
 
-    static EventFn DUSK_CONST mEvtSeqList[7];
+    static DUSK_GAME_DATA EventFn DUSK_CONST mEvtSeqList[7];
 
-private:
     /* 0xB48 */ Z2Creature mSound;
     /* 0xBD8 */ daNpcWrestler_HIOParam* field_0xbd8;
     /* 0xBDC */ daNpcWrestler_HIOParamSub* field_0xbdc;

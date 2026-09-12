@@ -28,7 +28,7 @@ public:
  *
  */
 class daObjFlag_c : public fopAc_ac_c {
-private:
+public:
     /* 0x568 */ J3DModel* mpModel1;
     /* 0x56c */ J3DModel* mpModel2;
     /* 0x570 */ request_of_phase_process_class mPhase;
@@ -86,7 +86,7 @@ public:
         /* 0x30 */ f32 field_0x30;
     };
 
-    static M_attrs const M_attr;
+    static DUSK_GAME_DATA M_attrs const M_attr;
     M_attrs const& attr() const { return M_attr; }
 };
 

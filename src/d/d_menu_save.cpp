@@ -1,30 +1,32 @@
 #include "d/dolzel.h" // IWYU pragma: keep
 
-#include "d/d_menu_save.h"
-#include "JSystem/JKernel/JKRExpHeap.h"
-#include "JSystem/JKernel/JKRMemArchive.h"
 #include <cstdio>
 #include <cstring>
+#include "JSystem/J2DGraph/J2DAnmLoader.h"
+#include "JSystem/JKernel/JKRExpHeap.h"
+#include "JSystem/JKernel/JKRMemArchive.h"
 #include "d/d_com_inf_game.h"
-#include "d/d_lib.h"
-#include "d/d_select_cursor.h"
 #include "d/d_file_sel_info.h"
 #include "d/d_file_sel_warning.h"
+#include "d/d_lib.h"
+#include "d/d_menu_save.h"
 #include "d/d_meter2_info.h"
+#include "d/d_msg_scrn_explain.h"
 #include "d/d_msg_string.h"
+#include "d/d_select_cursor.h"
+#include "f_op/f_op_msg_mng.h"
 #include "m_Do/m_Do_MemCard.h"
 #include "m_Do/m_Do_MemCardRWmng.h"
 #include "m_Do/m_Do_Reset.h"
 #include "m_Do/m_Do_controller_pad.h"
 #include "m_Do/m_Do_graphic.h"
-#include "d/d_msg_scrn_explain.h"
-#include "JSystem/J2DGraph/J2DAnmLoader.h"
-#include "f_op/f_op_msg_mng.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/menu_pointer.h"
+#include "dusk/mods/svc/save.hpp"
 #include "dusk/settings.h"
+#include "dusk/version.hpp"
 #endif
 
 static int SelStartFrameTbl[3] = {
@@ -179,7 +181,15 @@ void dMenu_save_c::screenSet() {
     static u64 l_tagName10[2] = {MULTI_CHAR('w_no_g'), MULTI_CHAR('w_yes_g')};
     static u64 l_tagName11[2] = {MULTI_CHAR('w_no_gr'), MULTI_CHAR('w_yes_gr')};
     static u64 l_tagName12[3] = {MULTI_CHAR('w_bk_l00'), MULTI_CHAR('w_bk_l01'), MULTI_CHAR('w_bk_l02')};
-#if VERSION == VERSION_GCN_JPN
+
+#if TARGET_PC
+    static u64 l_tagName21_jpn[2] = {MULTI_CHAR('w_tabi_s'), MULTI_CHAR('w_tabi_x')};
+    static u64 l_tagName20_jpn[2] = {MULTI_CHAR('w_er_msg'), MULTI_CHAR('w_er_msR')};
+    static u64 l_tagName21[2] = {MULTI_CHAR('t_for'), MULTI_CHAR('t_for1')};
+    static u64 l_tagName211[10] = {MULTI_CHAR('tmoyou00'), MULTI_CHAR('tmoyou01'), MULTI_CHAR('tmoyou02'), MULTI_CHAR('tmoyou03'), MULTI_CHAR('tmoyou04'),
+                                MULTI_CHAR('tmoyou05'), MULTI_CHAR('tmoyou06'), MULTI_CHAR('tmoyou07'), MULTI_CHAR('tmoyou08'), MULTI_CHAR('tmoyou09')};
+    static u64 l_tagName20[2] = {MULTI_CHAR('er_for0'), MULTI_CHAR('er_for1')};
+#elif VERSION == VERSION_GCN_JPN
     static u64 l_tagName21[2] = {MULTI_CHAR('w_tabi_s'), MULTI_CHAR('w_tabi_x')};
     static u64 l_tagName20[2] = {MULTI_CHAR('w_er_msg'), MULTI_CHAR('w_er_msR')};
 #else
@@ -188,6 +198,7 @@ void dMenu_save_c::screenSet() {
                                 MULTI_CHAR('tmoyou05'), MULTI_CHAR('tmoyou06'), MULTI_CHAR('tmoyou07'), MULTI_CHAR('tmoyou08'), MULTI_CHAR('tmoyou09')};
     static u64 l_tagName20[2] = {MULTI_CHAR('er_for0'), MULTI_CHAR('er_for1')};
 #endif
+
     static u64 l_tagName13[3] = {MULTI_CHAR('w_dat_i0'), MULTI_CHAR('w_dat_i1'), MULTI_CHAR('w_dat_i2')};
     static u8 l_msgNum0[2] = {0x08, 0x07};
     static u8 l_msgNum[2] = {0x54, 0x55};
@@ -221,7 +232,15 @@ void dMenu_save_c::screenSet() {
     mpNoYes[1] = JKR_NEW CPaneMgr(mSaveSel.Scr, MULTI_CHAR('w_yes_n'), 0, NULL);
 
     for (int i = 0; i < 2; i++) {
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+        if (dusk::version::isRegionJpn()) {
+            mpNoYesTxt[i] = JKR_NEW CPaneMgr(mSaveSel.Scr, l_tagName000[i], 0, NULL);
+            mSaveSel.Scr->search(l_tagName000U[i])->hide();
+        } else {
+            mpNoYesTxt[i] = JKR_NEW CPaneMgr(mSaveSel.Scr, l_tagName000U[i], 0, NULL);
+            mSaveSel.Scr->search(l_tagName000[i])->hide();
+        }
+#elif VERSION == VERSION_GCN_JPN
         mpNoYesTxt[i] = JKR_NEW CPaneMgr(mSaveSel.Scr, l_tagName000[i], 0, NULL);
         mSaveSel.Scr->search(l_tagName000U[i])->hide();
 #else
@@ -240,7 +259,15 @@ void dMenu_save_c::screenSet() {
 
     mpBBtnIcon = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('w_nbbtn'), 2, NULL);
     mpABtnIcon = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('w_nabtn'), 2, NULL);
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+    if (dusk::version::isRegionJpn()) {
+        mpBackTxt = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('w_modo'), 2, NULL);
+        mpConfirmTxt = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('w_kete'), 2, NULL);
+    } else {
+        mpBackTxt = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('f_modo'), 2, NULL);
+        mpConfirmTxt = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('f_kete'), 2, NULL);
+    }
+#elif VERSION == VERSION_GCN_JPN
     mpBackTxt = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('w_modo'), 2, NULL);
     mpConfirmTxt = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, MULTI_CHAR('w_kete'), 2, NULL);
 #else
@@ -255,7 +282,15 @@ void dMenu_save_c::screenSet() {
 
     for (int i = 0; i < 2; i++) {
         J2DTextBox* tbox[2];
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+        if (dusk::version::isRegionJpn()) {
+            tbox[i] = (J2DTextBox*)mSaveSel.Scr->search(l_tagName00[i]);
+            mSaveSel.Scr->search(l_tagName00U[i])->hide();
+        } else {
+            tbox[i] = (J2DTextBox*)mSaveSel.Scr->search(l_tagName00U[i]);
+            mSaveSel.Scr->search(l_tagName00[i])->hide();
+        }
+#elif VERSION == VERSION_GCN_JPN
         tbox[i] = (J2DTextBox*)mSaveSel.Scr->search(l_tagName00[i]);
         mSaveSel.Scr->search(l_tagName00U[i])->hide();
 #else
@@ -330,7 +365,19 @@ void dMenu_save_c::screenSet() {
         mpBookWaku[i]->setAlpha(0);
     }
 
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+    if (dusk::version::isRegionJpn()) {
+        mSaveSel.Scr->search(MULTI_CHAR('t_for'))->hide();
+        mSaveSel.Scr->search(MULTI_CHAR('t_for1'))->hide();
+    } else {
+        mSaveSel.Scr->search(MULTI_CHAR('w_tabi_s'))->hide();
+        mSaveSel.Scr->search(MULTI_CHAR('w_tabi_x'))->hide();
+
+        for (int i = 0; i < 10; i++) {
+            mSaveSel.Scr->search(l_tagName211[i])->hide();
+        }
+    }
+#elif VERSION == VERSION_GCN_JPN
     mSaveSel.Scr->search(MULTI_CHAR('t_for'))->hide();
     mSaveSel.Scr->search(MULTI_CHAR('t_for1'))->hide();
 #else
@@ -343,11 +390,21 @@ void dMenu_save_c::screenSet() {
 #endif
 
     for (int i = 0; i < 2; i++) {
-        mpHeaderTxtPane[i] = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, l_tagName21[i], 0, NULL);
+        mpHeaderTxtPane[i] = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, DUSK_IF_ELSE(dusk::version::isRegionJpn() ? l_tagName21_jpn[i] : l_tagName21[i], l_tagName21[i]), 0, NULL);
 
         ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setFont(mSaveSel.font[0]);
         ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setString(0x100, "");
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+        if (dusk::version::isRegionJpn()) {
+            ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setFontSize(21.0f, 21.0f);
+            ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setLineSpace(22.0f);
+            ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setCharSpace(2.0f);
+        } else {
+            ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setFontSize(19.0f, 19.0f);
+            ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setLineSpace(20.0f);
+            ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setCharSpace(0.0f);
+        }
+#elif VERSION == VERSION_GCN_JPN
         ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setFontSize(21.0f, 21.0f);
         ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setLineSpace(22.0f);
         ((J2DTextBox*)mpHeaderTxtPane[i]->getPanePtr())->setCharSpace(2.0f);
@@ -364,7 +421,15 @@ void dMenu_save_c::screenSet() {
     mHeaderTxtType = 0;
 
     field_0xb4 = mSaveSel.Scr->search(MULTI_CHAR('w_er_n'));
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+    if (dusk::version::isRegionJpn()) {
+        mSaveSel.Scr->search(MULTI_CHAR('er_for0'))->hide();
+        mSaveSel.Scr->search(MULTI_CHAR('er_for1'))->hide();
+    } else {
+        mSaveSel.Scr->search(MULTI_CHAR('w_er_msg'))->hide();
+        mSaveSel.Scr->search(MULTI_CHAR('w_er_msR'))->hide();
+    }
+#elif VERSION == VERSION_GCN_JPN
     mSaveSel.Scr->search(MULTI_CHAR('er_for0'))->hide();
     mSaveSel.Scr->search(MULTI_CHAR('er_for1'))->hide();
 #else
@@ -373,7 +438,9 @@ void dMenu_save_c::screenSet() {
 #endif
 
     for (int i = 0; i < 2; i++) {
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+        mpErrTxtPane[i] = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, DUSK_IF_ELSE(dusk::version::isRegionJpn() ? l_tagName20_jpn[i] : l_tagName20[i], l_tagName20[i]), 0, NULL);
+#elif VERSION == VERSION_GCN_JPN
         mpErrTxtPane[i] = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, l_tagName20[i], 0, NULL);
 #else
         mpErrTxtPane[i] = JKR_NEW CPaneMgrAlpha(mSaveSel.Scr, l_tagName20[i], 0, NULL);
@@ -381,7 +448,18 @@ void dMenu_save_c::screenSet() {
 
         ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setFont(mSaveSel.font[0]);
         ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setString(0x200, "");
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+        if (dusk::version::isRegionJpn()) {
+            ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setFontSize(21.0f, 21.0f);
+            ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setLineSpace(22.0f);
+            ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setCharSpace(2.0f);
+        } else {
+            ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->resize(440.0f, 198.0f);
+            ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setFontSize(21.0f, 21.0f);
+            ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setLineSpace(21.0f);
+            ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setCharSpace(1.0f);
+        }
+#elif VERSION == VERSION_GCN_JPN
         ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setFontSize(21.0f, 21.0f);
         ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setLineSpace(22.0f);
         ((J2DTextBox*)mpErrTxtPane[i]->getPanePtr())->setCharSpace(2.0f);
@@ -656,7 +734,7 @@ void dMenu_save_c::_delete() {
 }
 
 typedef void (dMenu_save_c::*menuProcFunc)();
-menuProcFunc MenuSaveProc[62] = {
+DUSK_GAME_DATA menuProcFunc MenuSaveProc[62] = {
     &dMenu_save_c::saveQuestion,
     &dMenu_save_c::saveQuestion2,
     &dMenu_save_c::saveQuestion21,
@@ -750,44 +828,38 @@ void dMenu_save_c::saveSelAnm() {
 }
 
 void dMenu_save_c::selFileWakuAnm() {
-#if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
-#endif
-    {
-        mFileWakuAnmFrame += 2;
-        if (mFileWakuAnmFrame >= mpFileWakuAnm->getFrameMax()) {
-            mFileWakuAnmFrame -= mpFileWakuAnm->getFrameMax();
-        }
-
-        mFileWakuRotAnmFrame += 2;
-        if (mFileWakuRotAnmFrame >= mpFileWakuRotAnm->getFrameMax()) {
-            mFileWakuRotAnmFrame -= mpFileWakuRotAnm->getFrameMax();
-        }
+    IF_DUSK_BLOCK(dusk::interp::get_ui_tick_pending())
+    mFileWakuAnmFrame += 2;
+    if (mFileWakuAnmFrame >= mpFileWakuAnm->getFrameMax()) {
+        mFileWakuAnmFrame -= mpFileWakuAnm->getFrameMax();
     }
+
+    mFileWakuRotAnmFrame += 2;
+    if (mFileWakuRotAnmFrame >= mpFileWakuRotAnm->getFrameMax()) {
+        mFileWakuRotAnmFrame -= mpFileWakuRotAnm->getFrameMax();
+    }
+    IF_DUSK_BLOCK_END
     mpFileWakuAnm->setFrame(mFileWakuAnmFrame);
     mpFileWakuRotAnm->setFrame(mFileWakuRotAnmFrame);
 }
 
 void dMenu_save_c::bookIconAnm() {
-#if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
-#endif
-    {
-        field_0x154 += 2;
-        if (field_0x154 >= field_0x150->getFrameMax()) {
-            field_0x154 -= field_0x150->getFrameMax();
-        }
-
-        field_0x15c += 2;
-        if (field_0x15c >= field_0x158->getFrameMax()) {
-            field_0x15c -= field_0x158->getFrameMax();
-        }
-
-        field_0x164 += 2;
-        if (field_0x164 >= field_0x160->getFrameMax()) {
-            field_0x164 -= field_0x160->getFrameMax();
-        }
+    IF_DUSK_BLOCK(dusk::interp::get_ui_tick_pending())
+    field_0x154 += 2;
+    if (field_0x154 >= field_0x150->getFrameMax()) {
+        field_0x154 -= field_0x150->getFrameMax();
     }
+
+    field_0x15c += 2;
+    if (field_0x15c >= field_0x158->getFrameMax()) {
+        field_0x15c -= field_0x158->getFrameMax();
+    }
+
+    field_0x164 += 2;
+    if (field_0x164 >= field_0x160->getFrameMax()) {
+        field_0x164 -= field_0x160->getFrameMax();
+    }
+    IF_DUSK_BLOCK_END
     field_0x150->setFrame(field_0x154);
     field_0x158->setFrame(field_0x15c);
     field_0x160->setFrame(field_0x164);
@@ -1374,6 +1446,12 @@ void dMenu_save_c::memCardDataSaveWait() {
 
     mCmdState = g_mDoMemCd_control.SaveSync();
     if (mCmdState != 0) {
+#if TARGET_PC
+        if (mCmdState == 1) {
+                dusk::mods::svc::save_slot_written(
+                    mSelectedFile, mSaveBuffer + mSelectedFile * QUEST_LOG_SIZE);
+            }
+#endif
         printf("save cmdState %d\n", mCmdState);
         mMenuProc = PROC_MEMCARD_DATA_SAVE_WAIT2;
     }
@@ -2468,7 +2546,23 @@ bool dMenu_save_c::selectDataBaseMoveAnm() {
         mpSelectMoveBase->getPanePtr()->animationTransform();
         return false;
     } else {
-#if VERSION == VERSION_GCN_JPN
+#if TARGET_PC
+        if (dusk::version::isRegionJpn()) {
+            if (mDataBaseMoveAnmFrame == 33) {
+                field_0x64 = 1;
+            } else {
+                field_0x64 = 0;
+            }
+            field_0x65 = 0;
+        } else {
+            if (mDataBaseMoveAnmFrame == 33) {
+                field_0x64 = 1;
+                field_0x65 = 0;
+            } else {
+                field_0x64 = 0;
+            }
+        }
+#elif VERSION == VERSION_GCN_JPN
         if (mDataBaseMoveAnmFrame == 33) {
             field_0x64 = 1;
         } else {

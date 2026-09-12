@@ -14,7 +14,7 @@ class daObj_SekiDoor_Param_c {
 public:
     virtual ~daObj_SekiDoor_Param_c() {};
 
-    static daObj_SekiDoor_HIOParam const m;
+    static DUSK_GAME_DATA daObj_SekiDoor_HIOParam const m;
 };
 
 #if DEBUG
@@ -59,7 +59,6 @@ public:
     void open() { mOpening = true; }
     bool chkDestroy() { return (mDestroyed == true); }
 
-private:
     /* 0x5A0 */ OBJ_SEKIDOOR_HIO_CLASS* mpHIO;
     /* 0x5A4 */ request_of_phase_process_class mPhaseReq;
     /* 0x5AC */ J3DModel* mpModel;

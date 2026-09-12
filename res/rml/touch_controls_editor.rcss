@@ -1,5 +1,10 @@
 body.touch-editor {
-    background-color: rgba(4, 6, 8, 34%);
+    --color-editor-backdrop: rgba(4, 6, 8, 34%);
+    --color-editor-handle: rgba(34, 37, 42, 86%);
+    --color-editor-accent-rgb: 255, 232, 128;
+    --color-editor-highlight-rgb: 255, 244, 190;
+
+    background-color: var(--color-editor-backdrop);
     z-index: 8;
 }
 
@@ -14,7 +19,7 @@ body.touch-editor .control:hover,
 body.touch-editor action-bar:hover,
 body.touch-editor .control.editor-selected,
 body.touch-editor action-bar.editor-selected {
-    border-color: rgba(255, 232, 128, 80%);
+    border-color: rgba(var(--color-editor-accent-rgb), 80%);
     filter: brightness(1.15);
 }
 
@@ -27,8 +32,9 @@ selection-frame {
     display: none;
     position: absolute;
     z-index: 20;
-    border: 2dp rgba(255, 232, 128, 88%);
-    background-color: rgba(255, 232, 128, 7%);
+    border-width: 2dp;
+    border-color: rgba(var(--color-editor-accent-rgb), 88%);
+    background-color: rgba(var(--color-editor-accent-rgb), 7%);
     pointer-events: none;
 }
 
@@ -41,9 +47,10 @@ resize-handle {
     position: absolute;
     width: 22dp;
     height: 22dp;
-    border: 2dp rgba(255, 244, 190, 96%);
+    border-width: 2dp;
+    border-color: rgba(var(--color-editor-highlight-rgb), 96%);
     border-radius: 11dp;
-    background-color: rgba(34, 37, 42, 86%);
+    background-color: var(--color-editor-handle);
     pointer-events: auto;
 }
 
@@ -90,6 +97,12 @@ resize-handle.corner.bottom {
 }
 
 editor-toolbar {
+    --button-background: rgba(17, 19, 24, 88%);
+    --button-background-hover: rgba(78, 85, 96, 92%);
+    --button-border-color: rgba(var(--color-white-rgb), 26%);
+    --button-border-color-hover: rgba(var(--color-editor-highlight-rgb), 92%);
+    --button-color: rgba(255, 250, 232, 94%);
+
     display: flex;
     position: absolute;
     left: 24dp;
@@ -98,7 +111,7 @@ editor-toolbar {
     z-index: 30;
     height: 48dp;
     margin-top: -24dp;
-    gap: 8dp;
+    gap: var(--space-sm);
     justify-content: center;
     pointer-events: auto;
 }
@@ -108,12 +121,13 @@ editor-toolbar button.editor-command {
     min-width: 96dp;
     height: 48dp;
     padding: 0 14dp;
-    border-radius: 8dp;
-    border: 1dp rgba(255, 255, 255, 26%);
-    background-color: rgba(17, 19, 24, 88%);
-    color: rgba(255, 250, 232, 94%);
-    font-family: "Fira Sans";
-    font-size: 18dp;
+    border-radius: var(--radius-panel);
+    border-width: 1dp;
+    border-color: var(--button-border-color);
+    background-color: var(--button-background);
+    color: var(--button-color);
+    font-family: var(--font-family-body);
+    font-size: var(--font-size-xl);
     line-height: 48dp;
     opacity: 1;
     cursor: pointer;
@@ -127,12 +141,12 @@ editor-toolbar button.editor-command span {
 }
 
 editor-toolbar button.editor-command.primary {
-    border-color: rgba(255, 232, 128, 70%);
-    background-color: rgba(96, 82, 38, 90%);
+    --button-border-color: rgba(var(--color-editor-accent-rgb), 70%);
+    --button-background: rgba(96, 82, 38, 90%);
 }
 
 editor-toolbar button.editor-command:hover,
 editor-toolbar button.editor-command:focus-visible {
-    border-color: rgba(255, 244, 190, 92%);
-    background-color: rgba(78, 85, 96, 92%);
+    border-color: var(--button-border-color-hover);
+    background-color: var(--button-background-hover);
 }

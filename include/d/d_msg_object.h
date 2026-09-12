@@ -280,13 +280,13 @@ public:
     /* 0x150 */ f32 field_0x150;
     /* 0x154 */ u32 mMessageID;
     /* 0x158 */ u32 field_0x158;
-    /* 0x15C */ u32 field_0x15c;
+    /* 0x15C */ u32 mSelectMessageID;  // message ID of the selection options message; 1000 = none
     /* 0x160 */ int mIdx;
     /* 0x164 */ u16 mNodeIdx;
     /* 0x166 */ u16 field_0x166;
     /* 0x168 */ u16 field_0x168;
     /* 0x16A */ s16 field_0x16a;
-    /* 0x16C */ s16 field_0x16c;
+    /* 0x16C */ s16 mCurrentGroupID;  // group whose BMG is parsed; -1 none, 0 common, 1-8 stage
     /* 0x16E */ s16 field_0x16e;
     /* 0x170 */ s16 mNowTalkFlowNo;
     /* 0x172 */ s16 field_0x172;
@@ -771,6 +771,6 @@ public:
     /* 0x35C */ dMsgObject_HowlHIO_c mHowlHIO;
 };
 
-extern dMsgObject_HIO_c g_MsgObject_HIO_c;
+DUSK_GAME_EXTERN dMsgObject_HIO_c g_MsgObject_HIO_c;
 
 #endif /* D_MSG_D_MSG_OBJECT_H */

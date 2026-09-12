@@ -14,7 +14,7 @@ class daNpc_Zelda_Param_c {
 public:
     virtual ~daNpc_Zelda_Param_c() {}
 
-    static const daNpc_Zelda_HIOParam m;
+    static DUSK_GAME_DATA const daNpc_Zelda_HIOParam m;
 };
 
 #if DEBUG
@@ -100,10 +100,9 @@ public:
     int checkChangeJoint(int param_0) { return param_0 == 4; }
     int checkRemoveJoint(int param_0) { return param_0 == 17; }
 
-    static const char* mCutNameList;
-    static cutFunc DUSK_CONST mCutList[1];
+    static DUSK_GAME_DATA const char* mCutNameList;
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mCutList[1];
 
-private:
     /* 0xE40 */ NPC_ZELDA_HIO_CLASS* mpHIO;
     /* 0xE44 */ dCcD_Cyl mCyl;
     /* 0xF80 */ u8 field_0xf80;

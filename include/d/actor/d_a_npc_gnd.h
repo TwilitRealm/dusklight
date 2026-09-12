@@ -11,7 +11,7 @@ class daNpc_Gnd_Param_c {
 public:
     virtual ~daNpc_Gnd_Param_c() {}
 
-    static const daNpc_Gnd_HIOParam m;
+    static DUSK_GAME_DATA const daNpc_Gnd_HIOParam m;
 };
 
 #if DEBUG
@@ -96,10 +96,9 @@ public:
     s32 getNeckJointNo() { return 3; }
     s32 getBackboneJointNo() { return 1; }
 
-    static char DUSK_CONST* DUSK_CONST mCutNameList[1];
-    static cutFunc DUSK_CONST mCutList[1];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mCutNameList[1];
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mCutList[1];
 
-private:
     /* 0xE40 */ NPC_GND_HIO_CLASS* mpHIO;
     /* 0xE44 */ dCcD_Cyl mCyl1;
     /* 0xF80 */ u8 mType;

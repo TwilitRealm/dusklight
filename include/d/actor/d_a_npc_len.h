@@ -14,7 +14,7 @@ class daNpc_Len_Param_c {
 public:
     virtual ~daNpc_Len_Param_c() {}
 
-    static const daNpc_Len_HIOParam m;
+    static DUSK_GAME_DATA const daNpc_Len_HIOParam m;
 };
 
 #if DEBUG
@@ -100,8 +100,8 @@ public:
     s32 getFootRJointNo() { return 32; }
     BOOL chkXYItems() { return TRUE; }
 
-    static char DUSK_CONST* DUSK_CONST mCutNameList[4];
-    static cutFunc DUSK_CONST mCutList[4];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mCutNameList[4];
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mCutList[4];
 
     int getFlowNodeNo() {
         u16 nodeNo = home.angle.x;
@@ -113,7 +113,6 @@ public:
     u8 getPathID() { return (fopAcM_GetParam(this) & 0xFF00) >> 8; }
     u8 getBitSW() { return (fopAcM_GetParam(this) & 0xff0000) >> 16; }
 
-private:
     /* 0xE40 */ NPC_LEN_HIO_CLASS* mpHIO;
     /* 0xE44 */ dCcD_Cyl mCyl;
     /* 0xF80 */ u8 mType;

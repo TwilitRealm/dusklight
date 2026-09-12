@@ -122,7 +122,6 @@ public:
     u8 getSwitchBit() { return mSwitchBit; }
     u8 isHide() { return mIsHide; }
     
-private:
     /* 0x5AC */ request_of_phase_process_class mPhase;
     /* 0x5B4 */ mDoExt_McaMorfSO* mpMorf;
     /* 0x5B8 */ mDoExt_brkAnm* mpBrk;
@@ -215,7 +214,7 @@ private:
 STATIC_ASSERT(sizeof(daE_YM_c) == 0xAF8);
 
 struct E_YM_n {
-    static dCcD_SrcSph cc_sph_src;
+    static DUSK_GAME_DATA dCcD_SrcSph cc_sph_src;
 };
 
 

@@ -76,8 +76,8 @@ public:
     inline cPhs_Step create();
     inline ~daObjYobikusa_c();
 
-    static attributes const M_attr;
-    static actionFuncEntry ActionTable[3];
+    static DUSK_GAME_DATA attributes const M_attr;
+    static DUSK_GAME_DATA actionFuncEntry ActionTable[3];
 
     const attributes* attr() const { return &M_attr; }
     int getType() { return argument & 0x7F; }
@@ -87,7 +87,6 @@ public:
         return var_r31 > 0;
     }
 
-private:
     /* 0x568 */ J3DModel* mpActiveModel;
     /* 0x56C */ J3DModel* mpModelTypeA;
     /* 0x570 */ J3DModel* mpModelTypeB;

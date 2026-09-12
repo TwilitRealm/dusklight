@@ -1,16 +1,16 @@
-﻿#include "fmt/format.h"
-#include "imgui.h"
-#include "aurora/gfx.h"
+﻿#include "ImGuiSaveEditor.hpp"
 
 #include "ImGuiConsole.hpp"
-#include "ImGuiSaveEditor.hpp"
 #include "ImGuiEventFlags.hpp"
 
+#include "d/actor/d_a_player.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_item_data.h"
 #include "d/d_meter2_info.h"
 #include "d/d_save.h"
-#include "d/actor/d_a_player.h"
+
+#include <fmt/format.h>
+#include <imgui.h>
 
 #include <map>
 
@@ -76,7 +76,7 @@ namespace dusk {
         { dItemNo_WEAR_KOKIRI_e, {"Hero's Clothes"} },
         { dItemNo_ARMOR_e, {"Magic Armor"} },
         { dItemNo_WEAR_ZORA_e, {"Zora Armor"} },
-        { dItemNo_MAGIC_LV1_e, {"Magic Level 1"} },
+        { dItemNo_SHADOW_CRYSTAL_e, {"Shadow Crystal"} },
         { dItemNo_DUNGEON_EXIT_2_e, {"Ooccoo Sr.", ITEMTYPE_EQUIP_e} },
         { dItemNo_WALLET_LV1_e, {"Wallet"} },
         { dItemNo_WALLET_LV2_e, {"Big Wallet"} },

@@ -9,6 +9,7 @@
 #include "m_Do/m_Do_ext.h"
 #if TARGET_PC
 #include <cstdarg>
+#include "dusk/os.h"
 #endif
 
 u8 __OSReport_disable;
@@ -125,7 +126,7 @@ void OSReportInit() {
     }
 }
 
-static u8 mDoPrintf_FiberStack[2048] ATTRIBUTE_ALIGN(32);
+ATTRIBUTE_ALIGN(32) static u8 mDoPrintf_FiberStack[2048];
 
 void mDoPrintf_vprintf_Interrupt(char const* fmt, va_list args) {
     BOOL interruptStatus = OSDisableInterrupts();

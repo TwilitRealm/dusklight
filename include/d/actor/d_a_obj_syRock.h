@@ -43,10 +43,9 @@ public:
     int Draw();
     int Delete();
 
-    static dCcD_SrcGObjInf const mCcDObjInfo;
-    static dCcD_SrcCyl mCcDCyl;
+    static DUSK_GAME_DATA dCcD_SrcGObjInf const mCcDObjInfo;
+    static DUSK_GAME_DATA dCcD_SrcCyl mCcDCyl;
 
-private:
     /* 0x5B8 */ request_of_phase_process_class mPhase;
     /* 0x5C0 */ J3DModel* mpModels[2];
     /* 0x5C8 */ u8 mMode;

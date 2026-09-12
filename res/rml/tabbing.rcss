@@ -18,17 +18,18 @@ tab-bar scrollbarhorizontal sliderbar {
 
 tab-bar tab {
     flex: 0 0 auto;
-    padding: 0 24dp;
-    line-height: 64dp;
+    padding: 0 var(--space-xl);
+    line-height: var(--toolbar-height);
     white-space: nowrap;
-    decorator: vertical-gradient(#c2a42d00 #c2a42d00);
+    decorator: vertical-gradient(rgba(var(--color-accent-rgb), 0%) rgba(var(--color-accent-rgb), 0%));
     transition: decorator 0.1s linear-in-out, opacity 0.1s linear-in-out;
     cursor: pointer;
 }
 
 tab-bar tab:selected {
     opacity: 1;
-    border-bottom: 4dp #C2A42D;
+    border-bottom-width: 4dp;
+    border-bottom-color: var(--color-accent);
     font-effect: glow(0dp 4dp 0dp 4dp black);
 }
 
@@ -36,17 +37,17 @@ tab-bar tab:focus-visible,
 tab-bar tab:hover {
     opacity: 1;
     font-effect: glow(0dp 4dp 0dp 4dp black);
-    decorator: vertical-gradient(#c2a42d00 #c2a42d26);
+    decorator: vertical-gradient(rgba(var(--color-accent-rgb), 0) rgba(var(--color-accent-rgb), 38));
 }
 
 tab-bar tab:active {
-    decorator: vertical-gradient(#c2a42d10 #c2a42d40);
+    decorator: vertical-gradient(rgba(var(--color-accent-rgb), 16) rgba(var(--color-accent-rgb), 64));
 }
 
 tab-bar[closable] tab-end-spacer {
     display: block;
-    flex: 0 0 64dp;
-    width: 64dp;
+    flex: 0 0 var(--toolbar-height);
+    width: var(--toolbar-height);
     pointer-events: none;
 }
 
@@ -56,13 +57,13 @@ window > close {
     position: fixed;
     top: 8dp;
     right: 8dp;
-    z-index: 1;
+    z-index: 2;
     width: 48dp;
     height: 48dp;
-    font-family: "Material Symbols Rounded";
+    font-family: var(--font-family-icons);
     font-weight: normal;
-    font-size: 24dp;
-    color: rgba(224, 219, 200, 70%);
+    font-size: var(--font-size-4xl);
+    color: rgba(var(--color-text-rgb), 70%);
     backdrop-filter: blur(2dp);
     border-radius: 6dp;
     decorator: text("&#xe5cd;" center center);
@@ -74,8 +75,8 @@ tab-bar[closable] close:hover,
 tab-bar[closable] close:focus-visible,
 window > close:hover,
 window > close:focus-visible {
-    color: #fff;
-    background-color: rgba(194, 164, 45, 24%);
+    color: var(--color-white);
+    background-color: rgba(var(--color-accent-rgb), 24%);
 }
 
 window > close {
@@ -85,6 +86,6 @@ window > close {
 
 tab-bar[closable] close:active,
 window > close:active {
-    color: #fff;
-    background-color: rgba(194, 164, 45, 40%);
+    color: var(--color-white);
+    background-color: rgba(var(--color-accent-rgb), 40%);
 }

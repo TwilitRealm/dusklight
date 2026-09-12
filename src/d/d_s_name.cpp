@@ -5,25 +5,25 @@
 
 #include "d/dolzel.h" // IWYU pragma: keep
 
+#include "d/d_s_name.h"
 #include "JSystem/JKernel/JKRExpHeap.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_meter2_info.h"
-#include "d/d_s_name.h"
-#include "dusk/imgui/ImGuiConsole.hpp"
-#include "dusk/livesplit.h"
-#include "dusk/memory.h"
-#include "dusk/speedrun.h"
-#include "dusk/settings.h"
-#include "f_op/f_op_overlap_mng.h"
 #include "f_op/f_op_scene_mng.h"
 #include "m_Do/m_Do_Reset.h"
 #include "m_Do/m_Do_graphic.h"
 #include "m_Do/m_Do_machine.h"
-#include "m_Do/m_Do_main.h"
 #include "m_Do/m_Do_mtx.h"
-#include <dusk/autosave.h>
+#include "m_Do/m_Do_main.h"
+#include "f_op/f_op_overlap_mng.h"
 
 #if TARGET_PC
+#include "dusk/autosave.h"
+#include "dusk/game_mode.hpp"
+#include "dusk/imgui/ImGuiConsole.hpp"
+#include "dusk/memory.h"
+#include "dusk/settings.h"
+
 #define SHOW_TV_SETTINGS_SCREEN (this->mShowTvSettingsScreen)
 #else
 #define SHOW_TV_SETTINGS_SCREEN (1)
@@ -418,15 +418,6 @@ void dScnName_c::changeGameScene() {
         dComIfGs_setRestartRoomParam(0);
 
 #if TARGET_PC
-        if (dusk::getSettings().game.speedrunMode && dusk::getSettings().game.hideTvSettingsScreen) {
-            // start a new run on file load if a run isn't already in progress
-            if (!dusk::m_speedrunInfo.m_isRunStarted) {
-                dusk::resetForSpeedrunMode();
-                dusk::m_speedrunInfo.startRun();
-                dusk::speedrun::start();
-            }
-        }
-
         toggleAutoSave(true);
 #endif
     }

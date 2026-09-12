@@ -12,7 +12,7 @@ class daNpcDoorBoy_Param_c {
 public:
     virtual ~daNpcDoorBoy_Param_c() {}
 
-    static daNpcDoorBoy_HIOParam const m;
+    static DUSK_GAME_DATA daNpcDoorBoy_HIOParam const m;
 };
 
 #if DEBUG
@@ -78,9 +78,8 @@ public:
     inline int getTimeHour();
     inline bool isDummyTalk();
 
-    static EventFn DUSK_CONST mEvtSeqList[1];
+    static DUSK_GAME_DATA EventFn DUSK_CONST mEvtSeqList[1];
 
-private:
     /* 0xB48 */ Z2CreatureCitizen mSound;
     /* 0xBEC */ u8 field_0xbec[0xbf0 - 0xbec];
     /* 0xBF0 */ daNpcF_Lookat_c mLookat;

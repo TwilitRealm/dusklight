@@ -4,11 +4,12 @@
 #include "JSystem/J3DGraphBase/J3DSys.h"
 #include <mtx.h>
 
-#include "dusk/endian.h"
+#include "helpers/endian.h"
 
 class J3DModelData;
 class J3DMaterialTable;
 struct J3DModelHierarchy;
+class J3DVertexData;
 
 #if TARGET_PC
 #define OFFSET_PTR_V0 BE(u32)

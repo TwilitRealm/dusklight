@@ -31,7 +31,7 @@ class daNpcTks_Param_c {
 public:
     virtual ~daNpcTks_Param_c() {}
 
-    static daNpcTks_HIOParam const m;
+    static DUSK_GAME_DATA daNpcTks_HIOParam const m;
 };
 
 #if DEBUG
@@ -134,7 +134,6 @@ public:
     inline void playTsuboAnm();
     inline int getPlayerArea();
 
-private:
     /* 0x0B48 */ Z2Creature mSound;
     /* 0x0BD8 */ daNpcTksTsubo_c mTksTsubo;
     /* 0x1160 */ daNpcF_MatAnm_c* mpMatAnm;

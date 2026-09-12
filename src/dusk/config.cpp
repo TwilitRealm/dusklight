@@ -1,11 +1,15 @@
 #include "dusk/config.hpp"
-#include "absl/container/flat_hash_map.h"
-#include "fmt/format.h"
-#include "nlohmann/json.hpp"
 
-#include "aurora/lib/logging.hpp"
+#include "dusk/action_bindings.h"
 #include "dusk/io.hpp"
+#include "dusk/logging.h"
+#include "dusk/main.h"
 #include "dusk/settings.h"
+
+#include <absl/container/flat_hash_map.h>
+#include <borealis/io.hpp>
+#include <fmt/format.h>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -18,17 +22,13 @@
 #include <utility>
 #include <vector>
 
-#include "dusk/action_bindings.h"
-#include "dusk/logging.h"
-#include "dusk/main.h"
-
 namespace dusk::config {
 namespace {
 constexpr auto ConfigFileName = "config.json";
 
 using json = nlohmann::json;
 
-aurora::Module DuskConfigLog("dusk::config");
+constexpr borealis::Log DuskConfigLog{"dusk::config"};
 
 absl::flat_hash_map<std::string, ConfigVarBase*> RegisteredConfigVars;
 absl::flat_hash_map<std::string, nlohmann::json> UnregisteredConfigVars;
@@ -316,6 +316,7 @@ template class ConfigImpl<BloomMode>;
 template class ConfigImpl<DepthOfFieldMode>;
 template class ConfigImpl<DiscVerificationState>;
 template class ConfigImpl<GameLanguage>;
+template class ConfigImpl<AudioOutputMode>;
 
 template <>
 void ConfigImpl<FrameInterpMode>::loadFromJson(
@@ -464,7 +465,7 @@ void load_from_user_preferences() {
     if (configJsonPath.empty()) {
         return;
     }
-    const auto configPathString = io::fs_path_to_string(configJsonPath);
+    const auto configPathString = borealis::io::fs_path_to_string(configJsonPath);
     load_from_file_name(configPathString.c_str());
 }
 
@@ -532,7 +533,7 @@ void save() {
     if (configJsonPath.empty()) {
         return;
     }
-    const auto configPathString = io::fs_path_to_string(configJsonPath);
+    const auto configPathString = borealis::io::fs_path_to_string(configJsonPath);
 
     DuskConfigLog.info("Saving config to '{}'", configPathString);
 

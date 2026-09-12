@@ -11,24 +11,55 @@
 #include "d/d_camera.h"
 #include "f_op/f_op_camera_mng.h"
 
-#include "dusk/frame_interpolation.h"
-
-const u16 l_M_Hijiki00TEX__width = 31;
-const u16 l_M_Hijiki00TEX__height = 31;
-const u16 l_M_kusa05_RGBATEX__width = 31;
-const u16 l_M_kusa05_RGBATEX__height = 31;
-
 #if TARGET_PC
 #include "dusk/dvd_asset.hpp"
+#include "dusk/interp/frame_interpolation.h"
+
 using GameVersion = dusk::version::GameVersion;
-static u8* l_M_kusa05_RGBATEX_get() { static u8 buf[0x800]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x7680}, {GameVersion::GcnPal, 0x7680}}, 0x800), true); return buf; }
-static u8* l_M_Hijiki00TEX_get()    { static u8 buf[0x800]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x7E80}, {GameVersion::GcnPal, 0x7E80}}, 0x800), true); return buf; }
+
+template <typename T, size_t N>
+static bool LoadGrassAsset(T (&dst)[N], std::initializer_list<dusk::OffsetVersion> offset) {
+    return dusk::LoadArchivedRelAsset(dst, 'AMEM', "d_a_grass.rel", offset);
+}
+
+#define DEFINE_GRASS_ASSET(name, type, count, ...)                                                 \
+    static type* name##_get() {                                                                    \
+        static type buf[count];                                                                    \
+        static bool _ = (LoadGrassAsset(buf, __VA_ARGS__), true);                                  \
+        return buf;                                                                                \
+    }
+
+DEFINE_GRASS_ASSET(l_M_kusa05_RGBATEX, u8, 0x800, {
+    {GameVersion::GcnUsa,     0x7680},
+    {GameVersion::GcnPal,     0x7680},
+    {GameVersion::GcnJpn,     0x7680},
+    {GameVersion::WiiUsaRev0, 0x6180},
+    {GameVersion::WiiUsa,     0x61E0},
+    {GameVersion::WiiPal,     0x61E0},
+    {GameVersion::WiiJpn,     0x61E0},
+});
+
+DEFINE_GRASS_ASSET(l_M_Hijiki00TEX, u8, 0x800, {
+    {GameVersion::GcnUsa,     0x7E80},
+    {GameVersion::GcnPal,     0x7E80},
+    {GameVersion::GcnJpn,     0x7E80},
+    {GameVersion::WiiUsaRev0, 0x6980},
+    {GameVersion::WiiUsa,     0x69E0},
+    {GameVersion::WiiPal,     0x69E0},
+    {GameVersion::WiiJpn,     0x69E0},
+});
+
 #define l_M_kusa05_RGBATEX (l_M_kusa05_RGBATEX_get())
 #define l_M_Hijiki00TEX    (l_M_Hijiki00TEX_get())
 #else
 #include "assets/l_M_kusa05_RGBATEX.h"  // ALIGN 32
 #include "assets/l_M_Hijiki00TEX.h"     // ALIGN 32
 #endif
+
+const u16 l_M_Hijiki00TEX__width = 31;
+const u16 l_M_Hijiki00TEX__height = 31;
+const u16 l_M_kusa05_RGBATEX__width = 31;
+const u16 l_M_kusa05_RGBATEX__height = 31;
 
 static u8 l_pos[960] = {
     0x3F, 0x4A, 0x56, 0xEF, 0xC2, 0x20, 0x00, 0x00, 0x41, 0xFB, 0x17, 0xE4, 0x41, 0xAA, 0xBB, 0xEA,
@@ -114,14 +145,66 @@ static u8 l_texCoord[160] = {
 };
 
 #if TARGET_PC
-using GameVersion = dusk::version::GameVersion;
+DEFINE_GRASS_ASSET(l_M_Kusa_9qDL, u8, 0xCB, {
+    {GameVersion::GcnUsa,     0x8B00},
+    {GameVersion::GcnPal,     0x8B00},
+    {GameVersion::GcnJpn,     0x8B00},
+    {GameVersion::WiiUsaRev0, 0x7600},
+    {GameVersion::WiiUsa,     0x7660},
+    {GameVersion::WiiPal,     0x7660},
+    {GameVersion::WiiJpn,     0x7660},
+});
 
-static u8* l_M_Kusa_9qDL_get()     { static u8 buf[0xCB]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x8B00}, {GameVersion::GcnPal, 0x8B00}}, 0xCB),  true); return buf; }
-static u8* l_M_Kusa_9q_cDL_get()   { static u8 buf[0xCB]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x8BE0}, {GameVersion::GcnPal, 0x8BE0}}, 0xCB),  true); return buf; }
-static u8* l_M_TenGusaDL_get()     { static u8 buf[0xD4]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x8CC0}, {GameVersion::GcnPal, 0x8CC0}}, 0xD4),  true); return buf; }
-static u8* l_Tengusa_matDL_get()   { static u8 buf[0xA8]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x8DA0}, {GameVersion::GcnPal, 0x8DA0}}, 0xA8),  true); return buf; }
-static u8* l_kusa9q_matDL_get()    { static u8 buf[0xA8]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x8E60}, {GameVersion::GcnPal, 0x8E60}}, 0xA8),  true); return buf; }
-static u8* l_kusa9q_l4_matDL_get() { static u8 buf[0xA8]; static bool _ = (dusk::LoadArchivedRelAsset(buf, 'AMEM', "d_a_grass.rel", {{GameVersion::GcnUsa, 0x8F20}, {GameVersion::GcnPal, 0x8F20}}, 0xA8),  true); return buf; }
+DEFINE_GRASS_ASSET(l_M_Kusa_9q_cDL, u8, 0xCB, {
+    {GameVersion::GcnUsa,     0x8BE0},
+    {GameVersion::GcnPal,     0x8BE0},
+    {GameVersion::GcnJpn,     0x8BE0},
+    {GameVersion::WiiUsaRev0, 0x76E0},
+    {GameVersion::WiiUsa,     0x7740},
+    {GameVersion::WiiPal,     0x7740},
+    {GameVersion::WiiJpn,     0x7740},
+});
+
+DEFINE_GRASS_ASSET(l_M_TenGusaDL, u8, 0xD4, {
+    {GameVersion::GcnUsa,     0x8CC0},
+    {GameVersion::GcnPal,     0x8CC0},
+    {GameVersion::GcnJpn,     0x8CC0},
+    {GameVersion::WiiUsaRev0, 0x77C0},
+    {GameVersion::WiiUsa,     0x7820},
+    {GameVersion::WiiPal,     0x7820},
+    {GameVersion::WiiJpn,     0x7820},
+});
+
+DEFINE_GRASS_ASSET(l_Tengusa_matDL, u8, 0xA8, {
+    {GameVersion::GcnUsa,     0x8DA0},
+    {GameVersion::GcnPal,     0x8DA0},
+    {GameVersion::GcnJpn,     0x8DA0},
+    {GameVersion::WiiUsaRev0, 0x78A0},
+    {GameVersion::WiiUsa,     0x7900},
+    {GameVersion::WiiPal,     0x7900},
+    {GameVersion::WiiJpn,     0x7900},
+});
+
+DEFINE_GRASS_ASSET(l_kusa9q_matDL, u8, 0xA8, {
+    {GameVersion::GcnUsa,     0x8E60},
+    {GameVersion::GcnPal,     0x8E60},
+    {GameVersion::GcnJpn,     0x8E60},
+    {GameVersion::WiiUsaRev0, 0x7960},
+    {GameVersion::WiiUsa,     0x79C0},
+    {GameVersion::WiiPal,     0x79C0},
+    {GameVersion::WiiJpn,     0x79C0},
+});
+
+DEFINE_GRASS_ASSET(l_kusa9q_l4_matDL, u8, 0xA8, {
+    {GameVersion::GcnUsa,     0x8F20},
+    {GameVersion::GcnPal,     0x8F20},
+    {GameVersion::GcnJpn,     0x8F20},
+    {GameVersion::WiiUsaRev0, 0x7A20},
+    {GameVersion::WiiUsa,     0x7A80},
+    {GameVersion::WiiPal,     0x7A80},
+    {GameVersion::WiiJpn,     0x7A80},
+});
+
 #define l_M_Kusa_9qDL     (l_M_Kusa_9qDL_get())
 #define l_M_Kusa_9q_cDL   (l_M_Kusa_9q_cDL_get())
 #define l_M_TenGusaDL     (l_M_TenGusaDL_get())
@@ -513,9 +596,9 @@ dGrass_packet_c::dGrass_packet_c() {
     field_0x1d714 = 0;
 
 #if TARGET_PC
-    dusk::batch::decode_leaf_template(mp_Mkusa_9q_DL, m_Mkusa_9q_DL_size, mTplKusa9q);
-    dusk::batch::decode_leaf_template(mp_Mkusa_9q_cDL, m_Mkusa_9q_cDL_size, mTplKusa9qCut);
-    dusk::batch::decode_leaf_template(l_M_TenGusaDL, 0xC0, mTplTengusa);
+    batch::decode_leaf_template(mp_Mkusa_9q_DL, m_Mkusa_9q_DL_size, mTplKusa9q);
+    batch::decode_leaf_template(mp_Mkusa_9q_cDL, m_Mkusa_9q_cDL_size, mTplKusa9qCut);
+    batch::decode_leaf_template(l_M_TenGusaDL, 0xC0, mTplTengusa);
 #endif
 
     OS_REPORT("草群メモリ=%fＫ\n", 117.7734375f);
@@ -525,15 +608,16 @@ dGrass_packet_c::dGrass_packet_c() {
 
 #if TARGET_PC
 static MtxP get_model_mtx(Mtx modelMtx, Mtx storage) {
-    if (dusk::frame_interp::lookup_replacement(modelMtx, storage)) {
+    if (dusk::interp::lookup_replacement(modelMtx, storage)) {
         cMtx_concat(j3dSys.getViewMtx(), storage, storage);
-        return storage;
+    } else {
+        cMtx_concat(j3dSys.getViewMtx(), modelMtx, storage);
     }
-    return modelMtx;
+    return storage;
 }
 
 static void transform_positions(
-    const dusk::batch::LeafTemplate& tpl, const Vec* posArray, const Mtx mtx, Vec* xfPos) {
+    const batch::LeafTemplate& tpl, const Vec* posArray, const Mtx mtx, Vec* xfPos) {
     for (u32 i = 0; i < tpl.posRefCount; i++) {
         const u8 idx = tpl.posRefs[i];
         MTXMultVec(mtx, &posArray[idx], &xfPos[idx]);
@@ -609,10 +693,10 @@ static GXColor blade_amb_color(const dGrass_data_c* blade, const dKy_tevstr_c* t
     return amb;
 }
 
-static void blade_emit(const dusk::batch::LeafTemplate& tpl, const Vec* xformedPos,
+static void blade_emit(const batch::LeafTemplate& tpl, const Vec* xformedPos,
                              const GXColor* colors, GXColor amb) {
     for (u32 i = 0; i < tpl.vtxCount; i++) {
-        const dusk::batch::LeafTemplate::Vtx& v = tpl.vtx[i];
+        const batch::LeafTemplate::Vtx& v = tpl.vtx[i];
         const Vec& p = xformedPos[v.pos];
         GXPosition3f32(p.x, p.y, p.z);
         GXNormal1x8(v.nrm);
@@ -765,7 +849,7 @@ void dGrass_packet_c::draw() {
         for (int bucket = 0; bucket < 4; bucket++) {
             const bool kusaTex = bucket < 2;
             const bool cut = (bucket & 1) != 0;
-            const dusk::batch::LeafTemplate& tpl =
+            const batch::LeafTemplate& tpl =
                 cut ? mTplKusa9qCut : (kusaTex ? mTplKusa9q : mTplTengusa);
 
             bool open = false;
@@ -1110,16 +1194,12 @@ void dGrass_packet_c::draw() {
                 GXSetChanAmbColor(GX_COLOR0A0, sp38);
 
                 if (!cLib_checkBit<u8>(var_r29->field_0x01, 2)) {
-#ifdef TARGET_PC
-                    Mtx grass_mtx;
-                    if (dusk::frame_interp::lookup_replacement(reinterpret_cast<const void*>(&var_r29->m_modelMtx), grass_mtx)) {
-                        cMtx_concat(j3dSys.getViewMtx(), grass_mtx, grass_mtx);
-                        GXLoadPosMtxImm(grass_mtx, 0);
-                    } else
+#if TARGET_PC
+                    Mtx grassMtx;
+                    GXLoadPosMtxImm(get_model_mtx(var_r29->m_modelMtx, grassMtx), 0);
+#else
+                    GXLoadPosMtxImm(var_r29->m_modelMtx, 0);
 #endif
-                    {
-                        GXLoadPosMtxImm(var_r29->m_modelMtx, 0);
-                    }
                     GXLoadNrmMtxImm(j3dSys.getViewMtx(), 0);
                     if (var_r29->field_0x05 <= 3 || var_r29->field_0x05 >= 10) {
                         if (var_r29->field_0x02 < -1) {
@@ -1362,7 +1442,11 @@ void dGrass_packet_c::update() {
                         }
                     }
 
+#if TARGET_PC
+                    cMtx_copy(mDoMtx_stack_c::get(), data_p->m_modelMtx);
+#else
                     cMtx_concat(j3dSys.getViewMtx(), mDoMtx_stack_c::get(), data_p->m_modelMtx);
+#endif
                 } else {
                     mDoMtx_stack_c::transS(data_p->m_pos.x, data_p->m_pos.y, data_p->m_pos.z);
                     mDoMtx_stack_c::YrotM(i * 3535);
@@ -1373,11 +1457,13 @@ void dGrass_packet_c::update() {
 
                     f32 scale = ((((s16)data_p->m_pos.x * 3535) & 0xFFF) / 4096.0f) * 0.3f + 0.7f;
                     mDoMtx_stack_c::scaleM(scale, scale, scale);
+#if TARGET_PC
+                    cMtx_copy(mDoMtx_stack_c::get(), data_p->m_modelMtx);
+#else
                     cMtx_concat(j3dSys.getViewMtx(), mDoMtx_stack_c::get(), data_p->m_modelMtx);
-                }
-#ifdef TARGET_PC
-                dusk::frame_interp::record_final_mtx(mDoMtx_stack_c::get(), data_p->m_modelMtx);
 #endif
+                }
+                IF_DUSK(dusk::interp::record_final_mtx(mDoMtx_stack_c::get(), data_p->m_modelMtx));
             }
         }
         data_p++;

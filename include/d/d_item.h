@@ -8,10 +8,12 @@ public:
     static void setItemData(u8* data) { mData = data; }
     static u8* getItemData() { return mData; }
 
-    static u8* mData;
+    static DUSK_GAME_DATA u8* mData;
 };
 
-void execItemGet(u8 item_id);
+class fopAc_ac_c;
+void execItemGet(
+    u8 item_id IF_DUSK_ARG(u32 item_give_tag = 0) IF_DUSK_ARG(fopAc_ac_c* giver = NULL));
 
 void item_func_HEART();
 void item_func_GREEN_RUPEE();

@@ -42,12 +42,12 @@ static DUSK_CONSTEXPR char DUSK_CONST* l_evtNames[2] = {
 
 static DUSK_CONSTEXPR char DUSK_CONST* l_myName = "Prayer";
 
-daNpcPray_c::EvtSeq DUSK_CONST daNpcPray_c::mEvtSeqList[] = {
+DUSK_GAME_DATA daNpcPray_c::EvtSeq DUSK_CONST daNpcPray_c::mEvtSeqList[] = {
     NULL,
     &daNpcPray_c::_Evt_GetHeart,
 };
 
-const daNpcPray_HIOParam daNpcPray_Param_c::m = {
+DUSK_GAME_DATA const daNpcPray_HIOParam daNpcPray_Param_c::m = {
     55.0f,
     -3.0f,
     1.0f,
@@ -720,7 +720,8 @@ fpc_ProcID daNpcPray_c::createHeart() {
     mDoMtx_stack_c::ZXYrotS(rot);
     mDoMtx_stack_c::multVec(&offset, &offset);
     pos += offset;
-    return fopAcM_createItemForBoss(&pos, dItemNo_KAKERA_HEART_e, fopAcM_GetRoomNo(this), &rot, &size, 0.0f, 0.0f, 0);
+    return fopAcM_createItemForBoss(&pos, dItemNo_KAKERA_HEART_e, fopAcM_GetRoomNo(this), &rot,
+        &size, 0.0f, 0.0f, 0 IF_DUSK_ARG("prayer_reward"));
 }
 
 BOOL daNpcPray_c::_Evt_GetHeart(int i_staffID) {

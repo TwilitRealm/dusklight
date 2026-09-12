@@ -16,7 +16,7 @@ class daNpc_zrC_Param_c {
 public:
     virtual ~daNpc_zrC_Param_c() {}
 
-    static daNpc_zrC_HIOParam const m;
+    static DUSK_GAME_DATA daNpc_zrC_HIOParam const m;
 };
 
 #if DEBUG
@@ -93,10 +93,9 @@ public:
     BOOL ECut_earringGet(int);
     void adjustShapeAngle() {}
 
-    static char DUSK_CONST* DUSK_CONST mEvtCutNameList[2];
-    static EventFn DUSK_CONST mEvtCutList[2];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mEvtCutNameList[2];
+    static DUSK_GAME_DATA EventFn DUSK_CONST mEvtCutList[2];
 
-private:
     /* 0xB48 */ Z2Creature mCreatureSound;
     /* 0xBD8 */ daNpcF_MatAnm_c* mpMatAnm;
     /* 0xBDC */ daNpcF_Lookat_c mLookat;

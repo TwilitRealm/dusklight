@@ -95,13 +95,28 @@ static void setIndirectTex(J3DModelData* i_modelData) {
 
     for (u16 i = 0; i < texture->getNum(); i++) {
         textureName = nameTab->getName(i);
+#if TARGET_PC
+        if (textureName == NULL) {
+            continue;
+        }
+        if (strcmp(textureName, "fbtex_dummy") == 0) {
+#else
         if (memcmp(textureName, "fbtex_dummy", 0xc) == 0) {
+#endif
             texture->setResTIMG(i, *mDoGph_gInf_c::getFrameBufferTimg());
         }
+#if TARGET_PC
+        if (strcmp(textureName, "dummy") == 0) {
+#else
         if (memcmp(textureName, "dummy", 6) == 0) {
+#endif
             texture->setResTIMG(i, *mDoGph_gInf_c::getFrameBufferTimg());
         }
+#if TARGET_PC
+        if (strcmp(textureName, "Zbuffer") == 0) {
+#else
         if (memcmp(textureName, "Zbuffer", 8) == 0) {
+#endif
             texture->setResTIMG(i, *mDoGph_gInf_c::getZbufferTimg());
         }
     }
@@ -335,7 +350,7 @@ int dRes_info_c::loadResource() {
 #endif
                 void* res = mArchive->getIdxResource(fileIndex);
 #if TARGET_PC
-                u32 size = mArchive->findIdxResource(fileIndex)->data_size;
+                u32 size = mArchive->getFileSize(mArchive->findIdxResource(fileIndex));
                 std::string fileName = mArchive->mStringTable +
                         (mArchive->findIdxResource(fileIndex)->type_flags_and_name_offset & 0xFFFFFF);
                 DuskLog.debug("Loading Resource: {} (Size: {})", fileName, size);
@@ -369,7 +384,7 @@ int dRes_info_c::loadResource() {
                         parentHeap = NULL;
                     }
 
-                    int rt = dComIfG_setObjectRes(arcName, res, entry->data_size, parentHeap);
+                    int rt = dComIfG_setObjectRes(arcName, res, DUSK_IF_ELSE(mArchive->getFileSize(entry),entry->data_size), parentHeap);
                     JUT_ASSERT(788, rt);
                 } else if (nodeType == 'BMDP') {
 #if DEBUG
@@ -581,7 +596,7 @@ int dRes_info_c::setRes(JKRArchive* i_archive, JKRHeap* i_heap) {
     return rt >> 0x1F;
 }
 
-bool data_8074C6C0_debug;
+DUSK_GAME_DATA bool data_8074C6C0_debug;
 
 int dRes_info_c::setRes() {
     if (mArchive == NULL) {

@@ -27,7 +27,7 @@ class daObj_ItaMato_Param_c {
 public:
     virtual ~daObj_ItaMato_Param_c() {}
 
-    static daObj_ItaMato_HIOParam const m;
+    static DUSK_GAME_DATA daObj_ItaMato_HIOParam const m;
 };
 
 #if DEBUG
@@ -46,7 +46,7 @@ public:
 #endif
 
 class daObj_ItaMato_c : public fopAc_ac_c {
-private:
+public:
     /* 0x568 */ OBJ_ITAMATO_HIO_CLASS* mHIO;
     /* 0x56C */ request_of_phase_process_class mPhase;
     /* 0x574 */ J3DModel* mpModels[2];

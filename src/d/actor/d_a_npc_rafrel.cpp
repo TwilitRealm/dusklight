@@ -97,7 +97,7 @@ static DUSK_CONSTEXPR char DUSK_CONST* l_evtNames[7] = {
     "RESIST_WIRETAP_RAFREL",
 };
 
-const daNpcRafrel_HIOParam daNpcRafrel_Param_c::m = {
+DUSK_GAME_DATA const daNpcRafrel_HIOParam daNpcRafrel_Param_c::m = {
     35.0f,
     -3.0f,
     1.0f,
@@ -152,7 +152,7 @@ void daNpcRafrel_HIO_c::genMessage(JORMContext* ctx) {
 static NPC_RAFREL_HIO_CLASS l_HIO;
 
 typedef BOOL (daNpcRafrel_c::*EventFn)(int);
-EventFn daNpcRafrel_c::mEvtSeqList[] = {
+DUSK_GAME_DATA EventFn daNpcRafrel_c::mEvtSeqList[] = {
     NULL,
     &daNpcRafrel_c::EvCut_Introduction,
     &daNpcRafrel_c::EvCut_Meeting,
@@ -1310,7 +1310,9 @@ bool daNpcRafrel_c::talk(void* param_0) {
                 OS_REPORT("会話終了時 イベントID=%d アイテムNo=%d\n", eventId, itemNo);
 
                 if (eventId == 1) {
-                    field_0xe00 = fopAcM_createItemForPresentDemo(&current.pos, itemNo, 0, -1, -1, NULL, NULL);
+                    DUSK_ITEM_CHECK("auru_memo", itemNo, this);
+                    field_0xe00 = fopAcM_createItemForPresentDemo(&current.pos, itemNo, 0, -1, -1,
+                        NULL, NULL DUSK_GIVE_TAG("auru_memo"));
                     if (field_0xe00 != fpcM_ERROR_PROCESS_ID_e) {
                         s16 eventIdx = dComIfGp_getEventManager().getEventIdx(this, "DEFAULT_GETITEM", 0xFF);
                         dComIfGp_getEvent()->reset(this);
@@ -1562,7 +1564,9 @@ int daNpcRafrel_c::EvCut_Appear(int i_staffId) {
             int itemNo = 0;
             u16 eventId = mFlow.getEventId(&itemNo);
             if (eventId == 1) {
-                field_0xe00 = fopAcM_createItemForPresentDemo(&current.pos, itemNo, 0, -1, -1, NULL, NULL);
+                DUSK_ITEM_CHECK("auru_memo", itemNo, this);
+                field_0xe00 = fopAcM_createItemForPresentDemo(
+                    &current.pos, itemNo, 0, -1, -1, NULL, NULL DUSK_GIVE_TAG("auru_memo"));
                 dComIfGp_event_setItemPartnerId(field_0xe00);
                 field_0xe00 = fpcM_ERROR_PROCESS_ID_e;
             }

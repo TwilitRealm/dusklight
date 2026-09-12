@@ -20,7 +20,7 @@ class daNpc_grO_Param_c {
 public:
     virtual ~daNpc_grO_Param_c() {}
 
-    static daNpc_grO_HIOParam const m;
+    static DUSK_GAME_DATA daNpc_grO_HIOParam const m;
 };
 
 #if DEBUG
@@ -85,10 +85,9 @@ public:
     int test(void*);
     void adjustShapeAngle() {}
 
-    static char DUSK_CONST* DUSK_CONST mEvtCutNameList[3];
-    static cutFunc DUSK_CONST mEvtCutList[3];
+    static DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST mEvtCutNameList[3];
+    static DUSK_GAME_DATA cutFunc DUSK_CONST mEvtCutList[3];
 
-private:
     /* 0xB48 */ Z2Creature mSound;
     /* 0xBD8 */ J3DModel* mpOtherModel[1];
     /* 0xBDC */ daNpcF_MatAnm_c* mpMatAnm;

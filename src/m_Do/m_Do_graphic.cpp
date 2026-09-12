@@ -36,7 +36,6 @@
 #include "m_Do/m_Do_graphic.h"
 #include "m_Do/m_Do_machine.h"
 #include "m_Do/m_Do_main.h"
-#include "tracy/Tracy.hpp"
 
 #if PLATFORM_WII || PLATFORM_SHIELD
 #include <revolution/sc.h>
@@ -47,16 +46,18 @@
 #endif
 
 #if TARGET_PC
-#include <SDL3/SDL_video.h>
-#include "aurora/lib/window.hpp"
-#include "d/actor/d_a_horse.h"
 #include "dusk/dusk.h"
-#include "dusk/endian.h"
-#include "dusk/frame_interpolation.h"
-#include "dusk/gx_helper.h"
+#include "dusk/gfx.hpp"
 #include "dusk/imgui/ImGuiConsole.hpp"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/logging.h"
 #include "dusk/settings.h"
+#include "helpers/endian.h"
+#include "helpers/gx_helper.h"
+
+#include <aurora/lib/window.hpp>
+#include <SDL3/SDL_video.h>
+#include <tracy/Tracy.hpp>
 #endif
 
 class mDoGph_HIO_c : public JORReflexible {
@@ -265,36 +266,36 @@ static ResTIMG* createTimg(u16 width, u16 height, u32 format) {
     return timg;
 }
 
-JUTFader* mDoGph_gInf_c::mFader;
+DUSK_GAME_DATA JUTFader* mDoGph_gInf_c::mFader;
 
 #if PLATFORM_WII || PLATFORM_SHIELD || TARGET_PC
-ResTIMG* mDoGph_gInf_c::m_fullFrameBufferTimg;
-void* mDoGph_gInf_c::m_fullFrameBufferTex;
+DUSK_GAME_DATA ResTIMG* mDoGph_gInf_c::m_fullFrameBufferTimg;
+DUSK_GAME_DATA void* mDoGph_gInf_c::m_fullFrameBufferTex;
 #endif
 
-ResTIMG* mDoGph_gInf_c::mFrameBufferTimg;
+DUSK_GAME_DATA ResTIMG* mDoGph_gInf_c::mFrameBufferTimg;
 
-void* mDoGph_gInf_c::mFrameBufferTex;
+DUSK_GAME_DATA void* mDoGph_gInf_c::mFrameBufferTex;
 
-ResTIMG* mDoGph_gInf_c::mZbufferTimg;
+DUSK_GAME_DATA ResTIMG* mDoGph_gInf_c::mZbufferTimg;
 
-void* mDoGph_gInf_c::mZbufferTex;
+DUSK_GAME_DATA void* mDoGph_gInf_c::mZbufferTex;
 
-f32 mDoGph_gInf_c::mFadeRate;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::mFadeRate;
 
-f32 mDoGph_gInf_c::mFadeSpeed;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::mFadeSpeed;
 
-GXColor mDoGph_gInf_c::mBackColor = {0, 0, 0, 0};
+DUSK_GAME_DATA GXColor mDoGph_gInf_c::mBackColor = {0, 0, 0, 0};
 
-GXColor mDoGph_gInf_c::mFadeColor = {0, 0, 0, 0};
+DUSK_GAME_DATA GXColor mDoGph_gInf_c::mFadeColor = {0, 0, 0, 0};
 
-u8 mDoGph_gInf_c::mBlureFlag;
+DUSK_GAME_DATA u8 mDoGph_gInf_c::mBlureFlag;
 
-u8 mDoGph_gInf_c::mBlureRate;
+DUSK_GAME_DATA u8 mDoGph_gInf_c::mBlureRate;
 
-u8 mDoGph_gInf_c::mFade;
+DUSK_GAME_DATA u8 mDoGph_gInf_c::mFade;
 
-bool mDoGph_gInf_c::mAutoForcus;
+DUSK_GAME_DATA bool mDoGph_gInf_c::mAutoForcus;
 
 void mDoGph_gInf_c::create() {
     #if PLATFORM_WII || PLATFORM_SHIELD
@@ -399,16 +400,16 @@ void mDoGph_gInf_c::onBlure() {
 }
 
 #if PLATFORM_WII || PLATFORM_SHIELD || TARGET_PC
-TGXTexObj mDoGph_gInf_c::m_fullFrameBufferTexObj;
+DUSK_GAME_DATA TGXTexObj mDoGph_gInf_c::m_fullFrameBufferTexObj;
 #endif
 
-TGXTexObj mDoGph_gInf_c::mFrameBufferTexObj;
+DUSK_GAME_DATA TGXTexObj mDoGph_gInf_c::mFrameBufferTexObj;
 
-TGXTexObj mDoGph_gInf_c::mZbufferTexObj;
+DUSK_GAME_DATA TGXTexObj mDoGph_gInf_c::mZbufferTexObj;
 
-mDoGph_gInf_c::bloom_c mDoGph_gInf_c::m_bloom;
+DUSK_GAME_DATA mDoGph_gInf_c::bloom_c mDoGph_gInf_c::m_bloom;
 
-Mtx mDoGph_gInf_c::mBlureMtx;
+DUSK_GAME_DATA Mtx mDoGph_gInf_c::mBlureMtx;
 
 #if !PLATFORM_GCN
 cXyz mDoGph_gInf_c::csr_c::m_nowEffPos(0.0f, 0.0f, 0.0f);
@@ -473,38 +474,35 @@ void darwFilter(GXColor matColor) {
 }
 
 void mDoGph_gInf_c::calcFade() {
-#if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
-#endif
-    {
-        if (mFade != 0) {
-            mFadeRate += mFadeSpeed;
+    IF_DUSK_BLOCK(dusk::interp::get_ui_tick_pending())
+    if (mFade != 0) {
+        mFadeRate += mFadeSpeed;
 
-            if (mFadeRate < 0.0f) {
-                mFadeRate = 0.0f;
-                mFade = 0;
-            } else {
-                if (mFadeRate > 1.0f) {
-                    mFadeRate = 1.0f;
-                }
-            }
-            mFadeColor.a = 255.0f * mFadeRate;
+        if (mFadeRate < 0.0f) {
+            mFadeRate = 0.0f;
+            mFade = 0;
         } else {
-            if (dComIfG_getBrightness() != 255) {
-                mFadeColor.r = 0;
-                mFadeColor.g = 0;
-                mFadeColor.b = 0;
-                mFadeColor.a = 255 - dComIfG_getBrightness();
-            } else {
-                mFadeColor.a = 0;
+            if (mFadeRate > 1.0f) {
+                mFadeRate = 1.0f;
             }
         }
+        mFadeColor.a = 255.0f * mFadeRate;
+    } else {
+        if (dComIfG_getBrightness() != 255) {
+            mFadeColor.r = 0;
+            mFadeColor.g = 0;
+            mFadeColor.b = 0;
+            mFadeColor.a = 255 - dComIfG_getBrightness();
+        } else {
+            mFadeColor.a = 0;
+        }
     }
+    IF_DUSK_BLOCK_END
 
     if (mFadeColor.a != 0) {
-#ifdef TARGET_PC
-        if (dusk::frame_interp::is_enabled() && mFade != 0) {
-            const auto step = dusk::frame_interp::get_interpolation_step();
+#if TARGET_PC
+        if (dusk::interp::is_enabled() && mFade != 0) {
+            const auto step = dusk::interp::get_interpolation_step();
             const auto progress = mFadeSpeed < 0.0f ? 1.0f - mFadeRate : mFadeRate;
             const auto fade_amt = mFadeRate + mFadeSpeed * (step - 1.0f + progress);
             mFadeColor.a = 255.0f * std::clamp(fade_amt, 0.0f, 1.0f);
@@ -523,15 +521,15 @@ void mDoGph_gInf_c::csr_c::particleExecute() {
 #endif
 
 #if WIDESCREEN_SUPPORT
-u8 mDoGph_gInf_c::mWideZoom;
+DUSK_GAME_DATA u8 mDoGph_gInf_c::mWideZoom;
 
-int mDoGph_gInf_c::m_minX;
+DUSK_GAME_DATA int mDoGph_gInf_c::m_minX;
 
-int mDoGph_gInf_c::m_minY;
+DUSK_GAME_DATA int mDoGph_gInf_c::m_minY;
 
-f32 mDoGph_gInf_c::m_minXF;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_minXF;
 
-f32 mDoGph_gInf_c::m_minYF;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_minYF;
 
 #if PLATFORM_WII || PLATFORM_SHIELD
 mDoGph_gInf_c::csr_c* mDoGph_gInf_c::m_baseCsr;
@@ -543,29 +541,29 @@ mDoGph_gInf_c::csr_c* mDoGph_gInf_c::m_csr;
 JKRHeap* mDoGph_gInf_c::m_heap;
 #endif
 
-u8 mDoGph_gInf_c::mWide = 1;
+DUSK_GAME_DATA u8 mDoGph_gInf_c::mWide = 1;
 
-f32 mDoGph_gInf_c::m_aspect = 1.3571428f;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_aspect = 1.3571428f;
 
-f32 mDoGph_gInf_c::m_scale = 1.0f;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_scale = 1.0f;
 
-f32 mDoGph_gInf_c::m_invScale = 1.0f;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_invScale = 1.0f;
 
-int mDoGph_gInf_c::m_maxX = FB_WIDTH_BASE - 1;
+DUSK_GAME_DATA int mDoGph_gInf_c::m_maxX = FB_WIDTH_BASE - 1;
 
-int mDoGph_gInf_c::m_maxY = FB_HEIGHT_BASE - 1;
+DUSK_GAME_DATA int mDoGph_gInf_c::m_maxY = FB_HEIGHT_BASE - 1;
 
-int mDoGph_gInf_c::m_width = FB_WIDTH_BASE;
+DUSK_GAME_DATA int mDoGph_gInf_c::m_width = FB_WIDTH_BASE;
 
-int mDoGph_gInf_c::m_height = FB_HEIGHT_BASE;
+DUSK_GAME_DATA int mDoGph_gInf_c::m_height = FB_HEIGHT_BASE;
 
-f32 mDoGph_gInf_c::m_maxXF = FB_WIDTH_BASE - 1;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_maxXF = FB_WIDTH_BASE - 1;
 
-f32 mDoGph_gInf_c::m_maxYF = FB_HEIGHT_BASE - 1;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_maxYF = FB_HEIGHT_BASE - 1;
 
-f32 mDoGph_gInf_c::m_widthF = FB_WIDTH_BASE;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_widthF = FB_WIDTH_BASE;
 
-f32 mDoGph_gInf_c::m_heightF = FB_HEIGHT_BASE;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_heightF = FB_HEIGHT_BASE;
 
 struct tvSize {
     u16 width;
@@ -574,7 +572,7 @@ struct tvSize {
 #ifndef TARGET_PC
 const
 #endif
-tvSize l_tvSize[2] = {
+DUSK_GAME_DATA tvSize l_tvSize[2] = {
     {FB_WIDTH_BASE, FB_HEIGHT_BASE},
     {808, FB_HEIGHT_BASE},
 };
@@ -719,14 +717,14 @@ void mDoGph_gInf_c::setWideZoomLightProjection(Mtx& m) {
 #endif
 
 #if TARGET_PC
-f32 mDoGph_gInf_c::hudAspectScaleDown = 1.0f;
-f32 mDoGph_gInf_c::hudAspectScaleUp = 1.0f;
-f32 mDoGph_gInf_c::m_safeMinXF = 0.0f;
-f32 mDoGph_gInf_c::m_safeMinYF = 0.0f;
-f32 mDoGph_gInf_c::m_safeMaxXF = FB_WIDTH_BASE;
-f32 mDoGph_gInf_c::m_safeMaxYF = FB_HEIGHT_BASE;
-f32 mDoGph_gInf_c::m_safeWidthF = FB_WIDTH_BASE;
-f32 mDoGph_gInf_c::m_safeHeightF = FB_HEIGHT_BASE;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::hudAspectScaleDown = 1.0f;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::hudAspectScaleUp = 1.0f;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_safeMinXF = 0.0f;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_safeMinYF = 0.0f;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_safeMaxXF = FB_WIDTH_BASE;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_safeMaxYF = FB_HEIGHT_BASE;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_safeWidthF = FB_WIDTH_BASE;
+DUSK_GAME_DATA f32 mDoGph_gInf_c::m_safeHeightF = FB_HEIGHT_BASE;
 
 void mDoGph_gInf_c::updateSafeAreaBounds() {
     m_safeMinXF = m_minXF;
@@ -2169,7 +2167,7 @@ static void captureScreenPerspDrawInfo(JPADrawInfo& info) {
 static void drawItem3D() {
     ZoneScoped;
 #ifdef TARGET_PC
-    if (dusk::frame_interp::is_enabled()) {
+    if (dusk::interp::is_enabled()) {
         // FRAME INTERP NOTE: Title screen needs 0.0f while everything else that runs through this is -100.0f.
         if (fopAcM_SearchByName(fpcNm_TITLE_e) != nullptr) {
             dMenu_Collect3D_c::setViewPortOffsetY(0.0f);
@@ -2212,12 +2210,7 @@ int mDoGph_Painter() {
     drawHeapMap();
     #endif
 
-#ifdef TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
-#endif
-    {
-        dComIfGp_particle_calcMenu();
-    }
+    IF_NOT_DUSK(dComIfGp_particle_calcMenu());
 
     JFWDisplay::getManager()->setFader(mDoGph_gInf_c::getFader());
     mDoGph_gInf_c::setClearColor(mDoGph_gInf_c::getBackColor());
@@ -2347,7 +2340,7 @@ int mDoGph_Painter() {
 #endif
             dKy_setLight();
 #if TARGET_PC
-            if (dusk::frame_interp::is_enabled()) {
+            if (dusk::interp::is_enabled()) {
                 dKy_setLight_again();
             }
 #endif
@@ -2355,6 +2348,10 @@ int mDoGph_Painter() {
             GX_DEBUG_GROUP(dComIfGd_drawXluListSky);
 
             GXSetClipMode(GX_CLIP_ENABLE);
+
+#if TARGET_PC
+            dusk::mods::gfx_run_stage(GFX_STAGE_SCENE_BEGIN, &camera_p->view, view_port);
+#endif
 
             #if DEBUG
             // "drawing up to Background (Translucent) (Rendering)"
@@ -2384,6 +2381,10 @@ int mDoGph_Painter() {
 
             GX_DEBUG_GROUP(dComIfGd_drawShadow, camera_p->view.viewMtx);
 
+#if TARGET_PC
+            dusk::mods::gfx_run_stage(GFX_STAGE_SCENE_AFTER_TERRAIN, &camera_p->view, view_port);
+#endif
+
             #if DEBUG
             // "shadow drawing (Rendering)"
             fapGm_HIO_c::stopCpuTimer("影描画（レンダリング）");
@@ -2402,16 +2403,16 @@ int mDoGph_Painter() {
             }
 
 #if TARGET_PC
-            if (dusk::frame_interp::is_enabled()) {
-                // FRAME INTERP NOTE: Currently only recalculating points for Epona's reins. Need a more global solution.
-                if (daHorse_c* horse = dComIfGp_getHorseActor()) {
-                    horse->lerpControlPoints(dusk::frame_interp::get_interpolation_step());
-                }
-                g_dComIfG_gameInfo.drawlist.refresh3DlineMats(camera_p->view.lookat.eye);
+            if (dusk::interp::is_enabled()) {
+                g_dComIfG_gameInfo.drawlist.refresh3DlineMats();
             }
 #endif
 
             GX_DEBUG_GROUP(dComIfGd_drawOpaListPacket);
+
+#if TARGET_PC
+            dusk::mods::gfx_run_stage(GFX_STAGE_SCENE_AFTER_OPAQUE, &camera_p->view, view_port);
+#endif
 
             #if DEBUG
             // "drawing up to special-use drawing (Opaque) except J3D (Rendering)"
@@ -2761,12 +2762,9 @@ int mDoGph_Painter() {
     #endif
 
     GXSetClipMode(GX_CLIP_ENABLE);
-#if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
-#endif
-    {
-        dDlst_list_c::calcWipe();
-    }
+    IF_DUSK_BLOCK(dusk::interp::get_ui_tick_pending())
+    dDlst_list_c::calcWipe();
+    IF_DUSK_BLOCK_END
     j3dSys.reinitGX();
 
     ortho.setOrtho(mDoGph_gInf_c::getMinXF(), mDoGph_gInf_c::getMinYF(),
@@ -2777,6 +2775,10 @@ int mDoGph_Painter() {
     #if DEBUG
     captureScreenSetPort();
     #endif
+
+#if TARGET_PC
+    dusk::mods::gfx_run_stage(GFX_STAGE_FRAME_BEFORE_HUD);
+#endif
 
     if (fapGmHIO_get2Ddraw()) {
         Mtx m4;
@@ -2834,6 +2836,10 @@ int mDoGph_Painter() {
         dComIfGd_draw2DOpaTop();
         dComIfGd_draw2DXlu();
     }
+
+#if TARGET_PC
+    dusk::mods::gfx_run_stage(GFX_STAGE_FRAME_AFTER_HUD);
+#endif
 
     #if DEBUG
     if (dJcame_c::get()) {

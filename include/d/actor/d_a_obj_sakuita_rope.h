@@ -80,9 +80,8 @@ public:
         return field_0x62c * (pos->z - getRopeStartPos()->z);
     }
 
-    static daObjItaRope_Attr_c const M_attr;
+    static DUSK_GAME_DATA daObjItaRope_Attr_c const M_attr;
 
-private:
     /* 0x570 */ mDoExt_3DlineMat1_c mLineMat;
     /* 0x5A4 */ request_of_phase_process_class mPhase;
     /* 0x5AC */ Mtx mMtx;

@@ -12,7 +12,7 @@
 #include "SSystem/SComponent/c_math.h"
 #include <cstring>
 
-const daNpcThe_HIOParam daNpcThe_Param_c::m = {
+DUSK_GAME_DATA const daNpcThe_HIOParam daNpcThe_Param_c::m = {
     220.0f,   // attention_offset
     -3.0f,    // gravity
     1.0f,     // scale
@@ -155,14 +155,14 @@ static DUSK_CONSTEXPR char DUSK_CONST* l_evtNames[4] = {
 
 static DUSK_CONSTEXPR char DUSK_CONST* l_myName = "The";
 
-char DUSK_CONST* DUSK_CONST daNpcThe_c::mEvtCutNameList[4] = {
+DUSK_GAME_DATA char DUSK_CONST* DUSK_CONST daNpcThe_c::mEvtCutNameList[4] = {
     "",
     "TW_RESISTANCE",
     "TW_RESISTANCE",
     "THE_INTRODUCTION",
 };
 
-daNpcThe_c::EventFn DUSK_CONST daNpcThe_c::mEvtCutList[4] = {
+DUSK_GAME_DATA daNpcThe_c::EventFn DUSK_CONST daNpcThe_c::mEvtCutList[4] = {
     NULL,
     &daNpcThe_c::EvCut_TwResistance,
     &daNpcThe_c::EvCut_TwResistance,
@@ -823,8 +823,9 @@ BOOL daNpcThe_c::talk(void* param_0) {
                     }
                     int item_no = 0;
                     if (mFlow.getEventId(&item_no) == 1) {
+                        DUSK_ITEM_CHECK("telma_invoice", item_no, this);
                         mItemID = fopAcM_createItemForPresentDemo(&current.pos, item_no, 0, -1, -1,
-                                                                  NULL, NULL);
+                            NULL, NULL DUSK_GIVE_TAG("telma_invoice"));
                         if (mItemID != -1) {
                             s16 event_id = dComIfGp_getEventManager().getEventIdx(
                                 this, "DEFAULT_GETITEM", 0xff);
