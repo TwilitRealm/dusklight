@@ -593,7 +593,11 @@ void dCamera_c::initialize(camera_class* i_camera, fopAc_ac_c* i_player, u32 i_c
         mDirection = mViewCache.mDirection;
         mControlledYaw = mViewCache.mDirection.U().Inv();
 
+#if TARGET_PC
+        mViewCache.mFovy = mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
         mViewCache.mFovy = mFovy = 60.0f;
+#endif
         mUp.set(0.0f, 1.0f, 0.0f);
         mViewCache.mBank = mBank = cSAngle::_0;
     }
@@ -1258,7 +1262,11 @@ bool dCamera_c::Run() {
 #endif
     }
 
+#if TARGET_PC
+    mFovy = mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
     mFovy = mViewCache.mFovy;
+#endif
     mBank = mViewCache.mBank;
     bumpCheck(mBumpCheckFlags);
 
