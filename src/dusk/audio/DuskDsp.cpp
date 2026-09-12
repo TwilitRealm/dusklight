@@ -302,7 +302,8 @@ static int ReadChannelSamplesChunk(
 
     assert(desiredSamples >= 0);
 
-    auto aramBase = static_cast<u8*>(ARGetStorageAddress()) + channel.mWaveAramAddress;
+    auto aramBase = static_cast<u8 const*>(channel.mAramBaseAddress ? channel.mAramBaseAddress : ARGetStorageAddress());
+    aramBase += channel.mWaveAramAddress;
 
     auto curSamplePosition = channel.mSamplePosition;
     u32 skipSamples = curSamplePosition % channel.mSamplesPerBlock;
@@ -439,7 +440,7 @@ static void RenderChannel(
             f32 out = std::clamp(
                 (sample - channelAux.prev_lp_in) * ((f32)coeff / 128.0f) + channelAux.prev_lp_out, -1.0f, 1.0f
             );
-            
+
             channelAux.prev_lp_in = sample;        // in[n-1]  = in[n]
             sample = channelAux.prev_lp_out = out; // out[n-1] = out[n]
         }
@@ -570,7 +571,7 @@ static void CalcSurroundChannelVolumes(
     VolumeArray& volumes)
 {
     constexpr f32 kTurn = 2.0f * std::numbers::pi_v<f32>;
-    
+
     const auto omniGain = 1.0f / static_cast<f32>(OutChannelCount - 1);
     const auto pan = static_cast<f32>(voice.mAutoMixerPanDolby >> 8) / 63.5f - 1.0f;
     const auto dolby = static_cast<f32>(voice.mAutoMixerPanDolby & 0xFF) / 63.5f - 1.0f;
@@ -699,7 +700,7 @@ static void DownmixSurroundToStereo(
 
 static void UpmixStereoToSurroundInplace(OutputSubframe& buf) {
     // pseudoinverse of downmix matrix
-    const auto w = OutChannelCount > 6 ? 1.0f / 12.0f : 1.0f / 8.0f; 
+    const auto w = OutChannelCount > 6 ? 1.0f / 12.0f : 1.0f / 8.0f;
     for (int i = 0; i < DSP_SUBFRAME_SIZE; i++) {
         const auto le = buf.channels[0][i] * (1.0f + w) + buf.channels[1][i] * -w;
         const auto re = buf.channels[1][i] * (1.0f + w) + buf.channels[0][i] * -w;
@@ -778,7 +779,7 @@ void dusk::audio::DspRender(OutputSubframe& subframe) {
         }
 
         DspSubframe monoBuf = {};
-        if (voice.mWaveAramAddress == 0) {
+        if (voice.mWaveAramAddress == 0 && !voice.mAramBaseAddress) {
             RenderOscChannel(voice, aux, monoBuf);
         } else {
             ValidateChannel(voice);

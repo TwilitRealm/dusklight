@@ -1,10 +1,11 @@
-#include "runtime.hpp"
+#include "../lua_helpers.hpp"
+#include "../runtime.hpp"
 
 #include <cstring>
 #include <string>
 #include <vector>
 
-namespace luau_runtime {
+namespace luau_runtime::services {
 namespace {
 
 constexpr char kOverlayMetatable[] = "dusklight.overlay_handle";
@@ -337,4 +338,4 @@ int open_texture(lua_State* state) {
     return 1;
 }
 
-}  // namespace luau_runtime
+}  // namespace luau_runtime::services

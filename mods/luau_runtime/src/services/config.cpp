@@ -1,9 +1,12 @@
-#include "runtime.hpp"
+#include "config.hpp"
+#include "../runtime.hpp"
 
 #include <string>
 #include <vector>
 
-namespace luau_runtime {
+#include "../lua_helpers.hpp"
+
+namespace luau_runtime::services {
 namespace {
 
 constexpr char kConfigVarMetatable[] = "dusklight.config_var";
@@ -240,4 +243,4 @@ int open_config(lua_State* state) {
     return 1;
 }
 
-}  // namespace luau_runtime
+}  // namespace luau_runtime::services

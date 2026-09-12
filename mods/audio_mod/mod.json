@@ -1,0 +1,7 @@
+{
+  "id": "dev.twilitrealm.audio_mod",
+  "name": "[Demo] Audio Mod",
+  "version": "1.0.0",
+  "author": "Twilit Realm",
+  "description": "Tests the functionality of the audio_res service, modifying some sounds"
+}
