@@ -40,7 +40,7 @@ bool check_four_cc(char const (&field)[4], char const (&expected)[5]) {
 namespace dusk::mods::svc::audio_res::wsys {
 
 ModResult load_wav(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData) {
-    using namespace helpers::alignment;
+    using namespace helpers;
 
     if (fileData.size() < sizeof(RiffChunk)) {
         return MOD_UNSUPPORTED;

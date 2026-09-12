@@ -12,7 +12,6 @@
 namespace luau_runtime::services {
 namespace {
 
-using namespace luau_runtime::lua_helpers;
 using namespace std::string_view_literals;
 
 constexpr char kUiWindowMetatable[] = "dusklight.ui_window";

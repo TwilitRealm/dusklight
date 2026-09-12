@@ -100,7 +100,7 @@ namespace {
 
 using namespace std::string_view_literals;
 
-constexpr luau_runtime::lua_helpers::EnumName<SoundEffectCategory> kSoundEffectCategoryNames[] = {
+constexpr luau_runtime::EnumName<SoundEffectCategory> kSoundEffectCategoryNames[] = {
     // clang-format off
     { SE_CATEGORY_SYSTEM_SE,    "system_se"sv },
     { SE_CATEGORY_PLAYER_VOICE, "player_voice"sv },
@@ -115,7 +115,7 @@ constexpr luau_runtime::lua_helpers::EnumName<SoundEffectCategory> kSoundEffectC
     // clang-format on
 };
 
-constexpr luau_runtime::lua_helpers::EnumName<StreamPan> kStreamPanNames[] = {
+constexpr luau_runtime::EnumName<StreamPan> kStreamPanNames[] = {
     // clang-format off
     { STREAM_PAN_CENTER, "center"sv },
     { STREAM_PAN_LEFT,   "left"sv },

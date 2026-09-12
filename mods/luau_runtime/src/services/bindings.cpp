@@ -8,8 +8,6 @@
 namespace luau_runtime::services {
 namespace {
 
-using namespace luau_runtime::lua_helpers;
-
 constexpr char kOverlayMetatable[] = "dusklight.overlay_handle";
 constexpr char kTextureMetatable[] = "dusklight.texture_handle";
 

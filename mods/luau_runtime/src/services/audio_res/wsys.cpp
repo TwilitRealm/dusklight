@@ -117,14 +117,14 @@ namespace {
 
 using namespace std::string_view_literals;
 
-constexpr luau_runtime::lua_helpers::EnumName<AudioWaveFormat> kWaveFormatNames[] = {
+constexpr luau_runtime::EnumName<AudioWaveFormat> kWaveFormatNames[] = {
     { AUDIO_WAVE_FORMAT_ADPCM4, "adpcm4"sv },
     { AUDIO_WAVE_FORMAT_ADPCM2, "adpcm2"sv },
     { AUDIO_WAVE_FORMAT_PCM8, "pcm8"sv },
     { AUDIO_WAVE_FORMAT_PCM16, "pcm16"sv },
 };
 
-constexpr luau_runtime::lua_helpers::EnumName<AudioWaveBank> kWaveBankNames[] = {
+constexpr luau_runtime::EnumName<AudioWaveBank> kWaveBankNames[] = {
     { AUDIO_WAVE_BANK_SOUND_EFFECTS, "sound_effects"sv } ,
     { AUDIO_WAVE_BANK_MUSIC_SAMPLES, "music_samples"sv } ,
 };

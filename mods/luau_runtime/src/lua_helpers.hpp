@@ -10,7 +10,7 @@
  * Helper functions for API bound between Lua <-> C++
  */
 
-namespace luau_runtime::lua_helpers {
+namespace luau_runtime {
 
 bool get_optional_bool(lua_State* state, int table, const char* field, bool fallback);
 double get_optional_number(lua_State* state, int table, const char* field, double fallback);

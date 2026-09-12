@@ -1,6 +1,6 @@
 #pragma once
 
-namespace dusk::helpers::alignment {
+namespace dusk::helpers {
 
 /**
  * Read data from an address that may not be aligned properly.

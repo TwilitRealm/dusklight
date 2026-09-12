@@ -9,8 +9,6 @@
 namespace luau_runtime::services {
 namespace {
 
-using namespace luau_runtime::lua_helpers;
-
 constexpr char kConfigVarMetatable[] = "dusklight.config_var";
 constexpr char kConfigSubscriptionMetatable[] = "dusklight.config_subscription";
 

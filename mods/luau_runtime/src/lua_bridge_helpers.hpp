@@ -14,12 +14,12 @@
  */
 #define DEFINE_STRING_ENUM(type, names) \
     Result Stack<type>::push(lua_State* L, type value) { \
-        return Stack<std::string_view>::push(L, ::luau_runtime::lua_helpers::enum_value_to_str(L, value, names)); \
+        return Stack<std::string_view>::push(L, ::luau_runtime::enum_value_to_str(L, value, names)); \
     } \
     \
     TypeResult<type> Stack<type>::get(lua_State* L, int index) { \
         const char* str = lua_tolstring(L, index, nullptr); \
-        return ::luau_runtime::lua_helpers::enum_str_to_value(L, str, names); \
+        return ::luau_runtime::enum_str_to_value(L, str, names); \
     }
 
 /**
