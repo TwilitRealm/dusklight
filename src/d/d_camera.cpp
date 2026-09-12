@@ -1265,7 +1265,7 @@ bool dCamera_c::Run() {
 #if TARGET_PC
     mFovy = mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
 #else
-    mFovy = mViewCache.mFovy = 60.0f;
+    mFovy = mViewCache.mFovy;
 #endif
     mBank = mViewCache.mBank;
     bumpCheck(mBumpCheckFlags);

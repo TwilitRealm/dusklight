@@ -81,7 +81,6 @@ Rml::String format_bool(int value) { return value ? "On" : "Off"; }
 
 Rml::String format_degrees(int value) { return fmt::format("{}°", value); }
 
-
 template <typename T>
 int read_cvar(const ConfigVar<T>& var) {
     if constexpr (std::is_same_v<T, float>) {
