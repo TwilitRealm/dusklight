@@ -2140,7 +2140,11 @@ bool dCamera_c::gameOverEvCamera() {
 
             gover_p->field_0x0++;
             gover_p->field_0x4 = 0.0f;
+#if TARGET_PC
             mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
+            mViewCache.mFovy = 60.0f;
+#endif
         }
         // fallthrough
         case 3: {
@@ -2229,7 +2233,11 @@ bool dCamera_c::gameOverEvCamera() {
             mViewCache.mCenter = sp224;
             mViewCache.mEye = sp230;
             bVar9 = true;
+#if TARGET_PC
             mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
+            mViewCache.mFovy = 60.0f;
+#endif
             ++gover_p->field_0x0;
         }
         // fallthrough
@@ -3732,7 +3740,11 @@ bool dCamera_c::digHoleEvCamera() {
                 sp7c = sp70 + cStack_138.Xyz();
 
                 if (!lineBGCheck(&sp70, &sp7c, 0x4007)) {
+#if TARGET_PC
                     mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
+                    mViewCache.mFovy = 60.0f;
+#endif
                     mViewCache.mCenter = sp70;
                     mViewCache.mDirection = cStack_138;
                     mViewCache.mEye = sp7c;
@@ -3800,7 +3812,11 @@ bool dCamera_c::digHoleEvCamera() {
                 mViewCache.mCenter = digHole->field_0x14;
                 mViewCache.mEye = digHole->field_0x20;
                 mViewCache.mDirection.Val(mViewCache.mEye - mViewCache.mCenter);
+#if TARGET_PC
                 mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
+                mViewCache.mFovy = 60.0f;
+#endif
             }
         }
     }
