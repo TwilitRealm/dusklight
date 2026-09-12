@@ -5,8 +5,8 @@
 
 #include "mods/svc/audio_res.h"
 
-#include "wsys.hpp"
 #include "bst.hpp"
+#include "wsys.hpp"
 
 namespace luau_runtime::services {
 namespace {
@@ -31,7 +31,7 @@ int open_audio_res(lua_State* state) {
         .addFunction("replace_wave", replace_wave)
         .addFunction("add_wave", add_wave)
         .beginClass<LuaAudioWaveHandle>("AudioWaveHandle")
-            .addFunction("unregister", &LuaAudioWaveHandle::unregister)
+        .addFunction("unregister", &LuaAudioWaveHandle::unregister)
         .endClass()
         // BST
         .addFunction("default_effect_info", default_effect_info)
@@ -42,13 +42,11 @@ int open_audio_res(lua_State* state) {
         .addFunction("replace_sound_table_stream", replace_sound_table_stream)
         .addFunction("add_sound_table_stream", add_sound_table_stream)
         .beginClass<LuaSoundTableHandle>("AudioSoundTableHandle")
-            .addFunction("unregister", &LuaSoundTableHandle::unregister)
+        .addFunction("unregister", &LuaSoundTableHandle::unregister)
         .endClass();
-
 
     lua_setreadonly(state, -1, true);
     return 1;
 }
 
-}
-
+}  // namespace luau_runtime::services

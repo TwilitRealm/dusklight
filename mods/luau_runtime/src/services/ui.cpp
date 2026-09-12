@@ -292,14 +292,14 @@ std::vector<UiListItem> list_items(lua_State* state, int table, std::vector<std:
 }
 
 constexpr EnumName<UiControlKind> kControlKindNames[] = {
-    { UI_CONTROL_BUTTON, "button"sv },
-    { UI_CONTROL_TOGGLE, "toggle"sv },
-    { UI_CONTROL_NUMBER, "number"sv },
-    { UI_CONTROL_STRING, "string"sv },
-    { UI_CONTROL_SELECT, "select"sv },
-    { UI_CONTROL_COLOR, "color"sv },
-    { UI_CONTROL_GROUP, "group"sv },
-    { UI_CONTROL_FILE_PICKER, "file_picker"sv },
+    {UI_CONTROL_BUTTON, "button"sv},
+    {UI_CONTROL_TOGGLE, "toggle"sv},
+    {UI_CONTROL_NUMBER, "number"sv},
+    {UI_CONTROL_STRING, "string"sv},
+    {UI_CONTROL_SELECT, "select"sv},
+    {UI_CONTROL_COLOR, "color"sv},
+    {UI_CONTROL_GROUP, "group"sv},
+    {UI_CONTROL_FILE_PICKER, "file_picker"sv},
 };
 
 UiControlKind control_kind(lua_State* state, const std::string& kind) {
@@ -307,12 +307,12 @@ UiControlKind control_kind(lua_State* state, const std::string& kind) {
 }
 
 constexpr EnumName<UiStyleScope> kStyleScopeNames[] = {
-    { UI_SCOPE_PRELAUNCH, "prelaunch"sv },
-    { UI_SCOPE_WINDOW, "window"sv },
-    { UI_SCOPE_MENU_BAR, "menu_bar"sv },
-    { UI_SCOPE_OVERLAY, "overlay"sv },
-    { UI_SCOPE_TOUCH_CONTROLS, "touch_controls"sv },
-    { UI_SCOPE_GRAPHICS_TUNER, "graphics_tuner"sv },
+    {UI_SCOPE_PRELAUNCH, "prelaunch"sv},
+    {UI_SCOPE_WINDOW, "window"sv},
+    {UI_SCOPE_MENU_BAR, "menu_bar"sv},
+    {UI_SCOPE_OVERLAY, "overlay"sv},
+    {UI_SCOPE_TOUCH_CONTROLS, "touch_controls"sv},
+    {UI_SCOPE_GRAPHICS_TUNER, "graphics_tuner"sv},
 };
 
 UiStyleScope style_scope(lua_State* state, const std::string& scope) {
@@ -851,4 +851,4 @@ int open_ui(lua_State* state) {
     return 1;
 }
 
-}  // namespace luau_runtime
+}  // namespace luau_runtime::services

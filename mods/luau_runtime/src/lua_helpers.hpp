@@ -31,7 +31,7 @@ uint32_t get_uint32(lua_State* state, int table, const char* field);
 /**
  * Concept that demands things be an enum. C++ is such a cool language.
  */
-template<typename T>
+template <typename T>
 concept Enum = std::is_enum_v<T>;
 
 /**
@@ -44,8 +44,7 @@ struct EnumName {
     T value;
     std::string_view name;
 
-    constexpr EnumName(T value, std::string_view name) : value(value), name(name) {
-    }
+    constexpr EnumName(T value, std::string_view name) : value(value), name(name) {}
 };
 
 /**
@@ -59,7 +58,7 @@ struct EnumName {
  * @param options The predefined set of possible enum names.
  */
 template <Enum T, size_t N>
-T enum_str_to_value(lua_State* state, char const* str, EnumName<T> const(& options)[N]) {
+T enum_str_to_value(lua_State* state, char const* str, EnumName<T> const (&options)[N]) {
     std::string_view strv(str);
     for (size_t i = 0; i < N; ++i) {
         if (options[i].name == strv) {
@@ -81,7 +80,7 @@ T enum_str_to_value(lua_State* state, char const* str, EnumName<T> const(& optio
  * @param options The predefined set of possible enum names.
  */
 template <Enum T, size_t N>
-std::string_view enum_value_to_str(lua_State* state, T value, EnumName<T> const(& options)[N]) {
+std::string_view enum_value_to_str(lua_State* state, T value, EnumName<T> const (&options)[N]) {
     for (auto [nameValue, name] : options) {
         if (nameValue == value) {
             return name;
@@ -91,4 +90,4 @@ std::string_view enum_value_to_str(lua_State* state, T value, EnumName<T> const(
     luaL_errorL(state, "Attempted to return invalid enum to Lua!");
 }
 
-}
+}  // namespace luau_runtime

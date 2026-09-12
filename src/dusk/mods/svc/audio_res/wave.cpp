@@ -1,7 +1,7 @@
-#include "wsys.hpp"
 #include "aurora/lib/logging.hpp"
 #include "dusk/mod_loader.hpp"
 #include "helpers/alignment.hpp"
+#include "wsys.hpp"
 
 namespace {
 
@@ -13,8 +13,8 @@ struct ChunkHeader {
 };
 
 struct RiffChunk {
-    ChunkHeader header; // magic "RIFF"
-    char id[4]; // "WAVE"
+    ChunkHeader header;  // magic "RIFF"
+    char id[4];          // "WAVE"
     // Data after chunk.
 };
 
@@ -35,11 +35,12 @@ bool check_four_cc(char const (&field)[4], char const (&expected)[5]) {
     return memcmp(field, expected, 4) == 0;
 }
 
-}
+}  // namespace
 
 namespace dusk::mods::svc::audio_res::wsys {
 
-ModResult load_wav(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData) {
+ModResult load_wav(
+    LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData) {
     using namespace helpers;
 
     if (fileData.size() < sizeof(RiffChunk)) {
@@ -55,7 +56,8 @@ ModResult load_wav(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::
         return MOD_UNSUPPORTED;
     }
 
-    if (sizeof(ChunkHeader) + riffChunk.header.size > fileData.size() || riffChunk.header.size < 4) {
+    if (sizeof(ChunkHeader) + riffChunk.header.size > fileData.size() || riffChunk.header.size < 4)
+    {
         Log.error("[{}] wav file {}: invalid size!", mod.metadata.id, slot.bundle_path);
         return MOD_INVALID_ARGUMENT;
     }
@@ -69,29 +71,34 @@ ModResult load_wav(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::
 
         if (check_four_cc(chunkHeader.magic, "fmt ")) {
             if (has_read_fmt) {
-                Log.error("[{}] wav file {}: multiple fmt chunks!", mod.metadata.id, slot.bundle_path);
+                Log.error(
+                    "[{}] wav file {}: multiple fmt chunks!", mod.metadata.id, slot.bundle_path);
                 return MOD_INVALID_ARGUMENT;
             }
 
             if (waveData.size() < sizeof(FmtPcmChunkData)) {
-                Log.error("[{}] wav file {}: fmt chunk too small!", mod.metadata.id, slot.bundle_path);
+                Log.error(
+                    "[{}] wav file {}: fmt chunk too small!", mod.metadata.id, slot.bundle_path);
                 return MOD_INVALID_ARGUMENT;
             }
 
             auto const fmtChunk = read_unaligned<FmtPcmChunkData>(&waveData[0]);
 
             if (fmtChunk.nChannels != 1) {
-                Log.error("[{}] wav file {}: only mono audio is supported", mod.metadata.id, slot.bundle_path);
+                Log.error("[{}] wav file {}: only mono audio is supported", mod.metadata.id,
+                    slot.bundle_path);
                 return MOD_INVALID_ARGUMENT;
             }
 
             if (fmtChunk.wFormatTag != WAVE_FORMAT_PCM) {
-                Log.error("[{}] wav file {}: only 16-bit PCM is supported", mod.metadata.id, slot.bundle_path);
+                Log.error("[{}] wav file {}: only 16-bit PCM is supported", mod.metadata.id,
+                    slot.bundle_path);
                 return MOD_INVALID_ARGUMENT;
             }
 
             if (fmtChunk.wBitsPerSample != 16) {
-                Log.error("[{}] wav file {}: only 16-bit PCM is supported", mod.metadata.id, slot.bundle_path);
+                Log.error("[{}] wav file {}: only 16-bit PCM is supported", mod.metadata.id,
+                    slot.bundle_path);
                 return MOD_INVALID_ARGUMENT;
             }
 
@@ -100,7 +107,8 @@ ModResult load_wav(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::
 
         } else if (check_four_cc(chunkHeader.magic, "data")) {
             if (sizeof(chunkHeader) + chunkHeader.size > fileData.size()) {
-                Log.error("[{}] wav file {}: unexpected EOF reading sample data", mod.metadata.id, slot.bundle_path);
+                Log.error("[{}] wav file {}: unexpected EOF reading sample data", mod.metadata.id,
+                    slot.bundle_path);
                 return MOD_INVALID_ARGUMENT;
             }
 
@@ -142,4 +150,4 @@ ModResult load_wav(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::
     return MOD_OK;
 }
 
-}
+}  // namespace dusk::mods::svc::audio_res::wsys

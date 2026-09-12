@@ -2,7 +2,8 @@
 
 namespace luau_runtime::services::audio_res {
 
-LuaSoundTableHandle::LuaSoundTableHandle(AudioSoundTableHandle handle) : BridgeScriptHandle(handle) { }
+LuaSoundTableHandle::LuaSoundTableHandle(AudioSoundTableHandle handle)
+    : BridgeScriptHandle(handle) {}
 
 void LuaSoundTableHandle::unregister_impl(lua_State*, Vm& vm) {
     svc_audio_res->remove_sound_table(vm.subject, handle);
@@ -21,19 +22,16 @@ LuaSoundTableHandle replace_sound_table_effect(SoundEffectCategory category_id, 
 
     AudioSoundTableHandle handle;
 
-    check_result(
-        state,
-        svc_audio_res->replace_sound_table_effect(vm.subject, category_id, effect_id, effect_info, &handle),
+    check_result(state,
+        svc_audio_res->replace_sound_table_effect(
+            vm.subject, category_id, effect_id, effect_info, &handle),
         "audio_res.replace_sound_table_effect");
 
     return LuaSoundTableHandle(handle);
 }
 
-std::tuple<uint16_t, LuaSoundTableHandle> add_sound_table_effect(
-    SoundEffectCategory category_id,
-    std::optional<AudioSoundTableEffectInfo> info,
-    lua_State* state,
-    Vm& vm) {
+std::tuple<uint16_t, LuaSoundTableHandle> add_sound_table_effect(SoundEffectCategory category_id,
+    std::optional<AudioSoundTableEffectInfo> info, lua_State* state, Vm& vm) {
     AudioSoundTableEffectInfo const* effect_info = nullptr;
     if (info.has_value()) {
         effect_info = &*info;
@@ -42,12 +40,12 @@ std::tuple<uint16_t, LuaSoundTableHandle> add_sound_table_effect(
     uint16_t out_effect_id;
     AudioSoundTableHandle handle;
 
-    check_result(
-        state,
-        svc_audio_res->add_sound_table_effect(vm.subject, category_id, effect_info, &handle, &out_effect_id),
+    check_result(state,
+        svc_audio_res->add_sound_table_effect(
+            vm.subject, category_id, effect_info, &handle, &out_effect_id),
         "audio_res.add_sound_table_effect");
 
-    return { out_effect_id, LuaSoundTableHandle(handle) };
+    return {out_effect_id, LuaSoundTableHandle(handle)};
 }
 
 AudioSoundTableStreamInfo const& default_stream_info() {
@@ -63,19 +61,16 @@ LuaSoundTableHandle replace_sound_table_stream(uint16_t stream_id, char const* f
 
     AudioSoundTableHandle handle;
 
-    check_result(
-        state,
-        svc_audio_res->replace_sound_table_stream(vm.subject, stream_id, file_path, stream_info, &handle),
+    check_result(state,
+        svc_audio_res->replace_sound_table_stream(
+            vm.subject, stream_id, file_path, stream_info, &handle),
         "audio_res.replace_sound_table_stream");
 
     return LuaSoundTableHandle(handle);
 }
 
-std::tuple<uint16_t, LuaSoundTableHandle> add_sound_table_stream(
-    char const* file_path,
-    std::optional<AudioSoundTableStreamInfo> info,
-    lua_State* state,
-    Vm& vm) {
+std::tuple<uint16_t, LuaSoundTableHandle> add_sound_table_stream(char const* file_path,
+    std::optional<AudioSoundTableStreamInfo> info, lua_State* state, Vm& vm) {
     AudioSoundTableStreamInfo const* stream_info = nullptr;
     if (info.has_value()) {
         stream_info = &*info;
@@ -84,14 +79,13 @@ std::tuple<uint16_t, LuaSoundTableHandle> add_sound_table_stream(
     uint16_t out_stream_id;
     AudioSoundTableHandle handle;
 
-    check_result(
-        state,
-        svc_audio_res->add_sound_table_stream(vm.subject, file_path, stream_info, &handle, &out_stream_id),
+    check_result(state,
+        svc_audio_res->add_sound_table_stream(
+            vm.subject, file_path, stream_info, &handle, &out_stream_id),
         "audio_res.add_sound_table_stream");
 
-    return { out_stream_id, LuaSoundTableHandle(handle) };
+    return {out_stream_id, LuaSoundTableHandle(handle)};
 }
-
 
 }  // namespace luau_runtime::services::audio_res
 
@@ -130,10 +124,9 @@ DEFINE_STRING_ENUM(StreamPan, kStreamPanNames);
 
 TypeResult<AudioSoundTableEffectInfo> Stack<AudioSoundTableEffectInfo>::get(
     lua_State* L, int index) {
-
     auto const ref = LuaRef::fromStack(L, index);
 
-    return AudioSoundTableEffectInfo {
+    return AudioSoundTableEffectInfo{
         .priority = ref["priority"],
         .volume = ref["volume"],
         .pitch = ref["pitch"],
@@ -153,7 +146,6 @@ TypeResult<AudioSoundTableEffectInfo> Stack<AudioSoundTableEffectInfo>::get(
 
 Result Stack<AudioSoundTableEffectInfo>::push(
     lua_State* L, const AudioSoundTableEffectInfo& value) {
-
     LuaRef const ref = newTable(L);
 
     ref["priority"] = value.priority;
@@ -178,12 +170,12 @@ Result Stack<AudioSoundTableEffectInfo>::push(
 
 TypeResult<AudioSoundTableStreamInfo> Stack<AudioSoundTableStreamInfo>::get(
     lua_State* L, int index) {
-
     auto const ref = LuaRef::fromStack(L, index);
 
-    std::array<std::optional<StreamPan>, STREAM_MAX_CHILDREN> const pan_parameters = ref["pan_parameters"];
+    std::array<std::optional<StreamPan>, STREAM_MAX_CHILDREN> const pan_parameters =
+        ref["pan_parameters"];
 
-    auto info = AudioSoundTableStreamInfo {
+    auto info = AudioSoundTableStreamInfo{
         .priority = ref["priority"],
         .volume = ref["volume"],
         .stop_on_scene_change = ref["stop_on_scene_change"],
@@ -198,7 +190,6 @@ TypeResult<AudioSoundTableStreamInfo> Stack<AudioSoundTableStreamInfo>::get(
 
 Result Stack<AudioSoundTableStreamInfo>::push(
     lua_State* L, const AudioSoundTableStreamInfo& value) {
-
     LuaRef const ref = newTable(L);
 
     ref["priority"] = value.priority;

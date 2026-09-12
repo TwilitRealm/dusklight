@@ -115,4 +115,4 @@ int ref_required_function(lua_State* state, int table, const char* field) {
     return ref;
 }
 
-}
+}  // namespace luau_runtime

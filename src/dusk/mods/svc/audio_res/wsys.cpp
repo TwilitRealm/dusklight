@@ -1,7 +1,7 @@
-#include "audio_res.hpp"
 #include "wsys.hpp"
-#include "../internal.hpp"
 #include "../id_allocator.hpp"
+#include "../internal.hpp"
+#include "audio_res.hpp"
 #include "aurora/lib/logging.hpp"
 #include "dusk/audio/DuskAudioSystem.h"
 #include "dusk/mods/loader/loader.hpp"
@@ -30,10 +30,12 @@ PlainIdAllocator<u16> sound_effect_id_allocator(5'000);
 PlainIdAllocator<u16> music_sample_id_allocator(1'000);
 
 PlainIdAllocator<u16>& id_allocator_for_bank(AudioWaveBank const bank) {
-    return bank == AUDIO_WAVE_BANK_SOUND_EFFECTS ? sound_effect_id_allocator : music_sample_id_allocator;
+    return bank == AUDIO_WAVE_BANK_SOUND_EFFECTS ? sound_effect_id_allocator :
+                                                   music_sample_id_allocator;
 }
 
-bool validate_raw_size(LoadedMod const& mod, std::string const& path, uintptr_t actual_size, AudioRawWave const& raw, u32& sample_count) {
+bool validate_raw_size(LoadedMod const& mod, std::string const& path, uintptr_t actual_size,
+    AudioRawWave const& raw, u32& sample_count) {
     u32 samples_per_block;
     u32 bytes_per_block;
     switch (raw.format) {
@@ -51,7 +53,8 @@ bool validate_raw_size(LoadedMod const& mod, std::string const& path, uintptr_t 
     }
 
     if (actual_size % bytes_per_block != 0) {
-        Log.error("[{}] raw file is not divisible by format block size: '{}'", mod.metadata.id, path);
+        Log.error(
+            "[{}] raw file is not divisible by format block size: '{}'", mod.metadata.id, path);
         return false;
     }
 
@@ -116,7 +119,7 @@ JASWaveInfo wave_info_from_slot(RuntimeWaveReplacementSlot const& slot) {
     info.mBaseKey = slot.base_key;
     info.mLoopFlag = slot.loop ? 0xFF : 0;
     info.mSampleRate = slot.sample_rate;
-    info.mOffsetStart = 0; // Unused but just init it ig.
+    info.mOffsetStart = 0;  // Unused but just init it ig.
     info.mOffsetLength = bounded_cast(slot.data->size());
     info.mLoopStartSample = slot.loop_start_sample;
     info.mLoopEndSample = bounded_cast(slot.loop_end_sample);
@@ -142,13 +145,8 @@ bool wave_remove(LoadedMod const& mod, AudioWaveHandle const handle) {
     return true;
 }
 
-ModResult insert_replace_wave_core(
-    ModContext* ctx,
-    AudioWaveBank bank,
-    u16 wave_id,
-    bool mod_defined,
-    char const* file_name,
-    AudioWaveInfo const* wave_info,
+ModResult insert_replace_wave_core(ModContext* ctx, AudioWaveBank bank, u16 wave_id,
+    bool mod_defined, char const* file_name, AudioWaveInfo const* wave_info,
     AudioWaveHandle* out_handle) {
     if (out_handle != nullptr) {
         *out_handle = 0;
@@ -206,13 +204,13 @@ ModResult insert_replace_wave_core(
     return MOD_OK;
 }
 
-
-}
+}  // namespace
 
 absl::flat_hash_map<AudioWaveKey, AudioWaveReplacementValue> s_replacements;
 std::mutex s_replacements_mutex;
 
-AudioWaveInfo const default_wave_info(AUDIO_RES_DEFAULT_KEY, false, 0, std::numeric_limits<u32>::max(), nullptr);
+AudioWaveInfo const default_wave_info(
+    AUDIO_RES_DEFAULT_KEY, false, 0, std::numeric_limits<u32>::max(), nullptr);
 
 ModResult remove_wave(ModContext* ctx, AudioWaveHandle handle) {
     auto* mod = mod_from_context(ctx);
@@ -226,25 +224,13 @@ ModResult remove_wave(ModContext* ctx, AudioWaveHandle handle) {
     return MOD_OK;
 }
 
-ModResult insert_replace_wave(
-    ModContext* ctx,
-    AudioWaveBank bank,
-    u16 wave_id,
-    char const* file_name,
-    AudioWaveInfo const* wave_info,
-    AudioWaveHandle* out_handle) {
-
+ModResult insert_replace_wave(ModContext* ctx, AudioWaveBank bank, u16 wave_id,
+    char const* file_name, AudioWaveInfo const* wave_info, AudioWaveHandle* out_handle) {
     return insert_replace_wave_core(ctx, bank, wave_id, false, file_name, wave_info, out_handle);
 }
 
-ModResult insert_add_wave(
-    ModContext* ctx,
-    AudioWaveBank bank,
-    char const* file_name,
-    AudioWaveInfo const* wave_info,
-    AudioWaveHandle* out_handle,
-    u16* out_wave_id) {
-
+ModResult insert_add_wave(ModContext* ctx, AudioWaveBank bank, char const* file_name,
+    AudioWaveInfo const* wave_info, AudioWaveHandle* out_handle, u16* out_wave_id) {
     if (out_wave_id == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
@@ -258,7 +244,8 @@ ModResult insert_add_wave(
     auto& allocator = id_allocator_for_bank(bank);
     auto const new_wave_id = allocator.alloc();
 
-    auto const result = insert_replace_wave_core(ctx, bank, new_wave_id, true, file_name, wave_info, out_handle);
+    auto const result =
+        insert_replace_wave_core(ctx, bank, new_wave_id, true, file_name, wave_info, out_handle);
     if (result != MOD_OK) {
         allocator.free(new_wave_id);
     }
@@ -280,13 +267,12 @@ void sync_audio_replacements() {
 
     for (auto const& mod : ModLoader::instance().active_mods()) {
         s_waveReplacements.for_each([&](auto, auto entry) {
-             if (entry.owner != &mod) {
-                 return;
-             }
+            if (entry.owner != &mod) {
+                return;
+            }
 
             auto const wave_info = wave_info_from_slot(entry.value);
-            new_map.emplace(
-                AudioWaveKey(entry.value.bank, entry.value.wave_id),
+            new_map.emplace(AudioWaveKey(entry.value.bank, entry.value.wave_id),
                 AudioWaveReplacementValue(wave_info, entry.value.data));
         });
     }
@@ -330,5 +316,4 @@ void SampleDataPcm16::be_swap() {
     }
 }
 
-
-}
+}  // namespace dusk::mods::svc::audio_res::wsys

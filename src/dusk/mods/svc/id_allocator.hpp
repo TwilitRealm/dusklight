@@ -1,23 +1,22 @@
 #pragma once
 
-#include <vector>
 #include <limits>
+#include <vector>
 
 namespace dusk::mods::svc {
 
 [[noreturn]] void id_allocator_exhausted();
 
-template<typename T> requires std::is_integral_v<T>
+template <typename T>
+    requires std::is_integral_v<T>
 class PlainIdAllocator {
     std::vector<T> reusable;
     T alloc_next;
     T alloc_max;
 
 public:
-    constexpr explicit PlainIdAllocator(T first, T max=std::numeric_limits<T>::max())
-        : alloc_next(first), alloc_max(max) {
-
-    }
+    constexpr explicit PlainIdAllocator(T first, T max = std::numeric_limits<T>::max())
+        : alloc_next(first), alloc_max(max) {}
 
     T alloc() {
         if (reusable.empty()) {
@@ -40,4 +39,4 @@ public:
     }
 };
 
-}
+}  // namespace dusk::mods::svc

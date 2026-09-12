@@ -17,16 +17,16 @@ aurora::Module Log("dusk::mods::svc::audio_res");
 SlotMap<std::shared_ptr<SoundTableReplacementSlot>> sound_replacements;
 
 std::array sound_effect_id_allocator = {
-    PlainIdAllocator<u16>(0x1000), // SYSTEM_SE
-    PlainIdAllocator<u16>(0x1000), // PLAYER_VOICE
-    PlainIdAllocator<u16>(0x1000), // PLAYER_SE
-    PlainIdAllocator<u16>(0x1000), // FOOTNOTE_SE
-    PlainIdAllocator<u16>(0x1000), // COLLISION_SE
-    PlainIdAllocator<u16>(0x1000), // CHARA_VOICE
-    PlainIdAllocator<u16>(0x1000), // CHARA_SE
-    PlainIdAllocator<u16>(0x1000), // ENEMY_SE
-    PlainIdAllocator<u16>(0x1000), // OBJECT_SE
-    PlainIdAllocator<u16>(0x1000), // ENV_SE
+    PlainIdAllocator<u16>(0x1000),  // SYSTEM_SE
+    PlainIdAllocator<u16>(0x1000),  // PLAYER_VOICE
+    PlainIdAllocator<u16>(0x1000),  // PLAYER_SE
+    PlainIdAllocator<u16>(0x1000),  // FOOTNOTE_SE
+    PlainIdAllocator<u16>(0x1000),  // COLLISION_SE
+    PlainIdAllocator<u16>(0x1000),  // CHARA_VOICE
+    PlainIdAllocator<u16>(0x1000),  // CHARA_SE
+    PlainIdAllocator<u16>(0x1000),  // ENEMY_SE
+    PlainIdAllocator<u16>(0x1000),  // OBJECT_SE
+    PlainIdAllocator<u16>(0x1000),  // ENV_SE
 };
 
 PlainIdAllocator<u16> stream_id_allocator(0x1000);
@@ -40,7 +40,8 @@ uint8_t volume_to_item(float volume) {
     return static_cast<uint8_t>(volume * 127);
 }
 
-absl::flat_hash_map<SoundEffectKey, std::shared_ptr<SoundEffectReplacementSlot>> active_se_replacements;
+absl::flat_hash_map<SoundEffectKey, std::shared_ptr<SoundEffectReplacementSlot>>
+    active_se_replacements;
 absl::flat_hash_map<u16, std::shared_ptr<StreamReplacementSlot>> active_stream_replacements;
 std::mutex active_replacements_mutex;
 
@@ -74,9 +75,11 @@ SoundEffectReplacementSlot::SoundEffectReplacementSlot(
     sw_bit |= (info.doppler_power << SOUND_SW_DOPPLER_POWER_OFFSET) & SOUND_SW_DOPPLER_POWER_MASK;
 
     if (info.volume_dist_class < 8) {
-        sw_bit |= (info.volume_dist_class << SOUND_SW_VOL_DIST_BIT_OFFSET) & SOUND_SW_VOL_DIST_BIT_MASK;
+        sw_bit |=
+            (info.volume_dist_class << SOUND_SW_VOL_DIST_BIT_OFFSET) & SOUND_SW_VOL_DIST_BIT_MASK;
     } else {
-        sw_bit |= ((info.volume_dist_class - 8) << SOUND_SW_VOL_DIST_BIT_2_OFFSET) & SOUND_SW_VOL_DIST_BIT_2_MASK;
+        sw_bit |= ((info.volume_dist_class - 8) << SOUND_SW_VOL_DIST_BIT_2_OFFSET) &
+                  SOUND_SW_VOL_DIST_BIT_2_MASK;
     }
 
     if (info.clamp_min_volume)
@@ -140,8 +143,7 @@ std::shared_ptr<SoundEffectReplacementSlot> get_override_for_se(JAISoundID id) {
     std::lock_guard lock(active_replacements_mutex);
 
     SoundEffectKey const key(
-        static_cast<SoundEffectCategory>(id.id_.info.type.parts.groupID),
-        id.id_.info.waveID);
+        static_cast<SoundEffectCategory>(id.id_.info.type.parts.groupID), id.id_.info.waveID);
 
     auto const entry = active_se_replacements.find(key);
     if (entry == active_se_replacements.end()) {
@@ -181,13 +183,14 @@ void frame_end() {
 void sync_audio_replacements() {
     sound_replacements_dirty = false;
 
-    absl::flat_hash_map<SoundEffectKey, std::shared_ptr<SoundEffectReplacementSlot>> new_se_replacements;
+    absl::flat_hash_map<SoundEffectKey, std::shared_ptr<SoundEffectReplacementSlot>>
+        new_se_replacements;
     absl::flat_hash_map<u16, std::shared_ptr<StreamReplacementSlot>> new_stream_replacements;
 
     for (auto const& mod : ModLoader::instance().active_mods()) {
         sound_replacements.for_each([&](auto, auto const& entry) {
             if (entry.owner != &mod) {
-               return;
+                return;
             }
 
             std::shared_ptr<SoundTableReplacementSlot> const& value = entry.value;
@@ -212,7 +215,8 @@ void sync_audio_replacements() {
 }
 
 static ModResult insert_sound_table_effect_core(ModContext* ctx, SoundEffectCategory category_id,
-    uint16_t effect_id, bool mod_defined, AudioSoundTableEffectInfo const* info, AudioSoundTableHandle* out_handle) {
+    uint16_t effect_id, bool mod_defined, AudioSoundTableEffectInfo const* info,
+    AudioSoundTableHandle* out_handle) {
     if (out_handle != nullptr) {
         *out_handle = 0;
     }
@@ -226,7 +230,8 @@ static ModResult insert_sound_table_effect_core(ModContext* ctx, SoundEffectCate
         info = &default_effect_info;
     }
 
-    auto slot = std::make_shared<SoundEffectReplacementSlot>(mod_defined, effect_id, category_id, *info);
+    auto slot =
+        std::make_shared<SoundEffectReplacementSlot>(mod_defined, effect_id, category_id, *info);
     sound_replacements_dirty = true;
 
     auto const handle = sound_replacements.emplace(*mod, std::move(slot));
@@ -247,7 +252,6 @@ AudioSoundTableEffectInfo const default_effect_info(128, 1, 1);
 ModResult add_sound_table_effect(ModContext* ctx, SoundEffectCategory category_id,
     AudioSoundTableEffectInfo const* info, AudioSoundTableHandle* out_handle,
     uint16_t* out_effect_id) {
-
     if (out_effect_id == nullptr || !validate_category(category_id)) {
         return MOD_INVALID_ARGUMENT;
     }
@@ -257,7 +261,8 @@ ModResult add_sound_table_effect(ModContext* ctx, SoundEffectCategory category_i
     auto& allocator = sound_effect_id_allocator[category_id];
     auto const effect_id = allocator.alloc();
 
-    auto const result = insert_sound_table_effect_core(ctx, category_id, effect_id, true, info, out_handle);
+    auto const result =
+        insert_sound_table_effect_core(ctx, category_id, effect_id, true, info, out_handle);
     if (result != MOD_OK) {
         allocator.free(effect_id);
     }
@@ -267,12 +272,8 @@ ModResult add_sound_table_effect(ModContext* ctx, SoundEffectCategory category_i
     return result;
 }
 
-static ModResult insert_sound_table_stream_core(
-    ModContext* ctx,
-    uint16_t stream_id,
-    bool mod_defined,
-    char const* file_path,
-    AudioSoundTableStreamInfo const* info,
+static ModResult insert_sound_table_stream_core(ModContext* ctx, uint16_t stream_id,
+    bool mod_defined, char const* file_path, AudioSoundTableStreamInfo const* info,
     AudioSoundTableHandle* out_handle) {
     if (out_handle != nullptr) {
         *out_handle = 0;
@@ -298,30 +299,24 @@ static ModResult insert_sound_table_stream_core(
     return MOD_OK;
 }
 
-AudioSoundTableStreamInfo const default_stream_info(
-    128,
-    1,
-    {
-        STREAM_PAN_LEFT,
-        STREAM_PAN_RIGHT
-    });
+AudioSoundTableStreamInfo const default_stream_info(128, 1, {STREAM_PAN_LEFT, STREAM_PAN_RIGHT});
 
-ModResult replace_sound_table_stream(ModContext* ctx, uint16_t stream_id,
-    char const* file_path,
+ModResult replace_sound_table_stream(ModContext* ctx, uint16_t stream_id, char const* file_path,
     AudioSoundTableStreamInfo const* info, AudioSoundTableHandle* out_handle) {
     return insert_sound_table_stream_core(ctx, stream_id, false, file_path, info, out_handle);
 }
 
-ModResult add_sound_table_stream(ModContext* ctx,
-    char const* file_path, AudioSoundTableStreamInfo const* info,
-    AudioSoundTableHandle* out_handle, uint16_t* out_stream_id) {
+ModResult add_sound_table_stream(ModContext* ctx, char const* file_path,
+    AudioSoundTableStreamInfo const* info, AudioSoundTableHandle* out_handle,
+    uint16_t* out_stream_id) {
     if (out_stream_id == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
 
     auto const stream_id = stream_id_allocator.alloc();
 
-    auto const result = insert_sound_table_stream_core(ctx, stream_id, true, file_path, info, out_handle);
+    auto const result =
+        insert_sound_table_stream_core(ctx, stream_id, true, file_path, info, out_handle);
     if (result != MOD_OK) {
         stream_id_allocator.free(stream_id);
     }

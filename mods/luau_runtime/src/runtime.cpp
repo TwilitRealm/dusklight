@@ -327,7 +327,7 @@ ModResult runtime_activate(ModContext*, ModContext* subject, ModError* outError)
     lua_pushlightuserdata(vm->state, vm.get());
     lua_rawsetp(vm->state, LUA_REGISTRYINDEX, &vm_registry_index);
     lua_callbacks(vm->state)->userdata = vm.get();
-#if NDEBUG // Annoying for debuggers
+#if NDEBUG  // Annoying for debuggers
     lua_callbacks(vm->state)->interrupt = [](lua_State* state, int gc) {
         auto* current = static_cast<Vm*>(lua_callbacks(state)->userdata);
         if (gc < 0 && current != nullptr && current->deadlineActive &&

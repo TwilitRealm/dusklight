@@ -54,10 +54,6 @@ struct Z2AudioCamera {
     /* 0x00 */ JGeometry::TPosition3f32 mViewMatrix;
     /* 0x30 */ JGeometry::TVec3<f32> mVel;
     /* 0x3C */ JGeometry::TVec3<f32> mPos;
-
-    /**
-     *
-     */
     /* 0x48 */ JGeometry::TVec3<f32> mLastPos;
     /* 0x54 */ f32 mFovySin;
     /* 0x58 */ f32 mVolCenterZ;
@@ -281,7 +277,7 @@ struct Z2Audience : public JAIAudience, public JASGlobalInstance<Z2Audience> {
     }
     Z2Audience3DSetting* getSetting() { return &mSetting; }
 
-    const Z2AudioCamera* getAudioCamera(int camID) const { return &mAudioCamera[camID]; } 
+    const Z2AudioCamera* getAudioCamera(int camID) const { return &mAudioCamera[camID]; }
 
     void setUsingOffMicVol(bool value) { mUsingOffMicVol = value; }
 

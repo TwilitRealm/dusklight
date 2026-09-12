@@ -18,4 +18,4 @@ int open_ui(lua_State* state);
 
 ModuleOpenFn module_factory(std::string_view name);
 
-}
+}  // namespace luau_runtime::services

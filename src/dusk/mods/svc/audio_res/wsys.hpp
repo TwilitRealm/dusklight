@@ -15,9 +15,7 @@ namespace dusk::mods::svc::audio_res::wsys {
 struct SampleDataBuf {
     virtual ~SampleDataBuf() = default;
     [[nodiscard]] virtual std::span<std::byte const> get_data() const = 0;
-    [[nodiscard]] size_t size() const {
-        return get_data().size();
-    }
+    [[nodiscard]] size_t size() const { return get_data().size(); }
 };
 
 // Making a separate type for this rather than just using a vector<u8>
@@ -60,12 +58,13 @@ struct AudioWaveKey {
     }
 
     [[nodiscard]] bool operator==(const AudioWaveKey& other) const {
-       return other.bank == bank && other.wave_id == wave_id;
+        return other.bank == bank && other.wave_id == wave_id;
     }
 };
 
 struct AudioWaveReplacementValue : JASWaveHandle {
-    AudioWaveReplacementValue(const JASWaveInfo& wave_info, std::shared_ptr<SampleDataBuf> data) : wave_info(wave_info), data(std::move(data)) {};
+    AudioWaveReplacementValue(const JASWaveInfo& wave_info, std::shared_ptr<SampleDataBuf> data)
+        : wave_info(wave_info), data(std::move(data)) {};
     ~AudioWaveReplacementValue() override;
     [[nodiscard]] const JASWaveInfo* getWaveInfo() const override;
     [[nodiscard]] intptr_t getWavePtr() const override;
@@ -99,9 +98,12 @@ struct RuntimeWaveReplacementSlot {
     std::shared_ptr<SampleDataBuf> data;
 };
 
-using ContainerLoadFunction = ModResult (*)(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData);
+using ContainerLoadFunction = ModResult (*)(
+    LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData);
 
-ModResult load_wav(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData);
-ModResult load_opus(LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData);
+ModResult load_wav(
+    LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData);
+ModResult load_opus(
+    LoadedMod const& mod, RuntimeWaveReplacementSlot& slot, std::span<u8 const> fileData);
 
-}
+}  // namespace dusk::mods::svc::audio_res::wsys

@@ -243,4 +243,4 @@ int open_config(lua_State* state) {
     return 1;
 }
 
-}  // namespace luau_runtime
+}  // namespace luau_runtime::services

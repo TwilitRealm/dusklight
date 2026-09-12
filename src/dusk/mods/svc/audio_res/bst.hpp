@@ -35,7 +35,8 @@ struct StreamReplacementSlot final : SoundTableReplacementSlot {
     std::string file_path;
     bool stop_on_scene_change;
 
-    StreamReplacementSlot(bool mod_defined, u16 id, char const* file_path, const AudioSoundTableStreamInfo& info);
+    StreamReplacementSlot(
+        bool mod_defined, u16 id, char const* file_path, const AudioSoundTableStreamInfo& info);
 
     ~StreamReplacementSlot() override = default;
 
@@ -60,4 +61,4 @@ std::shared_ptr<SoundTableReplacementSlot> get_override_for(JAISoundID id);
 std::shared_ptr<SoundEffectReplacementSlot> get_override_for_se(JAISoundID id);
 std::shared_ptr<StreamReplacementSlot> get_override_for_stream(JAISoundID id);
 
-}
+}  // namespace dusk::mods::svc::audio_res::bst

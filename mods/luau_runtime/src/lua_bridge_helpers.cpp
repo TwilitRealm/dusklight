@@ -14,9 +14,7 @@ luabridge::Stack<const luau_runtime::Vm&>::get(lua_State* L, int) {
 
 namespace luau_runtime {
 
-BridgeScriptHandle::BridgeScriptHandle(uint64_t const handle) noexcept : handle(handle) {
-
-}
+BridgeScriptHandle::BridgeScriptHandle(uint64_t const handle) noexcept : handle(handle) {}
 
 BridgeScriptHandle::~BridgeScriptHandle() = default;
 
@@ -37,4 +35,4 @@ void BridgeScriptHandle::unregister(lua_State* state, Vm& vm) {
     handle = 0;
 }
 
-}
+}  // namespace luau_runtime

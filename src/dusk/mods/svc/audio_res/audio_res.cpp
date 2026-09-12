@@ -42,18 +42,15 @@ void sync_audio_replacements() {
     bst::sync_audio_replacements();
 }
 
-}
+}  // namespace
 
 }  // namespace audio_res
 
-constinit const ServiceModule g_audioResModule{
-    .id = AUDIO_RES_SERVICE_ID,
+constinit const ServiceModule g_audioResModule{.id = AUDIO_RES_SERVICE_ID,
     .majorVersion = AUDIO_RES_SERVICE_MAJOR,
     .minorVersion = AUDIO_RES_SERVICE_MINOR,
     .service = &audio_res::s_audioResService,
     .modDetached = audio_res::mod_detached,
     .lifecycleApplied = audio_res::sync_audio_replacements,
-    .frameEnd = audio_res::frame_end
-    };
-};
-
+    .frameEnd = audio_res::frame_end};
+};  // namespace dusk::mods::svc
