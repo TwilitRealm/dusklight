@@ -1,0 +1,5 @@
+root = true
+
+[*.{c,cpp,h,hpp,cmake}]
+insert_final_newline = true
+trim_trailing_whitespace = true
