@@ -26,6 +26,8 @@
 #include <absl/container/flat_hash_map.h>
 #include <tracy/Tracy.hpp>
 
+#include <typeindex>
+
 static const void* getInterpKey(const void* base, int idx) {
     return reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(base) ^ idx);
 }
