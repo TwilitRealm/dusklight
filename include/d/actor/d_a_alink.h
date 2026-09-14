@@ -4561,7 +4561,6 @@ public:
     bool checkAimInputContext();
 
     bool mIsRollstab = false;
-    void* mAnmBuffers[3] = {};
 #endif
 };  // Size: 0x385C
 

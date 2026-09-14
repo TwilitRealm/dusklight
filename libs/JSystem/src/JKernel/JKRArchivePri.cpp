@@ -12,7 +12,6 @@
 #include <limits>
 #include <ranges>
 #include <string_view>
-#include <borealis/log.hpp>
 #include "JSystem/JKernel/JKRDvdRipper.h"
 #if _WIN32
 #include <malloc.h>
@@ -21,8 +20,6 @@
 std::atomic<u64> JKRArchive::sArcOverlayGeneration{0};
 
 namespace {
-
-inline constexpr borealis::Log Log{"JKRArchivePri"};
 
 void* alloc_overlay_buffer(u32 size) {
 #if _WIN32
@@ -455,18 +452,12 @@ bool JKRArchive::copyOverlayData(void* buffer, u32 bufferSize, SDIFileEntry* ent
         return false;
     }
 
-    if (overlaySize > bufferSize) {
-        std::string path;
-        getOverlayPath(entry, path);
-        Log.error("Overlay %s is %u bytes but the game reserved %u\n", path.c_str(), overlaySize,
-            bufferSize);
-        return false;
-    }
-    if (overlaySize != 0) {
-        memcpy(buffer, overlayData, overlaySize);
+    const u32 copySize = overlaySize < bufferSize ? overlaySize : bufferSize;
+    if (copySize != 0) {
+        memcpy(buffer, overlayData, copySize);
     }
     if (outSize != nullptr) {
-        *outSize = overlaySize;
+        *outSize = copySize;
     }
     return true;
 }
