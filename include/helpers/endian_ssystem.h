@@ -60,3 +60,11 @@ struct BE<cXyz> {
         };
     }
 };
+
+template<>
+constexpr cXy BE<cXy>::swap(cXy val) noexcept {
+    return {
+        BE<f32>::swap(val.x),
+        BE<f32>::swap(val.y),
+    };
+}

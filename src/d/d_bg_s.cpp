@@ -315,7 +315,7 @@ f32 cBgS::GroundCross(cBgS_GndChk* pgndchk) {
 }
 
 template <>
-void be_swap(cBgD_Vtx_t& val) {
+constexpr void be_swap(cBgD_Vtx_t& val) noexcept {
     be_swap(val.x);
     be_swap(val.y);
     be_swap(val.z);

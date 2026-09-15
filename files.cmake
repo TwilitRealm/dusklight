@@ -1670,7 +1670,6 @@ set(DUSK_FILES
         src/dusk/version.cpp
         src/dusk/utilities.cpp
         src/helpers/batch.cpp
-        src/helpers/endian.cpp
         src/helpers/offset_ptr.cpp
         src/helpers/string.cpp
         src/helpers/cast.cpp
