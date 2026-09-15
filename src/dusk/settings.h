@@ -212,6 +212,7 @@ struct UserSettings {
         ConfigVar<MenuScaling> menuScalingMode;
 
         // Graphics
+        ConfigVar<int> cameraFieldOfView;
         ConfigVar<BloomMode> bloomMode;
         ConfigVar<float> bloomMultiplier;
         ConfigVar<DepthOfFieldMode> depthOfFieldMode;

@@ -332,6 +332,9 @@ const Rml::String kUnlockFramerateHelpText =
     "visual artifacts or animation glitches.";
 const Rml::String kTextureReplacementHelpText =
     "Enable installed texture replacements.";
+const Rml::String kCameraFOVHelpText =
+    "Configure the default field of view for the camera. Lower values zoom in, higher values zoom out. "
+    "This may be overridden during cutscenes or specific gameplay moments. May introduce visual glitches.";
 
 int float_setting_percent(ConfigVar<float>& var) {
     return static_cast<int>(var.getValue() * 100.0f + 0.5f);
@@ -773,7 +776,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             });
 
         config_int_select(leftPane, rightPane, getSettings().video.uiScale,
-            "UI Scale", 
+            "UI Scale",
             "Scales the Dusklight interface relative to the display's DPI scale. Has no effect on the game's UI and HUD.",
             50, 200, 25, {}, {}, "%");
 
@@ -795,6 +798,14 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                 .option = GraphicsOption::Resampler,
                 .title = "Output Resampling",
                 .helpText = kResamplerHelpText,
+            });
+
+        leftPane.add_section("Camera");
+        graphics_tuner_control(*this, leftPane, rightPane,
+            GraphicsTunerProps{
+                .option = GraphicsOption::CameraFieldOfView,
+                .title = "Field of View",
+                .helpText = kCameraFOVHelpText,
             });
 
         leftPane.add_section("Post-Processing");
