@@ -5,6 +5,9 @@
 #include "JSystem/JAudio2/JAISoundInfo.h"
 #include "JSystem/JAudio2/JASReport.h"
 #include "dusk/mods/svc/audio_res/bst.hpp"
+#ifdef TARGET_PC
+#include "dusk/audio/DuskAudioSystem.h"
+#endif
 
 bool JAISeCategoryMgr::isUsingSeqData(const JAISeqDataRegion& seqDataRegion) {
     {
@@ -280,9 +283,17 @@ void JAISeMgr::calc() {
 }
 
 void JAISeMgr::mixOut() {
+#ifdef TARGET_PC
+    for (int i = 0; i < NUM_CATEGORIES; i++) {
+        JAISoundParamsMove catParams = mParams;
+        catParams.params_.mVolume *= dusk::audio::SeCategoryScale(i);
+        mCategoryMgrs[i].JAISeMgr_mixOut_(catParams, mSoundActivity);
+    }
+#else
     for (int i = 0; i < NUM_CATEGORIES; i++) {
         mCategoryMgrs[i].JAISeMgr_mixOut_(mParams, mSoundActivity);
     }
+#endif
 }
 
 bool JAISeMgr::startSound(JAISoundID id, JAISoundHandle* handle, const JGeometry::TVec3<f32>* posPtr IF_DUSK_ARG(std::shared_ptr<dusk::mods::svc::audio_res::bst::SoundEffectReplacementSlot> replacement)) {

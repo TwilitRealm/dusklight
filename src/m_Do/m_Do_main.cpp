@@ -727,6 +727,12 @@ int game_main(int argc, char* argv[]) {
     dusk::applyResampler(dusk::getSettings().game.resampler.getValue());
 
     dusk::audio::SetMasterVolume(dusk::audio::MasterVolumeToLinear(dusk::getSettings().audio.masterVolume / 100.0f));
+    dusk::audio::SetMusicVolume(dusk::audio::VolumeToLinear(dusk::getSettings().audio.musicVolume / 100.0f));
+    dusk::audio::SetSfxVolume(dusk::audio::VolumeToLinear(dusk::getSettings().audio.soundEffectsVolume / 100.0f));
+    dusk::audio::SetVoiceVolume(dusk::audio::VolumeToLinear(dusk::getSettings().audio.voiceVolume / 100.0f));
+    dusk::audio::SetMenuVolume(dusk::audio::VolumeToLinear(dusk::getSettings().audio.menuVolume / 100.0f));
+    dusk::audio::SetAmbienceVolume(dusk::audio::VolumeToLinear(dusk::getSettings().audio.ambienceVolume / 100.0f));
+    dusk::audio::SetFootstepVolume(dusk::audio::VolumeToLinear(dusk::getSettings().audio.footstepVolume / 100.0f));
     dusk::audio::SetEnableReverb(dusk::getSettings().audio.enableReverb);
 
     // Run ImGui UI loop if Aurora couldn't initialize a backend

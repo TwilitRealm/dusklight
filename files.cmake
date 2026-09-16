@@ -1654,6 +1654,8 @@ set(DUSK_FILES
         src/dusk/ui/select_button.cpp
         src/dusk/ui/select_button.hpp
         src/dusk/ui/settings.cpp
+        src/dusk/ui/slider_button.cpp
+        src/dusk/ui/slider_button.hpp
         src/dusk/ui/settings.hpp
         src/dusk/ui/string_button.cpp
         src/dusk/ui/string_button.hpp
