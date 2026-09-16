@@ -16,7 +16,7 @@ void Component::update() {
 }
 
 bool Component::focus() {
-    if (disabled() || !mRoot->IsVisible(true)) {
+    if (disabled()) {
         return false;
     }
     // Can we focus self?
