@@ -338,11 +338,16 @@ select-button key {
     font-weight: bold;
     font-size: var(--font-size-xl);
     text-transform: uppercase;
-    flex: 0 1 auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 select-button value {
     flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     text-align: right;
     font-size: var(--font-size-2xl);
 }
@@ -370,8 +375,27 @@ select-button.group-button value {
     display: none;
 }
 
+select-button.dropdown-button icon {
+    display: none;
+}
+
+select-button.dropdown-button dropdown-indicator {
+    display: block;
+    flex: 0 0 16dp;
+    width: 16dp;
+    height: 16dp;
+    font-family: var(--font-family-icons);
+    font-size: 16dp;
+    font-weight: normal;
+    line-height: 1;
+    transition: transform 0.1s linear-in-out;
+}
+
+select-button.dropdown-button.expanded dropdown-indicator {
+    transform: rotate(180deg);
+}
+
 select-button.color-input value {
-    min-width: 0;
     font-family: var(--font-family-monospace);
     font-size: var(--font-size-base);
 }

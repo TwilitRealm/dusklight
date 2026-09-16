@@ -12,6 +12,7 @@
 namespace dusk::mods::catalog {
 
 enum class Sort {
+    Featured,
     Downloads,
     Endorsements,
     Updated,
@@ -22,7 +23,7 @@ enum class Sort {
 struct Query {
     std::string search;
     std::string category;
-    Sort sort = Sort::Downloads;
+    Sort sort = Sort::Featured;
     int page = 1;
     bool thisDevice = true;
 };

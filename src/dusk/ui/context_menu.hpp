@@ -14,6 +14,7 @@ public:
         bool enabled = true;
         bool destructive = false;
         bool separatorBefore = false;
+        bool selected = false;
     };
 
     class Binding {
@@ -36,6 +37,7 @@ public:
 
 private:
     NavGroup mNavigation;
+    Component* mInitialFocus = nullptr;
 };
 
 }  // namespace dusk::ui

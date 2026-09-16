@@ -179,7 +179,7 @@ public:
         : NavGroup{append(parent, "online-section-heading"), {.layout = Layout::Horizontal}} {
         mRoot->SetClass("completed", true);
         append_text(append(mRoot, "h2"), "Completed");
-        auto& clear = add_item<Button>("Clear completed");
+        auto& clear = add_item<Button>("Clear");
         clear.root()->SetAttribute("focus-key", "completed-clear");
         clear.on_pressed([] {
             for (const auto& item : mods::queue::items()) {

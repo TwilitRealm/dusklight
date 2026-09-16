@@ -35,8 +35,6 @@ private:
     void build_content(Rml::Element* content);
     void begin_fetch(FocusTarget focusTarget);
     void finish_fetch(mods::catalog::FetchResult result);
-    void cycle_category();
-    void cycle_sort();
 
     mods::catalog::Query mQuery;
     std::optional<mods::catalog::Page> mPage;

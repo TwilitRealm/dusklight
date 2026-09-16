@@ -3,6 +3,7 @@
 #include <borealis/update.hpp>
 #include "bool_button.hpp"
 #include "button.hpp"
+#include "dropdown_button.hpp"
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/loader/packages.hpp"
 #include "dusk/mods/queue.hpp"
@@ -34,15 +35,18 @@
 namespace dusk::ui {
 namespace {
 
+constexpr bool kEnableEndorsements = false;
+
 struct SortOption {
     mods::catalog::Sort value;
     std::string_view label;
 };
 
 constexpr std::array sortOptions{
+    SortOption{mods::catalog::Sort::Featured, "Featured"},
     SortOption{mods::catalog::Sort::Updated, "Recently updated"},
     SortOption{mods::catalog::Sort::Downloads, "Most downloaded"},
-    SortOption{mods::catalog::Sort::Endorsements, "Most endorsed"},
+    // SortOption{mods::catalog::Sort::Endorsements, "Most endorsed"},
     SortOption{mods::catalog::Sort::Newest, "Newest"},
     SortOption{mods::catalog::Sort::Name, "Name"},
 };
@@ -182,9 +186,11 @@ public:
         auto* downloads = append(meta, "stat");
         append_text(append(downloads, "icon"), material_icon("download"));
         append_text_element(downloads, "span", format_count(mod.downloads));
-        auto* endorsements = append(meta, "stat");
-        append_text(append(endorsements, "icon"), material_icon("favorite"));
-        append_text_element(endorsements, "span", format_count(mod.endorsements));
+        if constexpr (kEnableEndorsements) {
+            auto* endorsements = append(meta, "stat");
+            append_text(append(endorsements, "icon"), material_icon("favorite"));
+            append_text_element(endorsements, "span", format_count(mod.endorsements));
+        }
         mStatus = append(meta, "small");
         mStatus->SetClass("size", true);
 
@@ -371,7 +377,7 @@ private:
     void build_content(Rml::Element* content) {
         if (mDetail) {
             auto* scroll = append(content, "detail-scroll");
-            add_child<DetailContent>(scroll, *this, *mDetail);
+            add_child<DetailContent>(scroll, *this, *mDetail).focus();
             return;
         }
 
@@ -721,7 +727,9 @@ DetailContent::DetailContent(
 
     auto* stats = append(mRoot, "catalog-detail-stats");
     append_stat(stats, "download", format_count(detail.mod.downloads), " downloads");
-    append_stat(stats, "favorite", format_count(detail.mod.endorsements), " endorsements");
+    if constexpr (kEnableEndorsements) {
+        append_stat(stats, "favorite", format_count(detail.mod.endorsements), " endorsements");
+    }
 
     auto* body = append(mRoot, "catalog-detail-body");
     auto* main = append(body, "main");
@@ -839,7 +847,6 @@ DetailContent::DetailContent(
 ModBrowser::ModBrowser()
     : Window{Props{.tabBar = false, .styleSheets = {"res/rml/mod_browser.rcss"}}} {
     mRoot->SetClass("mod-browser", true);
-    mQuery.sort = mods::catalog::Sort::Updated;
     mLoaderGeneration = mods::ModLoader::instance().generation();
     mState = borealis::http::available() ? State::Loading : State::Unavailable;
     set_content([this](Rml::Element* content) { build_content(content); });
@@ -870,25 +877,53 @@ void ModBrowser::build_content(Rml::Element* content) {
             },
         .maxLength = 100,
     });
-    append_text(append(filtersRoot, "h2"), "Category");
-    auto& category = filters.add_item<ControlledSelectButton>(ControlledSelectButton::Props{
+    std::vector<DropdownButton::Option> categoryOptions{{"All"}};
+    if (mPage) {
+        for (const auto& category : mPage->categories) {
+            categoryOptions.push_back({category.name});
+        }
+    }
+    auto& category = filters.add_item<DropdownButton>(DropdownButton::Props{
         .key = "Category",
+        .options = std::move(categoryOptions),
         .getValue =
             [this] {
                 if (mQuery.category.empty() || !mPage) {
-                    return Rml::String{"All mods"};
+                    return 0;
                 }
                 const auto iter = std::ranges::find(
                     mPage->categories, mQuery.category, &mods::catalog::Category::slug);
-                return iter == mPage->categories.end() ? Rml::String{"All mods"} : iter->name;
+                return iter == mPage->categories.end() ?
+                           0 :
+                           static_cast<int>(iter - mPage->categories.begin()) + 1;
+            },
+        .setValue =
+            [this](int index) {
+                mQuery.category = index == 0 ? std::string{} : mPage->categories[index - 1].slug;
+                mQuery.page = 1;
+                begin_fetch(FocusTarget::Category);
+            },
+        .isDisabled = [this] { return !mPage || mPage->categories.empty(); },
+    });
+    std::vector<DropdownButton::Option> sortLabels;
+    for (const auto& option : sortOptions) {
+        sortLabels.push_back({Rml::String{option.label}});
+    }
+    auto& sort = filters.add_item<DropdownButton>(DropdownButton::Props{
+        .key = "Sort by",
+        .options = std::move(sortLabels),
+        .getValue =
+            [this] {
+                const auto iter = std::ranges::find(sortOptions, mQuery.sort, &SortOption::value);
+                return iter == sortOptions.end() ? 0 : static_cast<int>(iter - sortOptions.begin());
+            },
+        .setValue =
+            [this](int index) {
+                mQuery.sort = sortOptions[index].value;
+                mQuery.page = 1;
+                begin_fetch(FocusTarget::Sort);
             },
     });
-    category.on_pressed([this] { cycle_category(); });
-    auto& sort = filters.add_item<ControlledSelectButton>(ControlledSelectButton::Props{
-        .key = "Sort by",
-        .getValue = [this] { return Rml::String{sort_label(mQuery.sort)}; },
-    });
-    sort.on_pressed([this] { cycle_sort(); });
     auto& device = filters.add_item<BoolButton>(BoolButton::Props{
         .key = "Compatible only",
         .getValue = [this] { return mQuery.thisDevice; },
@@ -1065,33 +1100,6 @@ void ModBrowser::finish_fetch(mods::catalog::FetchResult result) {
         mFocusTarget = FocusTarget::Search;
     }
     mRebuildRequested = true;
-}
-
-void ModBrowser::cycle_category() {
-    if (!mPage || mPage->categories.empty()) {
-        return;
-    }
-    if (mQuery.category.empty()) {
-        mQuery.category = mPage->categories.front().slug;
-    } else {
-        const auto iter =
-            std::ranges::find(mPage->categories, mQuery.category, &mods::catalog::Category::slug);
-        const auto next =
-            iter == mPage->categories.end() ? mPage->categories.begin() : std::next(iter);
-        mQuery.category = next == mPage->categories.end() ? std::string{} : next->slug;
-    }
-    mQuery.page = 1;
-    begin_fetch(FocusTarget::Category);
-}
-
-void ModBrowser::cycle_sort() {
-    const auto iter = std::ranges::find(sortOptions, mQuery.sort, &SortOption::value);
-    const auto next = iter == sortOptions.end() || std::next(iter) == sortOptions.end() ?
-                          sortOptions.begin() :
-                          std::next(iter);
-    mQuery.sort = next->value;
-    mQuery.page = 1;
-    begin_fetch(FocusTarget::Sort);
 }
 
 void ModBrowser::update() {

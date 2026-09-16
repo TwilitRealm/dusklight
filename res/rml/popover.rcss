@@ -210,6 +210,14 @@ popover.context-menu {
     transition: background-color 0.1s linear-in-out;
 }
 
+.context-menu button:selected {
+    --button-background: var(--button-background-selected);
+}
+
+.context-menu button:selected icon {
+    color: var(--color-accent);
+}
+
 .context-menu button:not(:disabled):hover,
 .context-menu button:not(:disabled):focus-visible {
     background-color: var(--button-background-hover);

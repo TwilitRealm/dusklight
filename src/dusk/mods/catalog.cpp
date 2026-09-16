@@ -26,6 +26,8 @@ constexpr std::string_view apiUrl =
 
 std::string_view sort_value(Sort sort) noexcept {
     switch (sort) {
+    case Sort::Featured:
+        return "featured";
     case Sort::Endorsements:
         return "endorsements";
     case Sort::Updated:
