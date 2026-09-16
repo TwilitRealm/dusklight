@@ -24,6 +24,13 @@ static std::array<f32, DSP_SUBFRAME_SIZE * OutputSubframe::NUM_CHANNELS> OutInte
 
 static SDL_AudioStream* PlaybackStream;
 
+f32 dusk::audio::MusicVolume = 1.0f;
+f32 dusk::audio::SfxVolume = 1.0f;
+f32 dusk::audio::VoiceVolume = 1.0f;
+f32 dusk::audio::MenuVolume = 1.0f;
+f32 dusk::audio::AmbienceVolume = 1.0f;
+f32 dusk::audio::FootstepVolume = 1.0f;
+
 /**
  * SDL audiostream callback to trigger rendering of new audio data.
  */
@@ -130,6 +137,61 @@ void dusk::audio::SetMasterVolume(const f32 value) {
     JASCriticalSection section;
 
     MasterVolume = value;
+}
+
+void dusk::audio::SetMusicVolume(const f32 value) {
+    JASCriticalSection section;
+
+    MusicVolume = value;
+}
+
+void dusk::audio::SetSfxVolume(const f32 value) {
+    JASCriticalSection section;
+
+    SfxVolume = value;
+}
+
+void dusk::audio::SetVoiceVolume(const f32 value) {
+    JASCriticalSection section;
+
+    VoiceVolume = value;
+}
+
+void dusk::audio::SetMenuVolume(const f32 value) {
+    JASCriticalSection section;
+
+    MenuVolume = value;
+}
+
+void dusk::audio::SetAmbienceVolume(const f32 value) {
+    JASCriticalSection section;
+
+    AmbienceVolume = value;
+}
+
+void dusk::audio::SetFootstepVolume(const f32 value) {
+    JASCriticalSection section;
+
+    FootstepVolume = value;
+}
+
+f32 dusk::audio::SeCategoryScale(const int categoryIndex) {
+    switch (categoryIndex) {
+    case 1:  // Link voice
+    case 5:  // Character voice
+    case 7:  // Character voice (secondary)
+        return VoiceVolume;
+    case 2:  // Link motion
+    case 3:  // Link footnote
+    case 6:  // Character move
+        return FootstepVolume;
+    case 0:  // System / UI / menu
+        return MenuVolume;
+    case 9:  // Atmosphere
+        return AmbienceVolume;
+    default:  // 4, 8 and any others: object / generic sound effects
+        return SfxVolume;
+    }
 }
 
 void dusk::audio::SetPaused(const bool paused) {
@@ -272,10 +334,13 @@ int RenderAudioSubframe() {
 
         if (!extResampler.hungry()) {
             const auto inBuf = extResampler.drain_subframe();
+            // The movie player bypasses the DSP, so apply Master and Music volume here so
+            // cutscene/intro audio respects the volume sliders like the rest of the game audio.
+            const f32 scale = MusicVolume * MasterVolume;
             for (int i = 0; i < DSP_SUBFRAME_SIZE; i++) {
                 const auto oi = i * OutChannelCount;
-                OutInterleaveBuffer[oi]     += inBuf[i * kExtChannels];
-                OutInterleaveBuffer[oi + 1] += inBuf[i * kExtChannels + 1];
+                OutInterleaveBuffer[oi]     += inBuf[i * kExtChannels] * scale;
+                OutInterleaveBuffer[oi + 1] += inBuf[i * kExtChannels + 1] * scale;
             }
         }
     }

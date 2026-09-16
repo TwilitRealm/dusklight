@@ -169,6 +169,11 @@ struct UserSettings {
         ConfigVar<int> subMusicVolume;
         ConfigVar<int> soundEffectsVolume;
         ConfigVar<int> fanfareVolume;
+        ConfigVar<int> musicVolume;
+        ConfigVar<int> voiceVolume;
+        ConfigVar<int> menuVolume;
+        ConfigVar<int> ambienceVolume;
+        ConfigVar<int> footstepVolume;
         ConfigVar<bool> enableReverb;
         ConfigVar<bool> menuSounds;
     } audio;

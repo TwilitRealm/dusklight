@@ -4,6 +4,9 @@
 #include "JSystem/JAudio2/JAISoundHandles.h"
 #include "JSystem/JAudio2/JAIStreamDataMgr.h"
 #include "JSystem/JAudio2/JAISoundInfo.h"
+#ifdef TARGET_PC
+#include "dusk/audio/DuskAudioSystem.h"
+#endif
 
 JAIStreamMgr::JAIStreamMgr(bool setInstance) : JASGlobalInstance<JAIStreamMgr>(setInstance) {
     streamDataMgr_ = NULL;
@@ -102,9 +105,17 @@ void JAIStreamMgr::stopSoundID(JAISoundID id) {
 }
 
 void JAIStreamMgr::mixOut() {
+#ifdef TARGET_PC
+    JASSoundParams mixParams = mParams.params_;
+    mixParams.mVolume *= dusk::audio::MusicVolume;
+#endif
     JSULink<JAIStream>* i;
      for (i = mStreamList.getFirst(); i != NULL; i = i->getNext()) {
+#ifdef TARGET_PC
+        i->getObject()->JAIStreamMgr_mixOut_(mixParams, mActivity);
+#else
         i->getObject()->JAIStreamMgr_mixOut_(mParams.params_, mActivity);
+#endif
     }
 }
 

@@ -4,6 +4,9 @@
 #include "JSystem/JAudio2/JAISeq.h"
 #include "JSystem/JAudio2/JAISoundHandles.h"
 #include "JSystem/JAudio2/JAISoundInfo.h"
+#ifdef TARGET_PC
+#include "dusk/audio/DuskAudioSystem.h"
+#endif
 
 bool JAISeqMgr::isUsingSeqData(const JAISeqDataRegion& seqDataRegion) {
     JSULink<JAISeq>* link;
@@ -113,9 +116,17 @@ void JAISeqMgr::stopSoundID(JAISoundID id) {
 }
 
 void JAISeqMgr::mixOut() {
+#ifdef TARGET_PC
+    JASSoundParams mixParams = mMove.params_;
+    mixParams.mVolume *= dusk::audio::MusicVolume;
+#endif
     JSULink<JAISeq>* i;
     for (i = mSeqList.getFirst(); i != NULL; i = i->getNext()) {
+#ifdef TARGET_PC
+        i->getObject()->JAISeqMgr_mixOut_(mixParams, mActivity);
+#else
         i->getObject()->JAISeqMgr_mixOut_(mMove.params_, mActivity);
+#endif
     }
 }
 

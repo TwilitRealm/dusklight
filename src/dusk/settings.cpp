@@ -31,6 +31,11 @@ UserSettings g_userSettings = {
         .subMusicVolume {"audio.subMusicVolume", 100},
         .soundEffectsVolume {"audio.soundEffectsVolume", 100},
         .fanfareVolume {"audio.fanfareVolume", 100},
+        .musicVolume {"audio.musicVolume", 100},
+        .voiceVolume {"audio.voiceVolume", 100},
+        .menuVolume {"audio.menuVolume", 100},
+        .ambienceVolume {"audio.ambienceVolume", 100},
+        .footstepVolume {"audio.footstepVolume", 100},
         .enableReverb {"audio.enableReverb", true},
         .menuSounds {"audio.menuSounds", true},
     },
@@ -264,6 +269,11 @@ void registerSettings() {
     Register(g_userSettings.audio.subMusicVolume);
     Register(g_userSettings.audio.soundEffectsVolume);
     Register(g_userSettings.audio.fanfareVolume);
+    Register(g_userSettings.audio.musicVolume);
+    Register(g_userSettings.audio.voiceVolume);
+    Register(g_userSettings.audio.menuVolume);
+    Register(g_userSettings.audio.ambienceVolume);
+    Register(g_userSettings.audio.footstepVolume);
     Register(g_userSettings.audio.enableReverb);
     Register(g_userSettings.audio.menuSounds);
 

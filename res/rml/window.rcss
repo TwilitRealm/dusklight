@@ -356,9 +356,80 @@ select-button value.modified {
     font-weight: bold;
 }
 
+select-button.slider-volume {
+    position: relative;
+    padding-right: 72dp;
+}
+
+select-button.slider-volume key {
+    flex: 0 0 190dp;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+select-button.slider-volume slider {
+    /* Full-height grab pad: stretch to fill the row so there is no dead space,
+       and mark it draggable so RmlUi streams Drag events while the button is held.
+       `drag: drag` is the actual mechanism that enables dragging (see Context.cpp). */
+    flex: 1 1 auto;
+    min-width: 60dp;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    drag: drag;
+    cursor: pointer;
+    border-radius: 4dp;
+    box-shadow: rgba(146, 135, 91, 30%) 0 0 0 1dp;
+}
+
+select-button.slider-volume slider:hover {
+    box-shadow: #C2A42D 0 0 0 1dp;
+}
+
+select-button.slider-volume slider slider-fill {
+    display: block;
+    height: 8dp;
+    align-self: center;
+    border-radius: 4dp;
+    background-color: #C2A42D;
+    box-shadow: rgba(0, 0, 0, 50%) 0 0 0 1dp;
+}
+
+select-button.slider-volume slider slider-fill {
+    width: 0%;
+}
+
+select-button.slider-volume slider slider-thumb {
+    display: none;
+}
+
 select-button input {
     text-align: right;
     font-size: var(--font-size-2xl);
+}
+
+select-button.slider-volume value {
+    position: absolute;
+    right: 12dp;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 52dp;
+    text-align: right;
+}
+
+select-button.slider-volume value.modified {
+    font-weight: bold;
+}
+
+select-button.slider-volume input {
+    position: absolute;
+    right: 12dp;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 52dp;
+    text-align: right;
+    font-size: 20dp;
 }
 
 select-button.group-button icon {

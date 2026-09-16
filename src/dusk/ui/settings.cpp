@@ -6,6 +6,7 @@
 #include "menu_bar.hpp"
 #include "modal.hpp"
 #include "number_button.hpp"
+#include "slider_button.hpp"
 #include "pane.hpp"
 #include "prelaunch.hpp"
 #include "touch_controls_editor.hpp"
@@ -1083,30 +1084,69 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                 }
             });
 
-        // TODO: Individual sliders for Main Music, Sub Music, Sound Effects, and Fanfare.
         leftPane.add_section("Volume");
-        leftPane.register_control(
-            leftPane.add_child<NumberButton>(NumberButton::Props{
-                .key = "Master Volume",
-                .getValue = [] { return getSettings().audio.masterVolume.getValue(); },
-                .setValue =
-                    [](int value) {
-                        getSettings().audio.masterVolume.setValue(value);
-                        config::save();
-                        audio::SetMasterVolume(audio::MasterVolumeToLinear(value / 100.0f));
-                    },
-                .isModified =
-                    [] {
-                        return getSettings().audio.masterVolume.getValue() !=
-                               getSettings().audio.masterVolume.getDefaultValue();
-                    },
-                .max = 100,
-                .suffix = "%",
-            }),
-            rightPane, [](Pane& pane) {
-                pane.clear();
-                pane.add_text("Adjusts the volume of all sounds in the game.");
-            });
+
+        const auto addVolumeSlider =
+            [&](const Rml::String& key, ConfigVar<int>& var,
+                const std::function<void(int)>& apply, const Rml::String& helpText) {
+                leftPane.register_control(
+                    leftPane.add_child<SliderButton>(SliderButton::Props{
+                        .key = key,
+                        .getValue = [&var] { return var.getValue(); },
+                        .setValue =
+                            [&var, apply](int value) {
+                                var.setValue(value);
+                                config::save();
+                                apply(value);
+                            },
+                        .isModified =
+                            [&var] {
+                                return var.getValue() != var.getDefaultValue();
+                            },
+                        .max = 100,
+                        .suffix = "%",
+                    }),
+                    rightPane, [helpText](Pane& pane) {
+                        pane.clear();
+                        pane.add_text(helpText);
+                    });
+            };
+
+        addVolumeSlider("Master Volume", getSettings().audio.masterVolume,
+            [](int value) {
+                audio::SetMasterVolume(audio::MasterVolumeToLinear(value / 100.0f));
+            },
+            "Adjusts the overall volume.");
+        addVolumeSlider("Music Volume", getSettings().audio.musicVolume,
+            [](int value) {
+                audio::SetMusicVolume(audio::VolumeToLinear(value / 100.0f));
+            },
+            "Adjusts the volume of background music.");
+        addVolumeSlider("Sound Effects", getSettings().audio.soundEffectsVolume,
+            [](int value) {
+                audio::SetSfxVolume(audio::VolumeToLinear(value / 100.0f));
+            },
+            "Adjusts the volume of sound effects.");
+        addVolumeSlider("Voices", getSettings().audio.voiceVolume,
+            [](int value) {
+                audio::SetVoiceVolume(audio::VolumeToLinear(value / 100.0f));
+            },
+            "Adjusts the volume of voices.");
+        addVolumeSlider("Footsteps and Motion", getSettings().audio.footstepVolume,
+            [](int value) {
+                audio::SetFootstepVolume(audio::VolumeToLinear(value / 100.0f));
+            },
+            "Adjusts the volume of footsteps and motion.");
+        addVolumeSlider("Ambience", getSettings().audio.ambienceVolume,
+            [](int value) {
+                audio::SetAmbienceVolume(audio::VolumeToLinear(value / 100.0f));
+            },
+            "Adjusts the volume of ambient sounds.");
+        addVolumeSlider("Menu Sounds", getSettings().audio.menuVolume,
+            [](int value) {
+                audio::SetMenuVolume(audio::VolumeToLinear(value / 100.0f));
+            },
+            "Adjusts the volume of menu sounds.");
 
         leftPane.add_section("Effects");
         config_bool_select(leftPane, rightPane, getSettings().audio.enableReverb,
