@@ -947,6 +947,20 @@ modal-actions.vertical button.modal-btn {
     }
 }
 
+ui-row {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    gap: var(--space-sm);
+    min-width: 0;
+    focus: none;
+}
+
+ui-row > * {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
 button.icon-button {
     display: flex;
     align-items: center;

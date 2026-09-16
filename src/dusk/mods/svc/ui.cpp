@@ -8,18 +8,22 @@
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/loader/loader.hpp"
 #include "dusk/mods/log_buffer.hpp"
+#include "dusk/ui/context_menu.hpp"
+#include "dusk/ui/dropdown_button.hpp"
+#include "dusk/ui/icon_button.hpp"
 #include "dusk/ui/list.hpp"
 #include "dusk/ui/menu_bar.hpp"
 #include "dusk/ui/mod_window.hpp"
 #include "dusk/ui/modal.hpp"
+#include "dusk/ui/row.hpp"
 #include "dusk/ui/ui.hpp"
 #include "mods/svc/ui.h"
 
+#include <RmlUi/Core.h>
+#include <SDL3/SDL_clipboard.h>
 #include <aurora/rmlui.hpp>
 #include <borealis/log.hpp>
 #include <fmt/format.h>
-#include <SDL3/SDL_clipboard.h>
-#include <RmlUi/Core.h>
 
 #include <algorithm>
 #include <chrono>
@@ -44,6 +48,10 @@ constexpr size_t kUiControlSelectedSize =
 constexpr size_t kUiControlStringSetModeSize =
     offsetof(UiControlDesc, string_set_mode) + sizeof(UiStringSetMode);
 constexpr size_t kUiControlFilePickerSize = offsetof(UiControlDesc, directory_mode) + sizeof(bool);
+constexpr size_t kUiControlIconSize = offsetof(UiControlDesc, icon) + sizeof(const char*);
+constexpr size_t kUiControlOptionsSize =
+    offsetof(UiControlDesc, option_enabled) + sizeof(const bool*);
+constexpr size_t kUiControlTooltipSize = offsetof(UiControlDesc, tooltip) + sizeof(const char*);
 constexpr size_t kUiListItemV21Size = offsetof(UiListItem, label) + sizeof(const char*);
 constexpr size_t kUiListDescV21Size = offsetof(UiListDesc, user_data) + sizeof(void*);
 
@@ -58,12 +66,14 @@ enum class UiSlotKind : u8 {
     Window,
     Dialog,
     Pane,
+    Row,
     Text,
     Progress,
     Control,
     List,
     Style,
     MenuTab,
+    ContextMenu,
 };
 
 const char* slot_kind_name(UiSlotKind kind) {
@@ -72,6 +82,8 @@ const char* slot_kind_name(UiSlotKind kind) {
         return "window";
     case UiSlotKind::Dialog:
         return "dialog";
+    case UiSlotKind::Row:
+        return "row";
     case UiSlotKind::Pane:
         return "pane";
     case UiSlotKind::Text:
@@ -86,6 +98,8 @@ const char* slot_kind_name(UiSlotKind kind) {
         return "style";
     case UiSlotKind::MenuTab:
         return "menu tab";
+    case UiSlotKind::ContextMenu:
+        return "context menu";
     default:
         return "unknown";
     }
@@ -95,14 +109,20 @@ const char* slot_kind_name(UiSlotKind kind) {
 // (ui::update), or in the loader's deactivate paths.
 struct UiSlot {
     UiSlotKind kind = UiSlotKind::Window;
-    // Pane/Text/Progress/Control: freed automatically when the element is destroyed
+    // Pane/Row/Text/Progress/Control: freed automatically when the element is destroyed
     Rml::Element* element = nullptr;
-    // Pane payload
+    // Container payload
+    ui::Component* component = nullptr;
+    ui::Component* container = nullptr;
+    UiControlKind controlKind = UI_CONTROL_BUTTON;
+    std::unique_ptr<Rml::Property> displayOverride;
+    bool hidden = false;
+    uint64_t anchorHandle = 0;
     ui::Pane* pane = nullptr;
     ui::Pane* helpPane = nullptr;
     // List payload
     ui::List* list = nullptr;
-    // Window/Dialog payload (non-owning; the document stack owns the document)
+    // Window/Dialog payload
     ui::Document* document = nullptr;
     UiWindowClosedFn onClosed = nullptr;
     void* onClosedUserData = nullptr;
@@ -124,6 +144,7 @@ struct ModUiPanel {
     UiPanelUpdateFn update = nullptr;
     void* userData = nullptr;
 };
+
 std::unordered_map<const LoadedMod*, ModUiPanel> s_modPanels;
 
 struct ModMenuTab {
@@ -132,6 +153,7 @@ struct ModMenuTab {
     UiPressedFn onSelected = nullptr;
     void* userData = nullptr;
 };
+
 std::unordered_map<const LoadedMod*, std::vector<ModMenuTab>> s_modMenuTabs;
 bool s_menuTabsDirty = false;
 
@@ -155,6 +177,35 @@ UiSlot* resolve(LoadedMod& mod, uint64_t handle, UiSlotKind kind, const char* wh
         return nullptr;
     }
     return &entry->value;
+}
+
+UiSlot* resolve_element(LoadedMod& mod, uint64_t handle) {
+    auto* entry = s_slots.find_owned(handle, mod);
+    return entry != nullptr && entry->value.element != nullptr ? &entry->value : nullptr;
+}
+
+UiSlot* resolve_container(LoadedMod& mod, uint64_t handle, const char* what) {
+    auto* entry = s_slots.find_owned(handle, mod);
+    if (entry == nullptr ||
+        (entry->value.kind != UiSlotKind::Pane && entry->value.kind != UiSlotKind::Row))
+    {
+        Log.error(
+            "[{}] {}: stale or invalid container handle {:#x}", mod.metadata.id, what, handle);
+        return nullptr;
+    }
+    return &entry->value;
+}
+
+bool element_available(const UiSlot& slot) {
+    if (!slot.element->IsVisible(true)) {
+        return false;
+    }
+    for (auto* node = slot.element; node != nullptr; node = node->GetParentNode()) {
+        if (node->IsPseudoClassSet("disabled") || node->HasAttribute("disabled")) {
+            return false;
+        }
+    }
+    return slot.component == nullptr || !slot.component->disabled();
 }
 
 // Whether the registration a callback was created under is still live. Callbacks captured by
@@ -181,6 +232,16 @@ public:
 
     void OnDetach(Rml::Element*) override {
         s_slots.erase(m_handle);
+        std::vector<ui::ContextMenu*> menus;
+        s_slots.for_each([&](uint64_t, const auto& entry) {
+            if (entry.value.kind == UiSlotKind::ContextMenu && entry.value.anchorHandle == m_handle)
+            {
+                menus.push_back(static_cast<ui::ContextMenu*>(entry.value.document));
+            }
+        });
+        for (auto* menu : menus) {
+            menu->dismiss(false);
+        }
         delete this;
     }
 
@@ -237,6 +298,8 @@ void invoke_mod_ui_callback(LoadedMod& mod, const char* what, Fn&& fn) {
 uint64_t wrap_pane(LoadedMod& mod, ui::Pane& pane, ui::Pane* helpPane) {
     uint64_t handle = 0;
     auto& slot = alloc_slot(mod, UiSlotKind::Pane, handle);
+    slot.component = &pane;
+    slot.container = &pane;
     slot.pane = &pane;
     slot.helpPane = helpPane;
     track_element(handle, slot, *pane.root());
@@ -294,7 +357,11 @@ void wire_callback_binding(
         break;
     case UI_CONTROL_NUMBER:
     case UI_CONTROL_SELECT:
-        spec.getInt = [getValue] { return clamp_to_int(getValue().int_value); };
+    case UI_CONTROL_DROPDOWN:
+        spec.getInt = [getValue, dropdown = desc.kind == UI_CONTROL_DROPDOWN] {
+            const auto value = getValue().int_value;
+            return dropdown && (value < 0 || value > INT_MAX) ? -1 : clamp_to_int(value);
+        };
         spec.setInt = [setValue](int value) {
             UiControlValue raw = UI_CONTROL_VALUE_INIT;
             raw.int_value = value;
@@ -354,7 +421,8 @@ bool wire_config_var_binding(LoadedMod& mod, const UiControlDesc& desc, ui::ModC
         return true;
     }
     case UI_CONTROL_NUMBER:
-    case UI_CONTROL_SELECT: {
+    case UI_CONTROL_SELECT:
+    case UI_CONTROL_DROPDOWN: {
         const auto find = [modPtr, varHandle] {
             return static_cast<ConfigVar<s64>*>(
                 config_find_var(*modPtr, varHandle, CONFIG_VAR_INT));
@@ -362,9 +430,10 @@ bool wire_config_var_binding(LoadedMod& mod, const UiControlDesc& desc, ui::ModC
         if (find() == nullptr) {
             return false;
         }
-        spec.getInt = [find] {
+        spec.getInt = [find, dropdown = desc.kind == UI_CONTROL_DROPDOWN] {
             const auto* var = find();
-            return var != nullptr ? clamp_to_int(var->getValue()) : 0;
+            const auto value = var != nullptr ? var->getValue() : (dropdown ? -1 : 0);
+            return dropdown && (value < 0 || value > INT_MAX) ? -1 : clamp_to_int(value);
         };
         spec.setInt = [find](int value) {
             auto* var = find();
@@ -531,21 +600,56 @@ void ui_update_mods_panels(LoadedMod& mod) {
         [&](ModError* error) { return panel.update(mod.context.get(), panel.userData, error); });
 }
 
-ModResult ui_pane_add_section(LoadedMod& mod, uint64_t pane, const char* title) {
-    auto* slot = resolve(mod, pane, UiSlotKind::Pane, "pane_add_section");
+ModResult ui_pane_add_row(
+    LoadedMod& mod, uint64_t parent, const UiRowDesc& desc, uint64_t* outRow) {
+    auto* slot = resolve_container(mod, parent, "pane_add_row");
     if (slot == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
-    slot->pane->add_section(title);
+    auto* pane = slot->pane;
+    auto* helpPane = slot->helpPane;
+    auto align = ui::Row::Align::Start;
+    switch (desc.align) {
+    case UI_ROW_ALIGN_CENTER:
+        align = ui::Row::Align::Center;
+        break;
+    case UI_ROW_ALIGN_END:
+        align = ui::Row::Align::End;
+        break;
+    case UI_ROW_ALIGN_SPACE_BETWEEN:
+        align = ui::Row::Align::SpaceBetween;
+        break;
+    default:
+        break;
+    }
+    auto& row = slot->container->add_child<ui::Row>(ui::Row::Props{
+        .align = align,
+        .wrap = desc.wrap,
+    });
+    auto& rowSlot = alloc_slot(mod, UiSlotKind::Row, *outRow);
+    rowSlot.component = &row;
+    rowSlot.container = &row;
+    rowSlot.pane = pane;
+    rowSlot.helpPane = helpPane;
+    track_element(*outRow, rowSlot, *row.root());
+    return MOD_OK;
+}
+
+ModResult ui_pane_add_section(LoadedMod& mod, uint64_t pane, const char* title) {
+    auto* slot = resolve_container(mod, pane, "pane_add_section");
+    if (slot == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    slot->container->add_section(title);
     return MOD_OK;
 }
 
 ModResult ui_pane_add_text(LoadedMod& mod, uint64_t pane, const char* text, uint64_t* outElem) {
-    auto* slot = resolve(mod, pane, UiSlotKind::Pane, "pane_add_text");
+    auto* slot = resolve_container(mod, pane, "pane_add_text");
     if (slot == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
-    auto* elem = slot->pane->add_text(text);
+    auto* elem = slot->container->add_text(text);
     if (outElem != nullptr) {
         auto& elemSlot = alloc_slot(mod, UiSlotKind::Text, *outElem);
         elemSlot.elementValue = text;
@@ -556,11 +660,11 @@ ModResult ui_pane_add_text(LoadedMod& mod, uint64_t pane, const char* text, uint
 }
 
 ModResult ui_pane_add_rml(LoadedMod& mod, uint64_t pane, const char* rml, uint64_t* outElem) {
-    auto* slot = resolve(mod, pane, UiSlotKind::Pane, "pane_add_rml");
+    auto* slot = resolve_container(mod, pane, "pane_add_rml");
     if (slot == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
-    auto* elem = slot->pane->add_rml(rml);
+    auto* elem = slot->container->add_rml(rml);
     if (outElem != nullptr) {
         auto& elemSlot = alloc_slot(mod, UiSlotKind::Text, *outElem);
         elemSlot.elementValue = rml;
@@ -572,7 +676,7 @@ ModResult ui_pane_add_rml(LoadedMod& mod, uint64_t pane, const char* rml, uint64
 }
 
 ModResult ui_pane_add_progress(LoadedMod& mod, uint64_t pane, float value, uint64_t* outElem) {
-    auto* slot = resolve(mod, pane, UiSlotKind::Pane, "pane_add_progress");
+    auto* slot = resolve_container(mod, pane, "pane_add_progress");
     if (slot == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
@@ -589,7 +693,7 @@ ModResult ui_pane_add_progress(LoadedMod& mod, uint64_t pane, float value, uint6
 
 ModResult ui_pane_add_control(
     LoadedMod& mod, uint64_t pane, const UiControlDesc& desc, uint64_t* outElem) {
-    auto* slot = resolve(mod, pane, UiSlotKind::Pane, "pane_add_control");
+    auto* slot = resolve_container(mod, pane, "pane_add_control");
     if (slot == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
@@ -597,13 +701,24 @@ ModResult ui_pane_add_control(
     ui::ModControlSpec spec;
     spec.label = desc.label;
     spec.helpRml = desc.help_rml != nullptr ? desc.help_rml : "";
-    spec.isDisabled = wrap_predicate(mod, desc.is_disabled, desc.user_data, pane);
+    spec.isDisabled = [modPtr = &mod, pane,
+                          predicate = wrap_predicate(mod, desc.is_disabled, desc.user_data, pane)] {
+        return !slot_live(pane) || !modPtr->active || (predicate && predicate());
+    };
+    if (desc.struct_size >= kUiControlTooltipSize && desc.tooltip != nullptr) {
+        spec.tooltip = desc.tooltip;
+    }
     spec.isModified = wrap_predicate(mod, desc.is_modified, desc.user_data, pane);
     switch (desc.kind) {
+    case UI_CONTROL_ICON_BUTTON:
     case UI_CONTROL_BUTTON:
     case UI_CONTROL_GROUP:
         spec.kind = desc.kind == UI_CONTROL_BUTTON ? ui::ModControlSpec::Kind::Button :
                                                      ui::ModControlSpec::Kind::Group;
+        if (desc.kind == UI_CONTROL_ICON_BUTTON) {
+            spec.kind = ui::ModControlSpec::Kind::IconButton;
+            spec.icon = desc.icon;
+        }
         if (desc.struct_size >= kUiControlSelectedSize) {
             spec.isSelected = wrap_predicate(mod, desc.is_selected, desc.user_data, pane);
         }
@@ -652,6 +767,16 @@ ModResult ui_pane_add_control(
             spec.fileFilters.push_back({desc.file_filters[i].name, desc.file_filters[i].pattern});
         }
         break;
+    case UI_CONTROL_DROPDOWN:
+        spec.kind = ui::ModControlSpec::Kind::Dropdown;
+        for (size_t i = 0; i < desc.option_count; ++i) {
+            spec.dropdownOptions.push_back({
+                desc.options[i],
+                desc.struct_size < kUiControlOptionsSize || desc.option_enabled == nullptr ||
+                    desc.option_enabled[i],
+            });
+        }
+        break;
     case UI_CONTROL_SELECT:
         spec.kind = ui::ModControlSpec::Kind::Select;
         if (slot->helpPane == nullptr) {
@@ -667,7 +792,9 @@ ModResult ui_pane_add_control(
         return MOD_INVALID_ARGUMENT;
     }
 
-    if (desc.kind != UI_CONTROL_BUTTON && desc.kind != UI_CONTROL_GROUP) {
+    if (desc.kind != UI_CONTROL_BUTTON && desc.kind != UI_CONTROL_GROUP &&
+        desc.kind != UI_CONTROL_ICON_BUTTON)
+    {
         if (desc.binding == UI_BINDING_CONFIG_VAR) {
             if (!wire_config_var_binding(mod, desc, spec)) {
                 Log.error("[{}] pane_add_control: config var handle {:#x} is unknown or its type "
@@ -683,12 +810,15 @@ ModResult ui_pane_add_control(
     // Copy the pane pointers out: allocating the control's slot below may reallocate s_slots
     auto* paneComponent = slot->pane;
     auto* helpPane = slot->helpPane;
-    auto* control = ui::build_mod_control(*paneComponent, helpPane, std::move(spec));
+    auto* control =
+        ui::build_mod_control(*slot->container, *paneComponent, helpPane, std::move(spec));
     if (control == nullptr) {
         return MOD_UNSUPPORTED;
     }
     if (outElem != nullptr) {
         auto& elemSlot = alloc_slot(mod, UiSlotKind::Control, *outElem);
+        elemSlot.component = control;
+        elemSlot.controlKind = desc.kind;
         track_element(*outElem, elemSlot, *control->root());
     }
     return MOD_OK;
@@ -697,11 +827,11 @@ ModResult ui_pane_add_control(
 ModResult ui_pane_add_list(LoadedMod& mod, uint64_t pane, const UiListDesc& desc,
     std::vector<ui::List::Item> items, uint64_t& outHandle) {
     outHandle = 0;
-    auto* paneSlot = resolve(mod, pane, UiSlotKind::Pane, "pane_add_list");
+    auto* paneSlot = resolve_container(mod, pane, "pane_add_list");
     if (paneSlot == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
-    auto* paneComponent = paneSlot->pane;
+    auto* paneComponent = paneSlot->container;
 
     uint64_t handle = 0;
     alloc_slot(mod, UiSlotKind::List, handle);
@@ -742,6 +872,7 @@ ModResult ui_pane_add_list(LoadedMod& mod, uint64_t pane, const UiListDesc& desc
     if (listSlot == nullptr) {
         return MOD_ERROR;
     }
+    listSlot->component = &list;
     listSlot->list = &list;
     track_element(handle, *listSlot, *list.root());
     outHandle = handle;
@@ -785,6 +916,8 @@ ModResult ui_pane_add_group(LoadedMod& mod, uint64_t groupPaneHandle, uint64_t t
 
     if (outElem != nullptr) {
         auto& elemSlot = alloc_slot(mod, UiSlotKind::Control, *outElem);
+        elemSlot.component = &button;
+        elemSlot.controlKind = UI_CONTROL_GROUP;
         track_element(*outElem, elemSlot, *button.root());
     }
     return MOD_OK;
@@ -842,6 +975,201 @@ ModResult ui_elem_set_class(LoadedMod& mod, uint64_t elem, const char* name, boo
         return MOD_INVALID_ARGUMENT;
     }
     entry->value.element->SetClass(name, active);
+    return MOD_OK;
+}
+
+ModResult ui_control_set_label(LoadedMod& mod, uint64_t handle, const char* label) {
+    auto* slot = resolve(mod, handle, UiSlotKind::Control, "control_set_label");
+    if (slot == nullptr || slot->component == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    if (slot->controlKind == UI_CONTROL_ICON_BUTTON) {
+        if (label[0] == '\0') {
+            return MOD_INVALID_ARGUMENT;
+        }
+        static_cast<ui::IconButton*>(slot->component)->set_label(label);
+    } else if (slot->controlKind == UI_CONTROL_BUTTON) {
+        static_cast<ui::Button*>(slot->component)->set_text(label);
+    } else {
+        static_cast<ui::SelectButton*>(slot->component)->set_key(label);
+    }
+    return MOD_OK;
+}
+
+ModResult ui_control_set_icon(LoadedMod& mod, uint64_t handle, const char* icon) {
+    auto* slot = resolve(mod, handle, UiSlotKind::Control, "control_set_icon");
+    if (slot == nullptr || slot->controlKind != UI_CONTROL_ICON_BUTTON ||
+        slot->component == nullptr)
+    {
+        return MOD_INVALID_ARGUMENT;
+    }
+    static_cast<ui::IconButton*>(slot->component)->set_icon(icon);
+    return MOD_OK;
+}
+
+ModResult ui_control_set_tooltip(LoadedMod& mod, uint64_t handle, const char* text) {
+    auto* slot = resolve(mod, handle, UiSlotKind::Control, "control_set_tooltip");
+    if (slot == nullptr || slot->component == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    slot->component->set_tooltip(text != nullptr ? text : "");
+    return MOD_OK;
+}
+
+ModResult ui_control_set_options(
+    LoadedMod& mod, uint64_t handle, std::vector<ui::DropdownButton::Option> options) {
+    auto* slot = resolve(mod, handle, UiSlotKind::Control, "control_set_options");
+    if (slot == nullptr || slot->controlKind != UI_CONTROL_DROPDOWN || slot->component == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    static_cast<ui::DropdownButton*>(slot->component)->set_options(std::move(options));
+    return MOD_OK;
+}
+
+ModResult ui_elem_set_visible(LoadedMod& mod, uint64_t handle, bool visible) {
+    auto* slot = resolve_element(mod, handle);
+    if (slot == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    if (slot->hidden == !visible) {
+        return MOD_OK;
+    }
+    auto element = slot->element->GetObserverPtr();
+    auto* context = element->GetContext();
+    bool restoreFocus = context != nullptr && element->Contains(context->GetFocusElement());
+    slot->hidden = !visible;
+    if (visible) {
+        if (slot->displayOverride) {
+            element->SetProperty(Rml::PropertyId::Display, *slot->displayOverride);
+            slot->displayOverride.reset();
+        } else {
+            element->RemoveProperty(Rml::PropertyId::Display);
+        }
+    } else {
+        const auto& properties = element->GetLocalStyleProperties();
+        if (const auto it = properties.find(Rml::PropertyId::Display); it != properties.end()) {
+            slot->displayOverride = std::make_unique<Rml::Property>(it->second);
+        }
+        ui::set_display(element.get(), Rml::Style::Display::None);
+    }
+    // Focus and menu callbacks may allocate slots.
+    element->GetOwnerDocument()->UpdateDocument();
+    if (!visible && element != nullptr) {
+        std::vector<ui::ContextMenu*> menus;
+        s_slots.for_each([&](uint64_t, const auto& entry) {
+            if (entry.value.kind == UiSlotKind::ContextMenu) {
+                auto* anchor = slot_from_handle(entry.value.anchorHandle);
+                if (anchor != nullptr && element->Contains(anchor->element)) {
+                    menus.push_back(static_cast<ui::ContextMenu*>(entry.value.document));
+                }
+            }
+        });
+        for (auto* menu : menus) {
+            restoreFocus = restoreFocus || menu->has_focus();
+            menu->dismiss(false);
+        }
+        if (restoreFocus) {
+            if (auto* top = ui::top_document(); top && top->owns_element(element.get())) {
+                top->focus();
+            }
+        }
+    }
+    return MOD_OK;
+}
+
+ModResult ui_elem_focus(LoadedMod& mod, uint64_t handle) {
+    auto* slot = resolve_element(mod, handle);
+    if (slot == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    auto* element = slot->element;
+    auto* top = ui::top_document();
+    if (top == nullptr || !top->owns_element(element)) {
+        return MOD_UNAVAILABLE;
+    }
+    element->GetOwnerDocument()->UpdateDocument();
+    slot = resolve_element(mod, handle);
+    if (slot == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    if (!element_available(*slot)) {
+        return MOD_UNAVAILABLE;
+    }
+    slot = resolve_element(mod, handle);
+    if (slot == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    auto* component = slot->component;
+    return (component != nullptr ? component->focus() : element->Focus(true)) ? MOD_OK :
+                                                                                MOD_UNAVAILABLE;
+}
+
+class ModContextMenu final : public ui::ContextMenu {
+public:
+    ModContextMenu(Rml::Element* anchor, std::vector<Item> items, uint64_t anchorHandle)
+        : ContextMenu{anchor, std::move(items)}, mAnchorHandle{anchorHandle} {}
+
+    void update() override {
+        auto* anchor = slot_from_handle(mAnchorHandle);
+        if (visible() && (anchor == nullptr || !element_available(*anchor))) {
+            dismiss(false);
+        }
+        ContextMenu::update();
+    }
+
+private:
+    uint64_t mAnchorHandle;
+};
+
+ModResult ui_context_menu_push(LoadedMod& mod, uint64_t anchorHandle,
+    const std::vector<UiContextMenuItem>& source, uint64_t& outHandle) {
+    auto* anchor = resolve_element(mod, anchorHandle);
+    if (anchor == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    auto* top = ui::top_document();
+    auto* element = anchor->element;
+    if (top == nullptr || !top->owns_element(anchor->element) || !element_available(*anchor)) {
+        return MOD_UNAVAILABLE;
+    }
+    if (!slot_live(anchorHandle)) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    std::vector<ui::ContextMenu::Item> items;
+    items.reserve(source.size());
+    for (const auto& item : source) {
+        items.push_back({
+            .text = item.label,
+            .icon = item.icon != nullptr ? item.icon : "",
+            .onPressed =
+                [modPtr = &mod, anchorHandle, fn = item.on_pressed, data = item.user_data] {
+                    if (slot_live(anchorHandle) && fn != nullptr) {
+                        guarded_call(*modPtr, "context menu action",
+                            [&] { fn(modPtr->context.get(), data); });
+                    }
+                },
+            .enabled = item.enabled && item.on_pressed != nullptr,
+            .destructive = item.destructive,
+            .separatorBefore = item.separator_before,
+            .selected = item.selected,
+        });
+    }
+    auto menu = std::make_unique<ModContextMenu>(element, std::move(items), anchorHandle);
+    menu->body()->SetAttribute("mod-id", mod.metadata.id);
+    auto& slot = alloc_slot(mod, UiSlotKind::ContextMenu, outHandle);
+    slot.document = menu.get();
+    slot.anchorHandle = anchorHandle;
+    menu->on_close([handle = outHandle] { s_slots.erase(handle); });
+    ui::push_document(std::move(menu));
+    return MOD_OK;
+}
+
+ModResult ui_context_menu_close(LoadedMod& mod, uint64_t handle) {
+    auto* slot = resolve(mod, handle, UiSlotKind::ContextMenu, "context_menu_close");
+    if (slot == nullptr || slot->document == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    static_cast<ui::ContextMenu*>(slot->document)->dismiss();
     return MOD_OK;
 }
 
@@ -1184,6 +1512,11 @@ void ui_remove_mod(LoadedMod& mod) {
             }
             break;
         }
+        case UiSlotKind::ContextMenu:
+            if (slot.document != nullptr) {
+                slot.document->force_hide(true);
+            }
+            break;
         case UiSlotKind::Style:
             ui::unregister_scoped_styles(slot.styleScope, slot.styleId);
             break;
@@ -1261,6 +1594,10 @@ bool valid_control_desc(const UiControlDesc& desc) {
         return false;
     }
     switch (desc.kind) {
+    case UI_CONTROL_ICON_BUTTON:
+        return desc.struct_size >= kUiControlIconSize && desc.icon != nullptr &&
+               desc.label[0] != '\0' && ui::material_icon(desc.icon)[0] != '\0' &&
+               desc.on_pressed != nullptr;
     case UI_CONTROL_BUTTON:
     case UI_CONTROL_GROUP:
         return desc.on_pressed != nullptr;
@@ -1268,6 +1605,7 @@ bool valid_control_desc(const UiControlDesc& desc) {
     case UI_CONTROL_NUMBER:
     case UI_CONTROL_STRING:
     case UI_CONTROL_SELECT:
+    case UI_CONTROL_DROPDOWN:
         break;
     case UI_CONTROL_COLOR:
         if (desc.struct_size < kColorDescSize) {
@@ -1295,8 +1633,8 @@ bool valid_control_desc(const UiControlDesc& desc) {
     {
         return false;
     }
-    if (desc.kind == UI_CONTROL_SELECT) {
-        if (desc.options == nullptr || desc.option_count == 0) {
+    if (desc.kind == UI_CONTROL_SELECT || desc.kind == UI_CONTROL_DROPDOWN) {
+        if (desc.options == nullptr || desc.option_count == 0 || desc.option_count > INT_MAX) {
             return false;
         }
         for (size_t i = 0; i < desc.option_count; ++i) {
@@ -1357,6 +1695,129 @@ bool copy_list_items(
     return true;
 }
 
+template <typename T, typename Fn>
+bool copy_records(const T* records, size_t count, size_t minimumSize, Fn&& copy) {
+    if (count > INT_MAX || (count != 0 && records == nullptr)) {
+        return false;
+    }
+    auto cursor = reinterpret_cast<uintptr_t>(records);
+    for (size_t i = 0; i < count; ++i) {
+        const auto* record = reinterpret_cast<const T*>(cursor);
+        const size_t size = record->struct_size;
+        if (size < minimumSize || size % alignof(T) != 0 ||
+            cursor > std::numeric_limits<uintptr_t>::max() - size || !copy(*record))
+        {
+            return false;
+        }
+        cursor += size;
+    }
+    return true;
+}
+
+ModResult ui_control_set_label(ModContext* context, UiElementHandle handle, const char* label) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0 || label == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_control_set_label(*mod, handle, label);
+}
+
+ModResult ui_control_set_icon(ModContext* context, UiElementHandle handle, const char* icon) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0 || icon == nullptr || ui::material_icon(icon)[0] == '\0') {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_control_set_icon(*mod, handle, icon);
+}
+
+ModResult ui_control_set_tooltip(ModContext* context, UiElementHandle handle, const char* text) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_control_set_tooltip(*mod, handle, text);
+}
+
+ModResult ui_control_set_options(
+    ModContext* context, UiElementHandle handle, const UiControlOption* options, size_t count) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    std::vector<ui::DropdownButton::Option> copy;
+    if (!copy_records(options, count, offsetof(UiControlOption, enabled) + sizeof(bool),
+            [&](const UiControlOption& option) {
+                if (option.label == nullptr) {
+                    return false;
+                }
+                copy.push_back({option.label, option.enabled});
+                return true;
+            }))
+    {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_control_set_options(*mod, handle, std::move(copy));
+}
+
+ModResult ui_elem_set_visible(ModContext* context, UiElementHandle handle, bool visible) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_elem_set_visible(*mod, handle, visible);
+}
+
+ModResult ui_elem_focus(ModContext* context, UiElementHandle handle) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_elem_focus(*mod, handle);
+}
+
+ModResult ui_context_menu_push(ModContext* context, UiElementHandle anchor,
+    const UiContextMenuDesc* desc, UiContextMenuHandle* outHandle) {
+    if (outHandle != nullptr) {
+        *outHandle = 0;
+    }
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || anchor == 0 || desc == nullptr ||
+        desc->struct_size < sizeof(UiContextMenuDesc) || desc->item_count == 0)
+    {
+        return MOD_INVALID_ARGUMENT;
+    }
+    std::vector<UiContextMenuItem> items;
+    if (!copy_records(desc->items, desc->item_count,
+            offsetof(UiContextMenuItem, separator_before) + sizeof(bool),
+            [&](const UiContextMenuItem& item) {
+                if (item.label == nullptr || item.label[0] == '\0' ||
+                    (item.icon != nullptr && item.icon[0] != '\0' &&
+                        ui::material_icon(item.icon)[0] == '\0'))
+                {
+                    return false;
+                }
+                items.push_back(item);
+                return true;
+            }))
+    {
+        return MOD_INVALID_ARGUMENT;
+    }
+    uint64_t handle = 0;
+    const auto result = ui_impl::ui_context_menu_push(*mod, anchor, items, handle);
+    if (result == MOD_OK && outHandle != nullptr) {
+        *outHandle = handle;
+    }
+    return result;
+}
+
+ModResult ui_context_menu_close(ModContext* context, UiContextMenuHandle handle) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_context_menu_close(*mod, handle);
+}
+
 ModResult ui_register_mods_panel(ModContext* context, const UiModsPanelDesc* desc) {
     auto* mod = mod_from_context(context);
     if (mod == nullptr || desc == nullptr || desc->struct_size < sizeof(UiModsPanelDesc) ||
@@ -1365,6 +1826,21 @@ ModResult ui_register_mods_panel(ModContext* context, const UiModsPanelDesc* des
         return MOD_INVALID_ARGUMENT;
     }
     return ui_impl::ui_register_mods_panel(*mod, *desc);
+}
+
+ModResult ui_pane_add_row(
+    ModContext* context, UiElementHandle parent, const UiRowDesc* desc, UiElementHandle* outRow) {
+    if (outRow != nullptr) {
+        *outRow = 0;
+    }
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || parent == 0 || outRow == nullptr || desc == nullptr ||
+        desc->struct_size < offsetof(UiRowDesc, wrap) + sizeof(bool) ||
+        desc->align < UI_ROW_ALIGN_START || desc->align > UI_ROW_ALIGN_SPACE_BETWEEN)
+    {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return ui_impl::ui_pane_add_row(*mod, parent, *desc, outRow);
 }
 
 ModResult ui_pane_add_section(ModContext* context, UiElementHandle pane, const char* title) {
@@ -1821,6 +2297,15 @@ constexpr UiService s_uiService{
     .set_clipboard_text = ui_set_clipboard_text,
     .pane_add_list = ui_pane_add_list,
     .list_set_items = ui_list_set_items,
+    .pane_add_row = ui_pane_add_row,
+    .control_set_label = ui_control_set_label,
+    .control_set_icon = ui_control_set_icon,
+    .control_set_options = ui_control_set_options,
+    .control_set_tooltip = ui_control_set_tooltip,
+    .elem_set_visible = ui_elem_set_visible,
+    .elem_focus = ui_elem_focus,
+    .context_menu_push = ui_context_menu_push,
+    .context_menu_close = ui_context_menu_close,
 };
 
 }  // namespace

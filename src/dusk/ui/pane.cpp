@@ -57,7 +57,7 @@ Pane::Pane(Rml::Element* parent, Type type) : FluentComponent(createRoot(parent)
         }
         int i = focusedChild + direction;
         while (i >= 0 && i < mChildren.size()) {
-            if (mChildren[i]->focus()) {
+            if (mChildren[i]->focus_from(cmd)) {
                 mDoAud_seStartMenu(kSoundItemFocus);
                 event.StopPropagation();
                 break;
@@ -71,7 +71,7 @@ Pane::Pane(Rml::Element* parent, Type type) : FluentComponent(createRoot(parent)
         listen(Rml::EventId::Submit, [this](Rml::Event& event) {
             int childIndex = -1;
             for (int i = 0; i < mChildren.size(); ++i) {
-                if (event.GetTargetElement() == mChildren[i]->root()) {
+                if (mChildren[i]->contains(event.GetTargetElement())) {
                     childIndex = i;
                 }
             }
@@ -165,24 +165,6 @@ bool Pane::focus_last() {
         }
     }
     return false;
-}
-
-Rml::Element* Pane::add_section(const Rml::String& text) {
-    auto* elem = append(mRoot, "section-heading");
-    append_text(elem, text);
-    return elem;
-}
-
-Rml::Element* Pane::add_text(const Rml::String& text) {
-    auto* elem = append(mRoot, "div");
-    append_text(elem, text);
-    return elem;
-}
-
-Rml::Element* Pane::add_rml(const Rml::String& rml) {
-    auto* elem = append(mRoot, "div");
-    elem->SetInnerRML(rml);
-    return elem;
 }
 
 void Pane::clear() {

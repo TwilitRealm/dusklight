@@ -73,6 +73,7 @@ enum class HandleKind : uint8_t {
     UiStyle,
     UiMenuTab,
     UiList,
+    UiContextMenu,
 };
 
 struct ScriptHandle {

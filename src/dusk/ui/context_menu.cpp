@@ -67,6 +67,9 @@ ContextMenu::ContextMenu(
             mInitialFocus = &button;
         }
         button.on_pressed([this, callback = std::move(item.onPressed)] {
+            if (!visible() || !active()) {
+                return;
+            }
             dismiss();
             callback();
         });

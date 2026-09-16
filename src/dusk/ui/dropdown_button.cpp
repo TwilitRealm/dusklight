@@ -19,15 +19,23 @@ DropdownButton::DropdownButton(Rml::Element* parent, Props props)
 DropdownButton::~DropdownButton() {
     if (mMenu != nullptr) {
         mMenu->on_close(nullptr);
-        mMenu->dismiss();
+        mMenu->dismiss(false);
     }
 }
 
 void DropdownButton::update() {
     BaseControlledSelectButton::update();
-    if (mMenu != nullptr && disabled()) {
+    if (mMenu != nullptr && (disabled() || !mRoot->IsVisible(true))) {
         mMenu->dismiss();
     }
+}
+
+void DropdownButton::set_options(std::vector<Option> options) {
+    if (mMenu != nullptr) {
+        mMenu->dismiss();
+    }
+    mProps.options = std::move(options);
+    update();
 }
 
 bool DropdownButton::modified() const {

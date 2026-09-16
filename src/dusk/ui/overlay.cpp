@@ -1,6 +1,7 @@
 #include "overlay.hpp"
 
 #include "controller_config.hpp"
+#include "popover.hpp"
 #include "window.hpp"
 
 #include "dusk/achievements.h"
@@ -373,7 +374,8 @@ void Overlay::update() {
                                        PADGetKeyButtonBindings(PAD_CHAN0, &count) == nullptr &&
                                        !getSettings().game.enableTouchControls &&
                                        dynamic_cast<Window*>(top_document()) == nullptr &&
-                                       dynamic_cast<WindowSmall*>(top_document()) == nullptr;
+                                       dynamic_cast<WindowSmall*>(top_document()) == nullptr &&
+                                       dynamic_cast<Popover*>(top_document()) == nullptr;
     if (showControllerWarning && mControllerWarning == nullptr) {
         mControllerWarning = create_controller_warning(mDocument);
     } else if (showControllerWarning && mControllerWarning != nullptr) {

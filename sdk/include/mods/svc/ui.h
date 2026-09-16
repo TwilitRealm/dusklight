@@ -10,18 +10,16 @@
 
 #define UI_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "ui"
 #define UI_SERVICE_MAJOR 2u
-#define UI_SERVICE_MINOR 2u
+#define UI_SERVICE_MINOR 3u
 
 /*
  * UI primitives: a panel inside the host Mods window, mod-owned windows, dialogs, toasts,
  * scoped RCSS stylesheets and menu bar tabs.
  *
  * All calls must be made on the game thread from mod callbacks (initialize, update, hooks, or UI
- * callbacks). Handles are opaque, generation-checked ids; a stale or unknown handle fails with
- * MOD_INVALID_ARGUMENT. Element handles die with the content that owns them: a panel or tab rebuild
- * destroys the previous build's elements, so re-acquire handles in each build callback and use them
- * only until the next rebuild. Strings are UTF-8 and, in both directions, only valid for the
- * duration of the call.
+ * callbacks). Handles are opaque IDs; a stale or unknown handle fails with MOD_INVALID_ARGUMENT.
+ * A panel or tab rebuild destroys the previous build's elements, so re-acquire handles in each
+ * build callback and use them only until the next rebuild. Strings are UTF-8.
  */
 
 /* 0 is never a valid handle. */
@@ -30,6 +28,7 @@ typedef uint64_t UiDialogHandle;
 typedef uint64_t UiElementHandle;
 typedef uint64_t UiStyleHandle;
 typedef uint64_t UiMenuTabHandle;
+typedef uint64_t UiContextMenuHandle;
 
 typedef enum UiStyleScope {
     UI_SCOPE_PRELAUNCH = 0,      /* the pre-launch menu */
@@ -54,18 +53,21 @@ typedef enum UiControlKind {
     UI_CONTROL_SELECT = 4, /* one of `options`; the value is the option index */
     UI_CONTROL_COLOR = 5,  /* RGB/RGBA color string with a picker */
     UI_CONTROL_GROUP = 6,  /* navigation row (on_pressed) */
-    UI_CONTROL_FILE_PICKER = 7, /* file/folder picker with an opaque string location */
+    /* Minor version 2 */
+    UI_CONTROL_FILE_PICKER = 7, /* file/folder picker */
+    /* Minor version 3 */
+    UI_CONTROL_ICON_BUTTON = 8, /* icon button with a tooltip */
+    UI_CONTROL_DROPDOWN = 9,    /* dropdown select; the value is the option index */
 } UiControlKind;
 
 typedef enum UiControlBinding {
     /* Values flow through the `get`/`set` callbacks. Getters are polled every frame while the
        control is visible and must be cheap. */
     UI_BINDING_CALLBACKS = 0,
-    /* The control reads and writes `config_var` (a ConfigService handle owned by the calling mod)
-     * directly: persistence, change notifications and the modified indicator (value != default) are
-     * wired automatically. The var type must match the control kind: TOGGLE = bool, NUMBER and
-     * SELECT = int, STRING, COLOR and FILE_PICKER = string. Float vars are not bindable; use
-     * callbacks. */
+    /* The control reads and writes `config_var` (a ConfigService handle) directly. Persistence,
+     * change notifications and the modified indicator are bound automatically. The var type must
+     * match the control kind: TOGGLE = bool, NUMBER, SELECT and DROPDOWN = int, STRING, COLOR and
+     * FILE_PICKER = string. Float vars are not bindable; use callbacks. */
     UI_BINDING_CONFIG_VAR = 1,
 } UiControlBinding;
 
@@ -74,10 +76,12 @@ typedef enum UiStringSetMode {
     UI_STRING_SET_ON_CHANGE = 1, /* invokes `set` on every text change (e.g. while typing) */
 } UiStringSetMode;
 
-/* Tagged by the control's kind: TOGGLE reads bool_value, NUMBER and SELECT read int_value, STRING,
- * COLOR and FILE_PICKER read string_value. string_value passed to a setter is only valid during the
- * call; a getter should point it at storage owned by the mod (e.g. a static buffer) that stays valid
- * until the next call into the mod. The host copies it right after the getter returns. */
+/*
+ * Value for each type of control:
+ * - bool_value: TOGGLE
+ * - int_value: NUMBER, SELECT and DROPDOWN
+ * - string_value: STRING, COLOR and FILE_PICKER
+ */
 typedef struct UiControlValue {
     uint32_t struct_size;
     bool bool_value;
@@ -101,11 +105,11 @@ typedef struct UiControlDesc {
     /* Optional RML shown as contextual help when the control is focused or hovered. Only rendered
      * where a help pane exists (mod window tabs). */
     const char* help_rml;
-    UiControlBinding binding;   /* ignored for BUTTON and GROUP */
+    UiControlBinding binding;   /* ignored for BUTTON, GROUP, and ICON_BUTTON */
     ConfigVarHandle config_var; /* UI_BINDING_CONFIG_VAR */
-    UiControlGetFn get;         /* UI_BINDING_CALLBACKS (all kinds but BUTTON/GROUP) */
-    UiControlSetFn set;         /* UI_BINDING_CALLBACKS (all kinds but BUTTON/GROUP) */
-    UiPressedFn on_pressed;     /* BUTTON/GROUP only. Required for both. */
+    UiControlGetFn get;         /* UI_BINDING_CALLBACKS (all kinds but BUTTON/GROUP/ICON_BUTTON) */
+    UiControlSetFn set;         /* UI_BINDING_CALLBACKS (all kinds but BUTTON/GROUP/ICON_BUTTON) */
+    UiPressedFn on_pressed;     /* BUTTON/GROUP/ICON_BUTTON: required. */
     UiPredicateFn is_disabled;  /* optional */
     /* Optional override for the modified indicator. CONFIG_VAR controls derive it from value !=
      * default when this is NULL. */
@@ -119,9 +123,7 @@ typedef struct UiControlDesc {
     int64_t step;
     const char* prefix; /* NUMBER: optional text before the value */
     const char* suffix; /* NUMBER: optional text after the value */
-    /* SELECT: option labels (plain text). Required for SELECT. SELECT controls
-     * present their options in the help pane, so they are only available where
-     * one exists (mod window tabs); MOD_UNSUPPORTED elsewhere. */
+    /* SELECT/DROPDOWN: option labels (plain text). At least one is required. */
     const char* const* options;
     size_t option_count;
     int32_t max_length; /* STRING: maximum input length; < 1 means unlimited */
@@ -129,18 +131,71 @@ typedef struct UiControlDesc {
     const char* const* color_presets;
     size_t color_preset_count;
     bool color_alpha;                /* COLOR: use RRGGBBAA values instead of RRGGBB */
-    UiPredicateFn is_selected;       /* BUTTON/GROUP: optional selected state */
+    UiPredicateFn is_selected;       /* BUTTON/GROUP/ICON_BUTTON: optional selected state */
     UiStringSetMode string_set_mode; /* STRING: when to invoke the setter */
     /* FILE_PICKER: optional file filters and folder selection mode. */
     const FileFilter* file_filters;
     size_t file_filter_count;
     bool directory_mode;
+    const char* icon; /* ICON_BUTTON: supported Material Symbols name */
+    /* DROPDOWN: option_count values (optional). Labels and flags are copied. */
+    const bool* option_enabled;
+    /* Optional plain-text tooltip. ICON_BUTTON uses label if not specified. */
+    const char* tooltip;
 } UiControlDesc;
 
 #define UI_CONTROL_DESC_INIT                                                                       \
     {sizeof(UiControlDesc), UI_CONTROL_BUTTON, NULL, NULL, UI_BINDING_CALLBACKS, 0u, NULL, NULL,   \
         NULL, NULL, NULL, NULL, 0, 0, 1, NULL, NULL, NULL, 0u, 0, NULL, 0u, false, NULL,           \
-        UI_STRING_SET_ON_COMMIT, NULL, 0u, false}
+        UI_STRING_SET_ON_COMMIT, NULL, 0u, false, NULL, NULL, NULL}
+
+typedef struct UiControlOption {
+    uint32_t struct_size;
+    const char* label;
+    bool enabled;
+} UiControlOption;
+
+#define UI_CONTROL_OPTION_INIT {sizeof(UiControlOption), NULL, true}
+
+typedef void (*UiContextMenuActionFn)(ModContext* ctx, void* user_data);
+
+typedef struct UiContextMenuItem {
+    uint32_t struct_size;
+    const char* label;                /* required, plain text */
+    const char* icon;                 /* optional Material Symbols name */
+    UiContextMenuActionFn on_pressed; /* NULL disables the item */
+    void* user_data;
+    bool enabled;
+    bool selected;
+    bool destructive;
+    bool separator_before;
+} UiContextMenuItem;
+
+#define UI_CONTEXT_MENU_ITEM_INIT                                                                  \
+    {sizeof(UiContextMenuItem), NULL, NULL, NULL, NULL, true, false, false, false}
+
+typedef struct UiContextMenuDesc {
+    uint32_t struct_size;
+    const UiContextMenuItem* items; /* at least one; copied */
+    size_t item_count;
+} UiContextMenuDesc;
+
+#define UI_CONTEXT_MENU_DESC_INIT {sizeof(UiContextMenuDesc), NULL, 0u}
+
+typedef enum UiRowAlign {
+    UI_ROW_ALIGN_START = 0,
+    UI_ROW_ALIGN_END = 1,
+    UI_ROW_ALIGN_CENTER = 2,
+    UI_ROW_ALIGN_SPACE_BETWEEN = 3,
+} UiRowAlign;
+
+typedef struct UiRowDesc {
+    uint32_t struct_size;
+    UiRowAlign align;
+    bool wrap;
+} UiRowDesc;
+
+#define UI_ROW_DESC_INIT {sizeof(UiRowDesc), UI_ROW_ALIGN_START, false}
 
 typedef uint64_t UiListHandle;
 
@@ -302,7 +357,7 @@ typedef struct UiService {
     /* Register or replace the panel shown in the calling mod's Mods-window tab. */
     ModResult (*register_mods_panel)(ModContext* ctx, const UiModsPanelDesc* desc);
 
-    /* Content builders. `pane` is a panel or tab pane handle; out_elem (where
+    /* Content builders. `pane` is a panel, tab/dialog pane, or row handle; out_elem (where
      * present, optional) receives a handle for later elem_set_* updates. */
     ModResult (*pane_add_section)(ModContext* ctx, UiElementHandle pane, const char* title);
     ModResult (*pane_add_text)(
@@ -374,6 +429,30 @@ typedef struct UiService {
     /* Replace all items in a list with a new set. */
     ModResult (*list_set_items)(
         ModContext* ctx, UiListHandle list, const UiListItem* items, size_t item_count);
+
+    /* Minor version 3 */
+
+    /* Horizontal container. parent must be a pane or row. */
+    ModResult (*pane_add_row)(
+        ModContext* ctx, UiElementHandle parent, const UiRowDesc* desc, UiElementHandle* out_row);
+
+    /* Update a control's label. */
+    ModResult (*control_set_label)(ModContext* ctx, UiElementHandle control, const char* label);
+    /* ICON_BUTTON only. Unknown or empty icon names return MOD_INVALID_ARGUMENT. */
+    ModResult (*control_set_icon)(ModContext* ctx, UiElementHandle control, const char* icon);
+    /* DROPDOWN only. Empty options disables the control. */
+    ModResult (*control_set_options)(ModContext* ctx, UiElementHandle control,
+        const UiControlOption* options, size_t option_count);
+    ModResult (*control_set_tooltip)(ModContext* ctx, UiElementHandle control, const char* tooltip);
+
+    ModResult (*elem_set_visible)(ModContext* ctx, UiElementHandle elem, bool visible);
+    /* Focus a visible, enabled element/container. MOD_UNAVAILABLE if it cannot receive focus. */
+    ModResult (*elem_focus)(ModContext* ctx, UiElementHandle elem);
+
+    /* Creates a context menu. Anchor must be a visible and enabled element. */
+    ModResult (*context_menu_push)(ModContext* ctx, UiElementHandle anchor,
+        const UiContextMenuDesc* desc, UiContextMenuHandle* out_menu);
+    ModResult (*context_menu_close)(ModContext* ctx, UiContextMenuHandle menu);
 } UiService;
 
 MOD_DECLARE_SERVICE(UiService, svc_ui, UI_SERVICE_ID, UI_SERVICE_MAJOR, UI_SERVICE_MINOR);

@@ -7,13 +7,16 @@ Component::Component(Rml::Element* root) : mRoot(root) {}
 Component::~Component() = default;
 
 void Component::update() {
+    if (mTooltip) {
+        mTooltip->update();
+    }
     for (const auto& child : mChildren) {
         child->update();
     }
 }
 
 bool Component::focus() {
-    if (disabled()) {
+    if (disabled() || !mRoot->IsVisible(true)) {
         return false;
     }
     // Can we focus self?
@@ -43,6 +46,16 @@ void Component::set_selected(bool value) {
         return;
     }
     mRoot->SetPseudoClass("selected", value);
+}
+
+void Component::set_tooltip(const Rml::String& text) {
+    if (text.empty()) {
+        mTooltip.reset();
+    } else if (mTooltip) {
+        mTooltip->set_label(text);
+    } else {
+        mTooltip = std::make_unique<Tooltip>(mRoot, text);
+    }
 }
 
 void Component::set_disabled(bool value) {
@@ -102,6 +115,24 @@ void Component::clear_children() {
     while (mRoot->GetNumChildren() > 0) {
         mRoot->RemoveChild(mRoot->GetFirstChild());
     }
+}
+
+Rml::Element* Component::add_section(const Rml::String& text) {
+    auto* elem = append(mRoot, "section-heading");
+    append_text(elem, text);
+    return elem;
+}
+
+Rml::Element* Component::add_text(const Rml::String& text) {
+    auto* elem = append(mRoot, "div");
+    append_text(elem, text);
+    return elem;
+}
+
+Rml::Element* Component::add_rml(const Rml::String& rml) {
+    auto* elem = append(mRoot, "div");
+    elem->SetInnerRML(rml);
+    return elem;
 }
 
 }  // namespace dusk::ui

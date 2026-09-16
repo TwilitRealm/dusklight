@@ -54,12 +54,13 @@ const char* material_icon(std::string_view name) {
 }
 
 IconButton::IconButton(Rml::Element* parent, Props props)
-    : ControlledButton{parent, ControlledButton::Props{.text = "",
+    : ControlledButton{parent, ControlledButton::Props{
+                                   .text = "",
                                    .isSelected = std::move(props.isSelected),
-                                   .isDisabled = std::move(props.isDisabled)}},
-      mTooltip{mRoot, props.label} {
+                                   .isDisabled = std::move(props.isDisabled),
+                               }} {
     mRoot->SetClass("icon-button", true);
-    mRoot->SetAttribute("aria-label", props.label);
+    set_label(props.label);
     mIcon = append(mRoot, "icon");
     mIcon->SetAttribute("aria-hidden", "true");
     set_icon(props.icon);
@@ -74,16 +75,19 @@ void IconButton::set_icon(std::string_view icon) {
 }
 
 void IconButton::set_label(const Rml::String& label) {
-    if (mRoot->GetAttribute<Rml::String>("aria-label", "") == label) {
+    if (mLabel == label) {
         return;
     }
     mRoot->SetAttribute("aria-label", label);
-    mTooltip.set_label(label);
+    mLabel = label;
+    if (mTooltipText.empty()) {
+        Component::set_tooltip(label);
+    }
 }
 
-void IconButton::update() {
-    ControlledButton::update();
-    mTooltip.update();
+void IconButton::set_tooltip(const Rml::String& text) {
+    mTooltipText = text;
+    Component::set_tooltip(text.empty() ? mLabel : text);
 }
 
 }  // namespace dusk::ui

@@ -26,6 +26,7 @@ public:
     ~DropdownButton() override;
 
     void update() override;
+    void set_options(std::vector<Option> options);
     bool modified() const override;
     bool disabled() const override;
 

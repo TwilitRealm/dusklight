@@ -1639,6 +1639,8 @@ set(DUSK_FILES
         src/dusk/ui/number_button.hpp
         src/dusk/ui/overlay.cpp
         src/dusk/ui/overlay.hpp
+        src/dusk/ui/row.cpp
+        src/dusk/ui/row.hpp
         src/dusk/ui/pane.cpp
         src/dusk/ui/pane.hpp
         src/dusk/ui/popover.cpp

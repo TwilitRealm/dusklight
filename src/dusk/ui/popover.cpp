@@ -93,8 +93,11 @@ void Popover::update() {
     reposition();
 }
 
-void Popover::dismiss() {
+void Popover::dismiss(bool restoreFocus) {
     if (visible()) {
+        if (!restoreFocus) {
+            mAnchor = nullptr;
+        }
         hide(true);
     }
 }

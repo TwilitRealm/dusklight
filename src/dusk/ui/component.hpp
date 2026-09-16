@@ -1,6 +1,7 @@
 #pragma once
 
 #include "event.hpp"
+#include "tooltip.hpp"
 #include "ui.hpp"
 
 #include <RmlUi/Core.h>
@@ -32,6 +33,7 @@ public:
     virtual void set_selected(bool selected);
     virtual bool disabled() const { return mRoot->IsPseudoClassSet("disabled"); }
     virtual void set_disabled(bool disabled);
+    virtual void set_tooltip(const Rml::String& text);
 
     void listen(Rml::Element* element, Rml::EventId event, ScopedEventListener::Callback callback,
         bool capture = false);
@@ -48,6 +50,10 @@ public:
         return ref;
     }
 
+    Rml::Element* add_section(const Rml::String& text);
+    Rml::Element* add_text(const Rml::String& text);
+    Rml::Element* add_rml(const Rml::String& rml);
+
     Rml::Element* root() const { return mRoot; }
 
 protected:
@@ -57,6 +63,7 @@ protected:
     Rml::Element* mDisabledFocusFallback = nullptr;
     std::vector<std::unique_ptr<Component>> mChildren;
     std::vector<std::unique_ptr<ScopedEventListener>> mListeners;
+    std::unique_ptr<Tooltip> mTooltip;
 };
 
 template <class Derived>

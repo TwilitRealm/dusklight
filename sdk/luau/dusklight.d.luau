@@ -49,21 +49,35 @@ export type TextureModule = {
     register_data: (key: TextureKey, data: TextureData) -> TextureHandle,
 }
 
+export type UiRowDesc = {align: ("start" | "center" | "end" | "space_between")?, wrap: boolean?}
+export type UiControlOption = {label: string, enabled: boolean?}
+export type UiContextMenuItem = {
+    label: string, icon: string?, on_pressed: (() -> ())?, enabled: boolean?,
+    selected: boolean?, destructive: boolean?, separator_before: boolean?,
+}
+export type UiContextMenu = {close: (self: UiContextMenu) -> ()}
 export type UiElement = {
-    add_section: (self: UiElement, title: string) -> (),
-    add_text: (self: UiElement, text: string) -> UiElement,
-    add_rml: (self: UiElement, rml: string) -> UiElement,
-    add_progress: (self: UiElement, value: number) -> UiElement,
     add_control: (self: UiElement, desc: UiControlDesc) -> UiElement,
     add_group: (self: UiElement, target: UiElement, desc: UiGroupDesc) -> UiElement,
     add_list: (self: UiElement, desc: UiListDesc) -> UiList,
-    set_text: (self: UiElement, text: string) -> (),
-    set_rml: (self: UiElement, rml: string) -> (),
-    set_progress: (self: UiElement, value: number) -> (),
+    add_progress: (self: UiElement, value: number) -> UiElement,
+    add_rml: (self: UiElement, rml: string) -> UiElement,
+    add_row: (self: UiElement, desc: UiRowDesc) -> UiElement,
+    add_section: (self: UiElement, title: string) -> (),
+    add_text: (self: UiElement, text: string) -> UiElement,
+    focus: (self: UiElement) -> boolean,
     set_class: (self: UiElement, name: string, active: boolean) -> (),
+    set_icon: (self: UiElement, icon: string) -> (),
+    set_label: (self: UiElement, label: string) -> (),
+    set_options: (self: UiElement, options: {UiControlOption}) -> (),
+    set_progress: (self: UiElement, value: number) -> (),
+    set_rml: (self: UiElement, rml: string) -> (),
+    set_text: (self: UiElement, text: string) -> (),
+    set_tooltip: (self: UiElement, text: string?) -> (),
+    set_visible: (self: UiElement, visible: boolean) -> (),
 }
 export type UiControlDesc = {
-    kind: "button" | "toggle" | "number" | "string" | "select" | "color" | "group" | "file_picker",
+    kind: "button" | "toggle" | "number" | "string" | "select" | "color" | "group" | "file_picker" | "icon_button" | "dropdown",
     label: string,
     help_rml: string?,
     config_var: ConfigVar<any>?,
@@ -85,6 +99,9 @@ export type UiControlDesc = {
     string_set_mode: ("commit" | "change")?,
     file_filters: {{name: string, pattern: string}}?,
     directory_mode: boolean?,
+    icon: string?,
+    tooltip: string?,
+    option_enabled: {boolean}?,
 }
 export type UiGroupDesc = { label: string, build: (pane: UiElement) -> () }
 export type UiListItem = { key: IntegerInput, label: string }
@@ -109,6 +126,7 @@ export type UiTabDesc = {
     update: (() -> ())?,
 }
 export type UiModule = {
+    context_menu_push: (anchor: UiElement, desc: {items: {UiContextMenuItem}}) -> UiContextMenu,
     register_mods_panel: (desc: {build: (panel: UiElement) -> (), update: (() -> ())?}) -> (),
     window_push: (desc: {tabs: {UiTabDesc}, rcss: string?, on_closed: ((window: UiWindow) -> ())?}) -> UiWindow,
     dialog_push: (desc: {

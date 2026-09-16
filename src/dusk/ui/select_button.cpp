@@ -40,6 +40,13 @@ void SelectButton::set_modified(bool value) {
     }
 }
 
+void SelectButton::set_key(const Rml::String& key) {
+    if (mProps.key != key) {
+        set_text_content(mKeyElem, key);
+        mProps.key = key;
+    }
+}
+
 void SelectButton::set_value_label(const Rml::String& value) {
     if (mProps.value != value) {
         set_text_content(mValueElem, value_label(value, mProps.modified));

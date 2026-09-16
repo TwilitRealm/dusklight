@@ -3,6 +3,7 @@
 #include "../runtime.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,6 +21,7 @@ constexpr char kUiElementMetatable[] = "dusklight.ui_element";
 constexpr char kUiStyleMetatable[] = "dusklight.ui_style";
 constexpr char kUiMenuTabMetatable[] = "dusklight.ui_menu_tab";
 constexpr char kUiListMetatable[] = "dusklight.ui_list";
+constexpr char kUiContextMenuMetatable[] = "dusklight.ui_context_menu";
 
 const char* ui_metatable(HandleKind kind) {
     switch (kind) {
@@ -33,6 +35,8 @@ const char* ui_metatable(HandleKind kind) {
         return kUiMenuTabMetatable;
     case HandleKind::UiList:
         return kUiListMetatable;
+    case HandleKind::UiContextMenu:
+        return kUiContextMenuMetatable;
     default:
         return kUiElementMetatable;
     }
@@ -97,6 +101,7 @@ void control_get(ModContext*, void* userData, UiControlValue* outValue) {
         outValue->bool_value = lua_toboolean(state, -1) != 0;
         break;
     case UI_CONTROL_NUMBER:
+    case UI_CONTROL_DROPDOWN:
     case UI_CONTROL_SELECT: {
         int64_t value = 0;
         if (!to_int64(state, -1, value)) {
@@ -136,6 +141,7 @@ void control_set(ModContext*, void* userData, const UiControlValue* value) {
         lua_pushboolean(state, value->bool_value);
         break;
     case UI_CONTROL_NUMBER:
+    case UI_CONTROL_DROPDOWN:
     case UI_CONTROL_SELECT:
         lua_pushinteger64(state, value->int_value);
         break;
@@ -300,6 +306,8 @@ constexpr EnumName<UiControlKind> kControlKindNames[] = {
     {UI_CONTROL_COLOR, "color"sv},
     {UI_CONTROL_GROUP, "group"sv},
     {UI_CONTROL_FILE_PICKER, "file_picker"sv},
+    {UI_CONTROL_ICON_BUTTON, "icon_button"sv},
+    {UI_CONTROL_DROPDOWN, "dropdown"sv},
 };
 
 UiControlKind control_kind(lua_State* state, const std::string& kind) {
@@ -317,6 +325,28 @@ constexpr EnumName<UiStyleScope> kStyleScopeNames[] = {
 
 UiStyleScope style_scope(lua_State* state, const std::string& scope) {
     return enum_str_to_value<UiStyleScope>(state, scope.data(), kStyleScopeNames);
+}
+
+int pane_add_row(lua_State* state) {
+    auto& pane = check_ui_handle(state, 1, HandleKind::UiElement);
+    luaL_checktype(state, 2, LUA_TTABLE);
+    constexpr EnumName<UiRowAlign> alignNames[] = {
+        {UI_ROW_ALIGN_START, "start"sv},
+        {UI_ROW_ALIGN_END, "end"sv},
+        {UI_ROW_ALIGN_CENTER, "center"sv},
+        {UI_ROW_ALIGN_SPACE_BETWEEN, "space_between"sv},
+    };
+    UiRowDesc desc = UI_ROW_DESC_INIT;
+    const auto align = get_optional_string(state, 2, "align");
+    if (!align.empty()) {
+        desc.align = enum_str_to_value(state, align.c_str(), alignNames);
+    }
+    desc.wrap = get_optional_bool(state, 2, "wrap", false);
+    UiElementHandle row = 0;
+    check_result(
+        state, svc_ui->pane_add_row(pane.vm->subject, pane.value, &desc, &row), "ui pane_add_row");
+    push_ui_handle(state, *pane.vm, row, HandleKind::UiElement);
+    return 1;
 }
 
 int pane_add_section(lua_State* state) {
@@ -366,10 +396,14 @@ int pane_add_control(lua_State* state) {
     const std::string kind = get_optional_string(state, 2, "kind");
     const std::string label = get_optional_string(state, 2, "label");
     const std::string help = get_optional_string(state, 2, "help_rml");
+    const std::string icon = get_optional_string(state, 2, "icon");
+    const std::string tooltip = get_optional_string(state, 2, "tooltip");
     const std::string prefix = get_optional_string(state, 2, "prefix");
     const std::string suffix = get_optional_string(state, 2, "suffix");
     desc.kind = control_kind(state, kind);
     desc.label = label.c_str();
+    desc.icon = icon.empty() ? nullptr : icon.c_str();
+    desc.tooltip = tooltip.empty() ? nullptr : tooltip.c_str();
     desc.help_rml = help.empty() ? nullptr : help.c_str();
     desc.min = get_optional_int(state, 2, "min", 0);
     desc.max = get_optional_int(state, 2, "max", 0);
@@ -386,16 +420,34 @@ int pane_add_control(lua_State* state) {
     std::vector<std::string> options = string_array(state, 2, "options");
     std::vector<const char*> optionPointers;
     optionPointers.reserve(options.size());
-    for (const auto& option : options)
+    for (const auto& option : options) {
         optionPointers.push_back(option.c_str());
+    }
     desc.options = optionPointers.data();
     desc.option_count = optionPointers.size();
+    std::unique_ptr<bool[]> enabled;
+    lua_getfield(state, 2, "option_enabled");
+    if (!lua_isnil(state, -1)) {
+        luaL_checktype(state, -1, LUA_TTABLE);
+        if (lua_objlen(state, -1) != static_cast<int>(options.size())) {
+            luaL_error(state, "option_enabled must have one boolean per option");
+        }
+        enabled = std::make_unique<bool[]>(options.size());
+        for (size_t i = 0; i < options.size(); ++i) {
+            lua_rawgeti(state, -1, static_cast<int>(i + 1));
+            enabled[i] = luaL_checkboolean(state, -1) != 0;
+            lua_pop(state, 1);
+        }
+    }
+    lua_pop(state, 1);
+    desc.option_enabled = enabled.get();
 
     std::vector<std::string> presets = string_array(state, 2, "color_presets");
     std::vector<const char*> presetPointers;
     presetPointers.reserve(presets.size());
-    for (const auto& preset : presets)
+    for (const auto& preset : presets) {
         presetPointers.push_back(preset.c_str());
+    }
     desc.color_presets = presetPointers.data();
     desc.color_preset_count = presetPointers.size();
 
@@ -440,7 +492,9 @@ int pane_add_control(lua_State* state) {
         auto& variable = check_config_var(state, -1);
         desc.binding = UI_BINDING_CONFIG_VAR;
         desc.config_var = variable.value;
-    } else if (desc.kind != UI_CONTROL_BUTTON && desc.kind != UI_CONTROL_GROUP) {
+    } else if (desc.kind != UI_CONTROL_BUTTON && desc.kind != UI_CONTROL_GROUP &&
+               desc.kind != UI_CONTROL_ICON_BUTTON)
+    {
         desc.binding = UI_BINDING_CALLBACKS;
         callback.refs[0] = ref_required_function(state, 2, "get");
         callback.refs[1] = ref_required_function(state, 2, "set");
@@ -486,8 +540,9 @@ int pane_add_list(lua_State* state) {
     std::vector<std::string> labels;
     std::vector<UiListItem> items;
     lua_getfield(state, 2, "items");
-    if (!lua_isnil(state, -1))
+    if (!lua_isnil(state, -1)) {
         items = list_items(state, -1, labels);
+    }
     lua_pop(state, 1);
 
     UiListDesc desc = UI_LIST_DESC_INIT;
@@ -535,6 +590,130 @@ int element_set_class(lua_State* state) {
         svc_ui->elem_set_class(element.vm->subject, element.value, luaL_checkstring(state, 2),
             luaL_checkboolean(state, 3) != 0),
         "ui elem_set_class");
+    return 0;
+}
+
+int control_set_label(lua_State* state) {
+    auto& element = check_ui_handle(state, 1, HandleKind::UiElement);
+    check_result(state,
+        svc_ui->control_set_label(element.vm->subject, element.value, luaL_checkstring(state, 2)),
+        "ui control_set_label");
+    return 0;
+}
+
+int control_set_icon(lua_State* state) {
+    auto& element = check_ui_handle(state, 1, HandleKind::UiElement);
+    check_result(state,
+        svc_ui->control_set_icon(element.vm->subject, element.value, luaL_checkstring(state, 2)),
+        "ui control_set_icon");
+    return 0;
+}
+
+int control_set_tooltip(lua_State* state) {
+    auto& element = check_ui_handle(state, 1, HandleKind::UiElement);
+    check_result(state,
+        svc_ui->control_set_tooltip(
+            element.vm->subject, element.value, luaL_optstring(state, 2, "")),
+        "ui control_set_tooltip");
+    return 0;
+}
+
+int control_set_options(lua_State* state) {
+    auto& element = check_ui_handle(state, 1, HandleKind::UiElement);
+    luaL_checktype(state, 2, LUA_TTABLE);
+    const int count = lua_objlen(state, 2);
+    std::vector<std::string> labels;
+    std::vector<UiControlOption> options;
+    labels.reserve(count);
+    options.reserve(count);
+    for (int i = 1; i <= count; ++i) {
+        lua_rawgeti(state, 2, i);
+        luaL_checktype(state, -1, LUA_TTABLE);
+        labels.push_back(get_optional_string(state, -1, "label"));
+        UiControlOption option = UI_CONTROL_OPTION_INIT;
+        option.label = labels.back().c_str();
+        option.enabled = get_optional_bool(state, -1, "enabled", true);
+        options.push_back(option);
+        lua_pop(state, 1);
+    }
+    check_result(state,
+        svc_ui->control_set_options(
+            element.vm->subject, element.value, options.data(), options.size()),
+        "ui control_set_options");
+    return 0;
+}
+
+int element_set_visible(lua_State* state) {
+    auto& element = check_ui_handle(state, 1, HandleKind::UiElement);
+    check_result(state,
+        svc_ui->elem_set_visible(
+            element.vm->subject, element.value, luaL_checkboolean(state, 2) != 0),
+        "ui elem_set_visible");
+    return 0;
+}
+
+int element_focus(lua_State* state) {
+    auto& element = check_ui_handle(state, 1, HandleKind::UiElement);
+    const auto result = svc_ui->elem_focus(element.vm->subject, element.value);
+    if (result != MOD_UNAVAILABLE) {
+        check_result(state, result, "ui elem_focus");
+    }
+    lua_pushboolean(state, result == MOD_OK);
+    return 1;
+}
+
+void context_menu_action(ModContext*, void* userData) {
+    auto& callback = *static_cast<Callback*>(userData);
+    call_callback(callback, callback.refs[0], 0, 0, "context menu action");
+}
+
+int context_menu_push(lua_State* state) {
+    auto& anchor = check_ui_handle(state, 1, HandleKind::UiElement);
+    luaL_checktype(state, 2, LUA_TTABLE);
+    lua_getfield(state, 2, "items");
+    luaL_checktype(state, -1, LUA_TTABLE);
+    const int count = lua_objlen(state, -1);
+    std::vector<std::string> labels;
+    std::vector<std::string> icons;
+    std::vector<UiContextMenuItem> items;
+    labels.reserve(count);
+    icons.reserve(count);
+    items.reserve(count);
+    for (int i = 1; i <= count; ++i) {
+        lua_rawgeti(state, -1, i);
+        luaL_checktype(state, -1, LUA_TTABLE);
+        labels.push_back(get_optional_string(state, -1, "label"));
+        icons.push_back(get_optional_string(state, -1, "icon"));
+        Callback& callback = retain_callback(*anchor.vm);
+        callback.refs[0] = ref_optional_function(state, -1, "on_pressed");
+        UiContextMenuItem item = UI_CONTEXT_MENU_ITEM_INIT;
+        item.label = labels.back().c_str();
+        item.icon = icons.back().c_str();
+        item.on_pressed = callback.refs[0] != LUA_NOREF ? context_menu_action : nullptr;
+        item.user_data = &callback;
+        item.enabled = get_optional_bool(state, -1, "enabled", true);
+        item.selected = get_optional_bool(state, -1, "selected", false);
+        item.destructive = get_optional_bool(state, -1, "destructive", false);
+        item.separator_before = get_optional_bool(state, -1, "separator_before", false);
+        items.push_back(item);
+        lua_pop(state, 1);
+    }
+    lua_pop(state, 1);
+    UiContextMenuDesc desc = UI_CONTEXT_MENU_DESC_INIT;
+    desc.items = items.data();
+    desc.item_count = items.size();
+    UiContextMenuHandle handle = 0;
+    check_result(state, svc_ui->context_menu_push(anchor.vm->subject, anchor.value, &desc, &handle),
+        "ui context_menu_push");
+    push_ui_handle(state, *anchor.vm, handle, HandleKind::UiContextMenu);
+    return 1;
+}
+
+int context_menu_close(lua_State* state) {
+    auto& menu = check_ui_handle(state, 1, HandleKind::UiContextMenu);
+    check_result(
+        state, svc_ui->context_menu_close(menu.vm->subject, menu.value), "ui context_menu_close");
+    menu.value = 0;
     return 0;
 }
 
@@ -632,8 +811,9 @@ int window_push(lua_State* state) {
         lua_pop(state, 1);
     }
     lua_pop(state, 1);
-    for (size_t i = 0; i < tabs.size(); ++i)
+    for (size_t i = 0; i < tabs.size(); ++i) {
         tabs[i].title = titles[i].c_str();
+    }
 
     const std::string rcss = get_optional_string(state, 1, "rcss");
     Callback& closed = retain_callback(vm);
@@ -651,12 +831,15 @@ int window_push(lua_State* state) {
 }
 
 UiDialogVariant dialog_variant(lua_State* state, const std::string& variant) {
-    if (variant.empty() || variant == "normal")
+    if (variant.empty() || variant == "normal") {
         return UI_DIALOG_NORMAL;
-    if (variant == "warning")
+    }
+    if (variant == "warning") {
         return UI_DIALOG_WARNING;
-    if (variant == "danger")
+    }
+    if (variant == "danger") {
         return UI_DIALOG_DANGER;
+    }
     luaL_error(state, "unknown dialog variant '%s'", variant.c_str());
 }
 
@@ -690,8 +873,9 @@ int dialog_push(lua_State* state) {
         lua_pop(state, 1);
     }
     lua_pop(state, 1);
-    for (size_t i = 0; i < actions.size(); ++i)
+    for (size_t i = 0; i < actions.size(); ++i) {
         actions[i].label = labels[i].c_str();
+    }
 
     Callback& callback = retain_callback(vm);
     callback.refs[0] = ref_optional_function(state, 1, "on_dismiss");
@@ -812,6 +996,13 @@ int open_ui(lua_State* state) {
         {"add_control", pane_add_control},
         {"add_group", pane_add_group},
         {"add_list", pane_add_list},
+        {"add_row", pane_add_row},
+        {"set_label", control_set_label},
+        {"set_icon", control_set_icon},
+        {"set_options", control_set_options},
+        {"set_tooltip", control_set_tooltip},
+        {"set_visible", element_set_visible},
+        {"focus", element_focus},
         {"set_text", element_set_text},
         {"set_rml", element_set_rml},
         {"set_progress", element_set_progress},
@@ -835,11 +1026,15 @@ int open_ui(lua_State* state) {
     create_handle_metatable(state, kUiStyleMetatable, kStyleMethods, "UiStyle");
     create_handle_metatable(state, kUiMenuTabMetatable, kMenuMethods, "UiMenuTab");
     create_handle_metatable(state, kUiListMetatable, kListMethods, "UiList");
+    static const luaL_Reg kContextMenuMethods[] = {
+        {"close", context_menu_close}, {nullptr, nullptr}};
+    create_handle_metatable(state, kUiContextMenuMetatable, kContextMenuMethods, "UiContextMenu");
 
     lua_newtable(state);
     set_function(state, vm, "register_mods_panel", register_mods_panel);
     set_function(state, vm, "window_push", window_push);
     set_function(state, vm, "dialog_push", dialog_push);
+    set_function(state, vm, "context_menu_push", context_menu_push);
     set_function(state, vm, "is_any_document_visible", is_any_document_visible);
     set_function(state, vm, "register_styles", register_styles);
     set_function(state, vm, "register_styles_file", register_styles_file);

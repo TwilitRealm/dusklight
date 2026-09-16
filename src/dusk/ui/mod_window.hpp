@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dropdown_button.hpp"
 #include "pane.hpp"
 #include "window.hpp"
 
@@ -19,11 +20,15 @@ struct ModControlSpec {
         Select,
         Color,
         FilePicker,
+        IconButton,
+        Dropdown,
     };
 
     Kind kind = Kind::Button;
     Rml::String label;
+    Rml::String icon;
     Rml::String helpRml;
+    Rml::String tooltip;
     std::function<void()> onPressed;
     std::function<bool()> getBool;
     std::function<void(bool)> setBool;
@@ -41,6 +46,7 @@ struct ModControlSpec {
     Rml::String prefix;
     Rml::String suffix;
     std::vector<Rml::String> options;
+    std::vector<DropdownButton::Option> dropdownOptions;
     int maxLength = -1;
     bool stringSetOnChange = false;
     std::vector<Rml::String> colorPresets;
@@ -49,7 +55,7 @@ struct ModControlSpec {
     bool directoryMode = false;
 };
 
-Component* build_mod_control(Pane& pane, Pane* helpPane, ModControlSpec spec);
+Component* build_mod_control(Component& container, Pane& pane, Pane* helpPane, ModControlSpec spec);
 
 // A mod-owned tabbed two-pane window.
 class ModWindow : public Window {

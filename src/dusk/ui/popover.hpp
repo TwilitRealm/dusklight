@@ -28,7 +28,7 @@ public:
 
     void set_position(Rml::Vector2f position) { mPosition = position; }
 
-    void dismiss();
+    void dismiss(bool restoreFocus = true);
     void on_close(std::function<void()> callback) { mOnClose = std::move(callback); }
     void on_focus(std::function<bool()> callback) { mOnFocus = std::move(callback); }
 

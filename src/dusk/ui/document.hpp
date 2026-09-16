@@ -73,6 +73,9 @@ public:
 
     bool pending_close() const { return mPendingClose; }
     bool closed() const { return mClosed; }
+    bool owns_element(const Rml::Element* element) const {
+        return element != nullptr && element->GetOwnerDocument() == mDocument;
+    }
 
     bool handle_nav_event(Rml::Event& event);
 
