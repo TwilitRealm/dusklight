@@ -750,23 +750,18 @@ static void duskExecute() {
     dusk::input::handleGamepadColor();
     updateAutoSave();
     auto floatMusicVolume = static_cast<float>(dusk::getSettings().audio.mainMusicVolume.getValue()) / 100;
+    isRecording = false;
+    if (dusk::getSettings().game.recordingMode) {
+        floatMusicVolume = 0.0f;
+        isRecording = true;
+    }
 
-    if (floatMusicVolume != 1.0f) {
+    if (dusk::getSettings().game.recordingMode || floatMusicVolume != 1.0f) {
         Z2GetSoundMgr()->getSeqMgr()->getParams()->moveVolume(floatMusicVolume, 0);
         Z2GetSoundMgr()->getStreamMgr()->getParams()->moveVolume(floatMusicVolume, 0);
     } else {
         Z2GetSoundMgr()->getSeqMgr()->getParams()->moveVolume(1.0f, 0);
         Z2GetSoundMgr()->getStreamMgr()->getParams()->moveVolume(1.0f, 0);
-    }
-
-    if (dusk::getSettings().game.recordingMode) {
-        Z2GetSoundMgr()->getSeqMgr()->getParams()->moveVolume(0.0f, 0);
-        Z2GetSoundMgr()->getStreamMgr()->getParams()->moveVolume(0.0f, 0);
-        isRecording = true;
-    } else if (isRecording) {
-        Z2GetSoundMgr()->getSeqMgr()->getParams()->moveVolume(1.0f, 0);
-        Z2GetSoundMgr()->getStreamMgr()->getParams()->moveVolume(1.0f, 0);
-        isRecording = false;
     }
 
     if (dusk::getSettings().game.fastSpinner && mDoCPd_c::getHoldR(PAD_1)) {
