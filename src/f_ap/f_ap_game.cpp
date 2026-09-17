@@ -756,7 +756,7 @@ static void duskExecute() {
         isRecording = true;
     }
 
-    if (dusk::getSettings().game.recordingMode || floatMusicVolume != 1.0f) {
+    if (floatMusicVolume != 1.0f) {
         Z2GetSoundMgr()->getSeqMgr()->getParams()->moveVolume(floatMusicVolume, 0);
         Z2GetSoundMgr()->getStreamMgr()->getParams()->moveVolume(floatMusicVolume, 0);
     } else {
