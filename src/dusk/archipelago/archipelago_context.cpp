@@ -1207,6 +1207,13 @@ void ArchipelagoContext::UpdateCheckedLocations(bool warnIfNoChange) {
             cachedLocData.collected = true;
             AP_SendItem(cachedLocData.apLocationId);
             changed = true;
+
+            // Set the STAR PRIZE 1 flag  so the 2nd one opens up
+            // it does require you to leave the tent  otherwise it doesn't change the layout
+            if (locName == "STAR Prize 1" || locName == "STAR Prize 2") {
+                setLocationCollected(location, true);
+                dComIfGs_onStageSwitch(0x9, 0x0);
+            }
         }
     }
 
