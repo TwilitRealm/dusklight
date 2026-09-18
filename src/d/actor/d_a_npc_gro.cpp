@@ -1692,8 +1692,9 @@ int daNpc_grO_c::talk(void* param_1) {
                             itemId = verifyProgressiveItem(randomizer_getItemAtLocation("Goron Mines Gor Ebizo Key Shard"));
                             randomizer_setTempFlagForLocation("Goron Mines Gor Ebizo Key Shard");
                             // The randomizer skips the rest of the elder's dialogue; set the
-                            // "talked to" bit here (updateGoalFlags() derives the ladder switches from it).
+                            // "talked to" bit and the ladder switches derived from it here.
                             dComIfGs_onEventBit(TALKED_TO_GOR_EBIZO_IN_GORON_MINES);
+                            randomizer_updateGoronMinesElderLadders();
                         }
 #endif
                         mItemID = fopAcM_createItemForPresentDemo(&current.pos, itemId, 0, -1, -1, NULL, NULL);

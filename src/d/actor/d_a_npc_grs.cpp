@@ -1200,8 +1200,9 @@ int daNpc_grS_c::talk(void* param_0) {
                         unkInt2 = verifyProgressiveItem(randomizer_getItemAtLocation("Goron Mines Gor Amato Key Shard"));
                         randomizer_setTempFlagForLocation("Goron Mines Gor Amato Key Shard");
                         // The randomizer skips the rest of the elder's dialogue; set the
-                        // "talked to" bit here (updateGoalFlags() derives the ladder switches from it).
+                        // "talked to" bit and the ladder switches derived from it here.
                         dComIfGs_onEventBit(TALKED_TO_GOR_AMATO_IN_GORON_MINES);
+                        randomizer_updateGoronMinesElderLadders();
                     }
 #endif
                     mPresentItemId =

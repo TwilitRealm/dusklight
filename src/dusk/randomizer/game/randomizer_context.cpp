@@ -582,22 +582,25 @@ static void updateGoalFlags() {
         }
     }
 
-    // Re-derive the Goron Mines elder ladder switches from the "talked to elder" event bits;
-    // the randomizer's key-shard shortcut skips the dialogue that vanilla uses to set them.
-    {
-        constexpr int GM_SAVE_ID       = 0x11;  // D_MN04
-        constexpr int GM_SW_ELDER_LAD1 = 0x27;
-        constexpr int GM_SW_ELDER_LAD2 = 0x28;
+    randomizer_updateGoronMinesElderLadders();
+}
 
-        if (dComIfGs_isEventBit(TALKED_TO_GOR_AMATO_IN_GORON_MINES) ||
-            dComIfGs_isEventBit(TALKED_TO_GOR_EBIZO_IN_GORON_MINES) ||
-            dComIfGs_isEventBit(TALKED_TO_GOR_LIGGS_IN_GORON_MINES)) {
-            if (!dComIfGs_isStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD1)) {
-                dComIfGs_onStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD1);
-            }
-            if (!dComIfGs_isStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD2)) {
-                dComIfGs_onStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD2);
-            }
+/*
+* Set the spoken to the goron elder flags correctly to allow you to climb the ladders
+ */
+void randomizer_updateGoronMinesElderLadders() {
+    constexpr int GM_SAVE_ID       = 0x11;  // D_MN04
+    constexpr int GM_SW_ELDER_LAD1 = 0x27;
+    constexpr int GM_SW_ELDER_LAD2 = 0x28;
+
+    if (dComIfGs_isEventBit(TALKED_TO_GOR_AMATO_IN_GORON_MINES) ||
+        dComIfGs_isEventBit(TALKED_TO_GOR_EBIZO_IN_GORON_MINES) ||
+        dComIfGs_isEventBit(TALKED_TO_GOR_LIGGS_IN_GORON_MINES)) {
+        if (!dComIfGs_isStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD1)) {
+            dComIfGs_onStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD1);
+        }
+        if (!dComIfGs_isStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD2)) {
+            dComIfGs_onStageSwitch(GM_SAVE_ID, GM_SW_ELDER_LAD2);
         }
     }
 }

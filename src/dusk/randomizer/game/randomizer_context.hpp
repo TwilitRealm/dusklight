@@ -250,6 +250,11 @@ void randomizer_setTempFlagForLocation(const std::string& locationName);
 
 void randomizer_setTempFlagForFLWOverride(u32 key);
 
+/*
+ * @brief Sets the Goron Mines elder ladder switches if any elder's key shard has been given.
+ */
+void randomizer_updateGoronMinesElderLadders();
+
 bool randomizer_checkTempleOfTimeRequirement();
 
 bool randomizer_mirrorChamberWallShouldExist();
