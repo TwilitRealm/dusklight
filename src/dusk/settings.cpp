@@ -142,7 +142,8 @@ UserSettings g_userSettings = {
         .infiniteRupees {"game.infiniteRupees", false},
         .enableIndefiniteItemDrops {"game.enableIndefiniteItemDrops", false},
         .moonJump {"game.moonJump", false},
-        .superClawshot {"game.superClawshot", false},
+        .superClawshotAttach {"game.superClawshotAttach", false},
+        .superClawshotLength {"game.superClawshotLength", false},
         .alwaysGreatspin {"game.alwaysGreatspin", AlwaysGreatspinMode::OFF},
         .enableFastIronBoots {"game.enableFastIronBoots", false},
         .canTransformAnywhere {"game.canTransformAnywhere", false},
@@ -356,7 +357,8 @@ void registerSettings() {
     Register(g_userSettings.game.infiniteRupees);
     Register(g_userSettings.game.enableIndefiniteItemDrops);
     Register(g_userSettings.game.moonJump);
-    Register(g_userSettings.game.superClawshot);
+    Register(g_userSettings.game.superClawshotAttach);
+    Register(g_userSettings.game.superClawshotLength);
     Register(g_userSettings.game.alwaysGreatspin);
     Register(g_userSettings.game.invincibleEnemies);
     Register(g_userSettings.game.easyQuickSpin);
