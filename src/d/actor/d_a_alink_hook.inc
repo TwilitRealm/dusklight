@@ -321,7 +321,11 @@ BOOL daAlink_c::checkHookshotStickBG(cBgS_PolyInfo& i_polyinfo) {
     #endif
 
     #if TARGET_PC
-    if (dusk::getSettings().game.superClawshot) {
+    const auto superClawshotMode = dusk::getSettings().game.superClawshot.getValue();
+    if (superClawshotMode == dusk::SuperClawshotMode::ATTACH) {
+        return TRUE;
+    }
+    if (superClawshotMode == dusk::SuperClawshotMode::BOTH) {
         return TRUE;
     }
     #endif
@@ -485,7 +489,8 @@ void daAlink_c::setHookshotSight() {
     }
 
     #if TARGET_PC
-    if (dusk::getSettings().game.superClawshot) {
+    const auto superClawshotMode = dusk::getSettings().game.superClawshot.getValue();
+    if (superClawshotMode == dusk::SuperClawshotMode::BOTH) {
         max_length = 69420.0f;
     }
     #endif
@@ -933,7 +938,8 @@ void daAlink_c::setHookshotPos() {
     }
 
     #if TARGET_PC
-    if (dusk::getSettings().game.superClawshot) {
+    const auto superClawshotMode = dusk::getSettings().game.superClawshot.getValue();
+    if (superClawshotMode == dusk::SuperClawshotMode::BOTH) {
         return_speed = 2870.0f;
         shoot_speed = 2870.0f;
         max_length = 69420.0f;
@@ -950,7 +956,8 @@ void daAlink_c::setHookshotPos() {
         }
 
         #if TARGET_PC
-        if (dusk::getSettings().game.superClawshot) {
+        const auto superClawshotMode = dusk::getSettings().game.superClawshot.getValue();
+        if (superClawshotMode == dusk::SuperClawshotMode::BOTH) {
             return_speed = 500.0f;
         }
         #endif
@@ -1605,7 +1612,8 @@ int daAlink_c::procHookshotFly() {
         f32 temp_f30 = mpHIO->mItem.mHookshot.m.mStickReturnSpeed + spAC.abs(mHookshotTopPos);
 
         #if TARGET_PC
-        if (dusk::getSettings().game.superClawshot) {
+        const auto superClawshotMode = dusk::getSettings().game.superClawshot.getValue();
+        if (superClawshotMode == dusk::SuperClawshotMode::BOTH) {
             temp_f30 = 500.0f + spAC.abs(mHookshotTopPos);
         }
         #endif
