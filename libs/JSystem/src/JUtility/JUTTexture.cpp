@@ -163,9 +163,11 @@ void JUTTexture::initTexObj(GXTlut param_0) {
     mTlutName = param_0;
     u8* image = ((u8*)mTexInfo);
     s32 imgOffset = mTexInfo->imageOffset;
+    /*
     DuskLog.debug("initTexObj: Offset={}, W={}, H={}, Ptr={}", imgOffset, (u16)mTexInfo->width,
            (u16)mTexInfo->height,
            (void*)mTexInfo);
+    */
     image += (imgOffset ? imgOffset : 0x20);
 #ifdef TARGET_PC
     mTexObj.reset();
