@@ -1,9 +1,13 @@
 #include <dusk/archipelago/archipelago_context.hpp>
 
+#include <algorithm>
 #include <array>
+#include <mutex>
+#include <chrono>
 #include <deque>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "Archipelago.h"
 #include "d/d_com_inf_game.h"
@@ -367,7 +371,84 @@ const char* getMessageTypeName(AP_MessageType type) {
     }
 }
 
-void ParseMessageData() {
+// Bursts (release, resync) past kMaxIndividualToasts are folded into one summary toast.
+// ItemSend messages don't say who sent the item, so remember what our own checks deliver
+// and match messages against that.
+struct PendingSend {
+    std::string item;
+    std::string player;
+    std::chrono::steady_clock::time_point time;
+};
+
+std::mutex sPendingSendsMutex;
+std::deque<PendingSend> sPendingSends;
+constexpr auto kPendingSendLifetime = std::chrono::seconds(60);
+
+void PrunePendingSends(std::chrono::steady_clock::time_point now) {
+    while (!sPendingSends.empty() && now - sPendingSends.front().time > kPendingSendLifetime)
+        sPendingSends.pop_front();
+}
+
+void NoteSentItem(const std::string& item, const std::string& player) {
+    const auto now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(sPendingSendsMutex);
+    PrunePendingSends(now);
+    sPendingSends.push_back({item, player, now});
+}
+
+// True (and forgets the entry) if we sent this item to this player.
+bool ConsumeSentItem(const std::string& item, const std::string& player) {
+    const auto now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(sPendingSendsMutex);
+    PrunePendingSends(now);
+    auto it = std::ranges::find_if(sPendingSends, [&](const PendingSend& send) {
+        return send.item == item && send.player == player;
+    });
+    if (it == sPendingSends.end())
+        return false;
+    sPendingSends.erase(it);
+    return true;
+}
+
+struct ToastBatch {
+    struct Entry {
+        std::string item;
+        std::string player;
+    };
+    std::vector<Entry> sent;
+    std::vector<Entry> received;
+};
+
+constexpr size_t kMaxIndividualToasts = 3;
+constexpr auto kToastDuration = std::chrono::seconds(3);
+constexpr auto kMessagePollInterval = std::chrono::milliseconds(50);
+
+void FlushToasts(const std::vector<ToastBatch::Entry>& entries, const char* title, const char* verb,
+    const char* preposition) {
+    if (entries.empty())
+        return;
+
+    if (entries.size() > kMaxIndividualToasts) {
+        ui::push_toast({
+            .title = title,
+            .content = fmt::format("{} {} items", verb, entries.size()),
+            .duration = kToastDuration,
+        });
+        return;
+    }
+
+    for (const auto& entry : entries) {
+        // names come from other players, escape them
+        ui::push_toast({
+            .title = title,
+            .content = fmt::format("{} {} {} {}", verb, ui::escape(entry.item), preposition,
+                ui::escape(entry.player)),
+            .duration = kToastDuration,
+        });
+    }
+}
+
+void ParseMessageData(ToastBatch& batch) {
     auto msg = AP_GetLatestMessage();
     if (msg == nullptr) {
         // race with the pending-message poll
@@ -377,11 +458,10 @@ void ParseMessageData() {
     switch (msg->type) {
     case AP_MessageType::ItemSend: {
         auto sendMsg = (AP_ItemSendMessage*)msg;
-        ui::push_toast({
-            .title = "Item Sent",
-            .content = fmt::format("Sent {} to {}", sendMsg->item, sendMsg->recvPlayer),
-            .duration = std::chrono::seconds(3),
-        });
+
+        // Items sent to us arrive as ItemRecv; only notify for our own sends
+        if (ConsumeSentItem(sendMsg->item, sendMsg->recvPlayer))
+            batch.sent.push_back({sendMsg->item, sendMsg->recvPlayer});
 
         DuskLog.info("[{}] {}", getMessageTypeName(msg->type), msg->text);
         break;
@@ -389,11 +469,7 @@ void ParseMessageData() {
     case AP_MessageType::ItemRecv: {
         auto recvMsg = (AP_ItemRecvMessage*)msg;
 
-        ui::push_toast({
-            .title = "Item Received",
-            .content = fmt::format("Got {} From {}", recvMsg->item, recvMsg->sendPlayer),
-            .duration = std::chrono::seconds(3),
-        });
+        batch.received.push_back({recvMsg->item, recvMsg->sendPlayer});
         // fallthrough for debug logging text contents
     }
     case AP_MessageType::Plaintext:
@@ -737,8 +813,15 @@ void ArchipelagoContext::MessageThreadFunc() {
     }
 
     while (IsConnected()) {
-        if (AP_IsMessagePending())
-            ParseMessageData();
+        // lets a multi-item packet finish arriving so it lands in one batch
+        std::this_thread::sleep_for(kMessagePollInterval);
+
+        ToastBatch batch;
+        while (AP_IsMessagePending())
+            ParseMessageData(batch);
+
+        FlushToasts(batch.sent, "Item Sent", "Sent", "to");
+        FlushToasts(batch.received, "Item Received", "Got", "from");
     }
 
     DuskLog.info("AP Thread ended.");
@@ -1169,7 +1252,10 @@ void ArchipelagoContext::HandleReceiveLocationScout(const std::vector<AP_Network
             parsedItemName,
             locName,
             item.location,
-            collected
+            collected,
+            item.itemName,
+            item.playerName,
+            item.player
         };
     }
 }
@@ -1205,6 +1291,8 @@ void ArchipelagoContext::UpdateCheckedLocations(bool warnIfNoChange) {
 
         if (isCollected && !cachedLocData.collected) {
             cachedLocData.collected = true;
+            if (cachedLocData.apPlayerSlot != AP_GetPlayerID())
+                NoteSentItem(cachedLocData.apItemName, cachedLocData.apPlayerName);
             AP_SendItem(cachedLocData.apLocationId);
             changed = true;
 

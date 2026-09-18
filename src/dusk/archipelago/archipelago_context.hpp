@@ -27,6 +27,10 @@ namespace dusk::archi
             std::string locationName;
             int64_t apLocationId = -1;
             bool collected = false;
+            // From the location scout; used to match our own "item sent" messages
+            std::string apItemName;
+            std::string apPlayerName;
+            int apPlayerSlot = -1;
         };
 
         struct ReceivedItemEntry {

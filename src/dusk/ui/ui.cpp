@@ -12,7 +12,9 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <mutex>
 #include <ranges>
+#include <vector>
 
 #include "aurora/lib/window.hpp"
 #include "dusk/config.hpp"
@@ -34,6 +36,9 @@ std::vector<std::unique_ptr<Document> > sDocumentStack;
 // Documents that don't participate in the focus stack
 std::vector<std::unique_ptr<Document> > sPassiveDocuments;
 std::deque<Toast> sToasts;
+// push_toast() can be called off the main thread; get_toasts() moves these into sToasts.
+std::mutex sIncomingToastsMutex;
+std::vector<Toast> sIncomingToasts;
 bool sMenuNotificationRequested = false;
 
 // Sometimes gamepads can connect and disconnect quickly, especially during
@@ -375,7 +380,8 @@ Insets safe_area_insets(Rml::Context* context) noexcept {
 }
 
 void push_toast(Toast toast) noexcept {
-    sToasts.push_back(std::move(toast));
+    std::lock_guard lock(sIncomingToastsMutex);
+    sIncomingToasts.push_back(std::move(toast));
 }
 
 std::vector<std::unique_ptr<Document> >& get_document_stack() noexcept {
@@ -383,6 +389,11 @@ std::vector<std::unique_ptr<Document> >& get_document_stack() noexcept {
 }
 
 std::deque<Toast>& get_toasts() noexcept {
+    std::lock_guard lock(sIncomingToastsMutex);
+    for (auto& toast : sIncomingToasts) {
+        sToasts.push_back(std::move(toast));
+    }
+    sIncomingToasts.clear();
     return sToasts;
 }
 
