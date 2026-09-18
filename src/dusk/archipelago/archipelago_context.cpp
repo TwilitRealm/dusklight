@@ -5,6 +5,7 @@
 #include <mutex>
 #include <chrono>
 #include <deque>
+#include <random>
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -808,7 +809,6 @@ void ArchipelagoContext::MessageThreadFunc() {
 
     if (IsConnected()) {
         AP_GetRoomInfo(&instance().m_roomInfo);
-        instance().m_isEnableDeathLink = AP_IsDeathLinkEnabled();
         RequestAllLocationScout();
     }
 
@@ -1440,9 +1440,29 @@ bool ArchipelagoContext::IsReceivedLocationScouts() {
 }
 
 void ArchipelagoContext::TryHandleDeathLink() {
-    if (instance().m_isEnableDeathLink && !instance().m_isFromDeathLink) {
-        // TODO: come up with better death messages
-        AP_DeathLinkSend("%YOU% was unable to become the Hero of Twilight.");
+    if (instance().m_isFromDeathLink) {
+        instance().m_isFromDeathLink = false;
+        return;
+    }
+
+    if (AP_IsDeathLinkEnabled()) {
+        static const char* const kDeathMessages[] = {
+            "%YOU% was unable to become the Hero of Twilight.",
+            "%YOU% was pecked to death by a Cucco. Nobody is surprised.",
+            "%YOU% angered the Cuccos one time too many.",
+            "%YOU% got chased through Hyrule Field by a Bulblin and lost.",
+            "%YOU% lost a wrestling match to Bo.",
+            "%YOU% stepped in the Twilight and forgot how to be a wolf.",
+            "%YOU% was slain by a Bokoblin holding a wooden club. Embarrassing.",
+            "%YOU% challenged Ganondorf to a quick chat. He was not in a chatting mood.",
+            "%YOU% was clobbered by a Goron who just wanted to play Sumo.",
+            "%YOU% fell off Epona while attempting to look cool.",
+            "%YOU% wandered into Snowpeak and got lost in the blizzard.",
+        };
+
+        static std::mt19937 rng{std::random_device{}()};
+        std::uniform_int_distribution<size_t> pick(0, std::size(kDeathMessages) - 1);
+        AP_DeathLinkSend(kDeathMessages[pick(rng)]);
     }
 }
 

@@ -63,7 +63,6 @@ namespace dusk::archi
         bool m_isUpdateLocations = false;
         bool m_isNeedResetInv = false;
         bool m_isAllowUpdateLocations = false;
-        bool m_isEnableDeathLink = false;
 
         // Frame counter for the periodic UpdateCheckedLocations() backstop in Execute(), for checks
         // whose flag is set outside execItemGet() (AG poe soul pulls, Agitha bug rewards).
