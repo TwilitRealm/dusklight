@@ -1381,36 +1381,40 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
         leftPane.register_control(
             leftPane.add_select_button({
                 .key = "Super Clawshot",
-                .getValue =
-                    [] {
-                        return kSuperClawshotModes[static_cast<u8>(
-                            getSettings().game.superClawshot.getValue())];
-                    },
+                .getValue = [] {
+                    int count = 0;
+                    int total = 0;
+                    auto check = [&](bool enabled) { total++; if (enabled) count++; };
+                    check(getSettings().game.superClawshotAttach.getValue());
+                    check(getSettings().game.superClawshotLength.getValue());
+                    static thread_local char buf[12];
+                    std::snprintf(buf, sizeof(buf), "%d / %d", count, total);
+                    return Rml::String{buf};
+                },
                 .isDisabled = [] { return dusk::speedrun::isActive(); },
-                .isModified =
-                    [] {
-                        return getSettings().game.superClawshot.getValue() !=
-                               getSettings().game.superClawshot.getDefaultValue();
-                    },
+                .isModified = [] {
+                    return getSettings().game.superClawshotAttach.getValue() !=
+                               getSettings().game.superClawshotAttach.getDefaultValue()
+                           || getSettings().game.superClawshotLength.getValue() !=
+                                  getSettings().game.superClawshotLength.getDefaultValue();
+                },
             }),
             rightPane, [](Pane& pane) {
-                for (int i = 0; i < static_cast<int>(kSuperClawshotModes.size()); i++) {
+                pane.clear();
+                pane.add_rml(
+                    "Extends Clawshot behavior beyond the normal game rules.");
+                auto addSubToggle = [&pane](const Rml::String& text, ConfigVar<bool>& var) {
                     pane.add_button({
-                            .text = kSuperClawshotModes[i],
-                            .isSelected =
-                                [i] {
-                                    return getSettings().game.superClawshot.getValue() ==
-                                           static_cast<SuperClawshotMode>(i);
-                                },
-                        })
-                        .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
-                            getSettings().game.superClawshot.setValue(
-                                static_cast<SuperClawshotMode>(i));
-                            config::save();
-                        });
-                }
-                pane.add_rml("<br/>Extends Clawshot behavior beyond the normal game rules.");
+                        .text = text,
+                        .isSelected = [&var] { return var.getValue(); },
+                    }).on_pressed([&var] {
+                        mDoAud_seStartMenu(kSoundItemChange);
+                        var.setValue(!var.getValue());
+                        config::save();
+                    });
+                };
+                addSubToggle("Attach to Everything", getSettings().game.superClawshotAttach);
+                addSubToggle("Super Length", getSettings().game.superClawshotLength);
             });
         leftPane.register_control(
             leftPane.add_select_button({
