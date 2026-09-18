@@ -113,12 +113,6 @@ constexpr std::array kAlwaysGreatspinModes = {
     "Always",
 };
 
-constexpr std::array kSuperClawshotModes = {
-    "Off",
-    "Attach to Everything",
-    "Attach & Super Length",
-};
-
 constexpr std::array kMagicArmorModes = {
     "Normal",
     "On Damage",
