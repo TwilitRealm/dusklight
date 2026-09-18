@@ -325,22 +325,21 @@ static bool ReadEventBit(u16 flagValue) {
     return dComIfGs_isEventBit(flagValue) != 0;
 }
 
-// The 8 boss-defeated keys. clearFlagValue is the vanilla dungeon-clear event bit, which
-// UpdateFlagTrackingData() reads (see the note there).
+// Boss-defeated keys. nodeId is the dStage_SaveTbl_LV1..LV8 index (0x10-0x17).
 struct BossTrackingEntry {
     const char* key;
-    u16 clearFlagValue;
+    int nodeId;
 };
 
 static const std::array<BossTrackingEntry, 8> sBossTrackingEntries = {{
-    {"Diababa Defeated", 0x0602},
-    {"Fyrus Defeated", 0x0701},
-    {"Morpheel Defeated", 0x0904},
-    {"Stallord Defeated", 0x2010},
-    {"Blizzeta Defeated", 0x2008},
-    {"Armogohma Defeated", 0x2004},
-    {"Argorok Defeated", 0x2002},
-    {"Zant Defeated", 0x4680},
+    {"Diababa Defeated", 0x10},
+    {"Fyrus Defeated", 0x11},
+    {"Morpheel Defeated", 0x12},
+    {"Stallord Defeated", 0x13},
+    {"Blizzeta Defeated", 0x14},
+    {"Armogohma Defeated", 0x15},
+    {"Argorok Defeated", 0x16},
+    {"Zant Defeated", 0x17},
 }};
 
 const SettingsNameConvert& GetAPSettingNameConvert(const std::string& apSettingName) {
@@ -812,15 +811,23 @@ void ArchipelagoContext::UpdateFlagTrackingData() {
         instance().m_lastSentFlags[entry.key] = value;
     }
 
-    // Boss-defeated state comes from the dungeon-clear event bit; dComIfGs_isStageBossEnemy()
-    // reads false for bosses in dungeons other than the one you're currently in.
-    for (const auto& entry : sBossTrackingEntries) {
-        bool defeated = ReadEventBit(entry.clearFlagValue);
-        auto it = instance().m_lastSentFlags.find(entry.key);
-        if (it != instance().m_lastSentFlags.end() && it->second == defeated)
-            continue;
-        SetTrackedBoolDataStorage(pending, keyPrefix + entry.key, defeated, false);
-        instance().m_lastSentFlags[entry.key] = defeated;
+    // The dungeon-clear event bits can't be used here: startflags.yaml pre-sets some of them.
+    // isStageBossEnemy() is only live for the current stage, so putSave() while inside the dungeon
+    // to keep the saved copy current after leaving. It also crashes without stage info (mid-load).
+    stage_stag_info_class* currentStagInfo = dComIfGp_getStageStagInfo();
+    if (currentStagInfo != nullptr) {
+        int currentNode = dStage_stagInfo_GetSaveTbl(currentStagInfo);
+        for (const auto& entry : sBossTrackingEntries) {
+            if (entry.nodeId == currentNode) {
+                dComIfGs_putSave(entry.nodeId);
+            }
+            bool defeated = dComIfGs_isStageBossEnemy(entry.nodeId) != 0;
+            auto it = instance().m_lastSentFlags.find(entry.key);
+            if (it != instance().m_lastSentFlags.end() && it->second == defeated)
+                continue;
+            SetTrackedBoolDataStorage(pending, keyPrefix + entry.key, defeated, false);
+            instance().m_lastSentFlags[entry.key] = defeated;
+        }
     }
 
     AP_CommitServerData();
