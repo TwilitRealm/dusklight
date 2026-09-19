@@ -90,6 +90,7 @@
 #include <borealis/version.h>
 #include <cxxopts.hpp>
 #include <dolphin/dvd.h>
+#include <SDL3/SDL_filesystem.h>
 #include <SDL3/SDL_init.h>
 #include <tracy/Tracy.hpp>
 
@@ -651,17 +652,55 @@ int game_main(int argc, char* argv[]) {
     // PADSetDefaultMapping(&defaultPadMapping, PAD_TYPE_STANDARD);
 
     {
-        const auto mappingsPath = dusk::ConfigPath / "gamecontrollerdb.txt";
+        static constexpr const char* kFallbackMappings[] = {
+            "03000000790000004418000010010000,Mayflash GameCube Controller,a:b1,b:b0,dpdown:b14,dpleft:b15,dpright:b13,dpup:b12,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b7,righttrigger:a4,rightx:a5,righty:a2,start:b9,x:b2,y:b3,platform:Linux,",
+            "03000000790000004318000010010000,Mayflash GameCube Adapter,a:b1,b:b0,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b7,righttrigger:a4,rightx:a5,righty:a2,start:b9,x:b2,y:b3,platform:Linux,",
+            "03000000790000004618000010010000,Nintendo GameCube Adapter,a:b1,b:b0,dpdown:b14,dpleft:b15,dpright:b13,dpup:b12,lefttrigger:b4,leftx:a0,lefty:a1,rightshoulder:b7,righttrigger:b5,rightx:a5~,righty:a2~,start:b9,x:b2,y:b3,platform:Linux,",
+            "03000000790000004418000000000000,MAYFLASH GameCube Controller Adapter,a:b1,b:b0,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b7,righttrigger:a4,rightx:a5,righty:a2,start:b9,x:b2,y:b3,platform:Windows,",
+            "03000000790000004318000000000000,MAYFLASH GameCube Controller Adapter,a:b1,b:b2,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b4,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b7,righttrigger:a4,rightx:a5,righty:a2,start:b9,x:b0,y:b3,platform:Windows,",
+            "03000000790000004618000000000000,GameCube Adapter,a:b1,b:b0,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b7,righttrigger:a4,rightx:a5,righty:a2,start:b9,x:b2,y:b3,platform:Windows,",
+            "03000000790000004418000000010000,MAYFLASH GameCube Controller Adapter,a:b1,b:b2,dpdown:b14,dpleft:b15,dpright:b13,dpup:b12,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b7,righttrigger:a4,rightx:a5,righty:a2,start:b9,x:b0,y:b3,platform:Mac OS X,",
+            "03000000790000004318000000010000,Mayflash GameCube Adapter,a:b4,b:b0,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,lefttrigger:a12,leftx:a0,lefty:a4,rightshoulder:b28,righttrigger:a16,rightx:a20,righty:a8,start:b36,x:b8,y:b12,platform:Mac OS X,",
+            "03000000790000004618000000010000,GameCube Adapter,a:b4,b:b0,dpdown:b56,dpleft:b60,dpright:b52,dpup:b48,lefttrigger:a12,leftx:a0,lefty:a4,rightshoulder:b28,righttrigger:a16,rightx:a20,righty:a8,start:b36,x:b8,y:b12,platform:Mac OS X,",
+        };
+        for (const char* mapping : kFallbackMappings) {
+            SDL_AddGamepadMapping(mapping);
+        }
+
+        std::filesystem::path resMappingsPath;
+#ifdef DUSK_ASSET_DIR
+        resMappingsPath = std::filesystem::path(DUSK_ASSET_DIR) / "res" / "gamecontrollerdb.txt";
+        if (!std::filesystem::exists(resMappingsPath)) {
+            resMappingsPath = std::filesystem::path(DUSK_ASSET_DIR) / "gamecontrollerdb.txt";
+        }
+#else
+        if (const char* basePath = SDL_GetBasePath(); basePath != nullptr && basePath[0] != '\0') {
+            resMappingsPath = std::filesystem::path(basePath) / "res" / "gamecontrollerdb.txt";
+        }
+#endif
+        if (resMappingsPath.empty() || !std::filesystem::exists(resMappingsPath)) {
+            resMappingsPath = std::filesystem::path("res") / "gamecontrollerdb.txt";
+        }
+
         std::error_code ec;
-        if (std::filesystem::exists(mappingsPath, ec)) {
-            const auto mappingsPathString = borealis::io::fs_path_to_string(mappingsPath);
-            if (SDL_AddGamepadMappingsFromFile(mappingsPathString.c_str()) < 0) {
+        if (std::filesystem::exists(resMappingsPath, ec)) {
+            const auto pathString = borealis::io::fs_path_to_string(resMappingsPath);
+            if (SDL_AddGamepadMappingsFromFile(pathString.c_str()) < 0) {
                 DuskLog.warn("Failed to load gamecontrollerdb.txt from '{}': {}",
-                    mappingsPathString, SDL_GetError());
+                    pathString, SDL_GetError());
+            }
+        }
+
+        const auto userMappingsPath = dusk::ConfigPath / "gamecontrollerdb.txt";
+        if (std::filesystem::exists(userMappingsPath, ec)) {
+            const auto userPathString = borealis::io::fs_path_to_string(userMappingsPath);
+            if (SDL_AddGamepadMappingsFromFile(userPathString.c_str()) < 0) {
+                DuskLog.warn("Failed to load gamecontrollerdb.txt from '{}': {}",
+                    userPathString, SDL_GetError());
             }
         } else if (ec) {
             DuskLog.warn("Failed to inspect gamecontrollerdb.txt in data folder '{}': {}",
-                borealis::io::fs_path_to_string(mappingsPath), ec.message());
+                borealis::io::fs_path_to_string(userMappingsPath), ec.message());
         }
     }
 
