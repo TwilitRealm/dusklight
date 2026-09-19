@@ -239,7 +239,9 @@
               (lib.cmakeFeature "AURORA_DAWN_LINKAGE" "static")
               (lib.cmakeFeature "AURORA_NOD_PROVIDER" "system")
               (lib.cmakeFeature "AURORA_SDL3_PROVIDER" "system")
+              (lib.cmakeFeature "BOREALIS_CURL_PROVIDER" "system")
               (lib.cmakeBool "BUILD_SHARED_LIBS" false)
+              (lib.cmakeBool "DUSK_ENABLE_CODE_MODS" false)
             ]
             ++ lib.mapAttrsToList (key: src: "-DFETCHCONTENT_SOURCE_DIR_${key}=${src}") fetchContentDirs;
 
