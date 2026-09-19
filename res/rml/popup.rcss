@@ -1,7 +1,3 @@
-*, *:before, *:after {
-    box-sizing: border-box;
-}
-
 body {
     overflow: visible;
     width: 100%;

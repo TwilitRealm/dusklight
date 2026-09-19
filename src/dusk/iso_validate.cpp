@@ -41,11 +41,13 @@ constexpr auto AcceptedDiscs = std::to_array<borealis::disc::AcceptedDisc>({
         .expectedHash = borealis::disc::parse_xxh3_128("9ef597588b0035ca9e91b333fa9a8a7e"),
     },
     {
-        .gameId = "RZDE01", .revision = 0,
+        .gameId = "RZDE01",
+        .revision = 0,
         .expectedHash = borealis::disc::parse_xxh3_128("b3d91fbea59e5c66934d04c01566728e"),
     },
     {
-        .gameId = "RZDE01", .revision = 2,
+        .gameId = "RZDE01",
+        .revision = 2,
         .expectedHash = borealis::disc::parse_xxh3_128("c3ec420921a1b36d6ae43f576491d25c"),
     },
     {
@@ -103,11 +105,12 @@ Region region_from_game_id(std::string_view gameId) noexcept {
     return Region::NorthAmerica;
 }
 
-void update_info(const borealis::disc::Result& result, DiscInfo& info) noexcept {
+void update_info(const borealis::disc::Result& result, DiscInfo& info) {
     if (!result.metadata.gameId.empty()) {
         info.platform = result.metadata.platform;
         info.region = region_from_game_id(result.metadata.gameId);
         info.revision = result.metadata.revision;
+        info.gameId = result.metadata.gameId;
     }
 }
 

@@ -26,6 +26,7 @@ struct Query {
     Sort sort = Sort::Featured;
     int page = 1;
     bool thisDevice = true;
+    bool includeNatives = true;
 };
 
 struct Category {
@@ -124,6 +125,7 @@ struct UpdateFetchResult {
 };
 
 std::string_view platform() noexcept;
+bool supports_native_installs() noexcept;
 borealis::Task<UpdateFetchResult> fetch_updates(
     UpdateEnvironment environment, std::vector<std::string> targets);
 

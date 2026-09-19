@@ -29,6 +29,7 @@ std::string mod_image_source(const mods::LoadedMod& mod, std::string_view bundle
 #include <vector>
 
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 
 namespace dusk::ui {
 namespace {
@@ -61,7 +62,7 @@ std::optional<DecodedImage> load_mod_image(std::string_view idAndPath, std::stri
     }
     const std::string modId{idAndPath.substr(0, slash)};
     const std::string path{idAndPath.substr(slash + 1)};
-    if (!mods::is_safe_resource_path(path)) {
+    if (!utils::is_safe_resource_path(path)) {
         Log.warn("Unsafe path in mod image source '{}'", source);
         return std::nullopt;
     }

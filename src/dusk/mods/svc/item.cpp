@@ -4,10 +4,9 @@
 
 #include "dusk/mods/item.hpp"
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 
 #include "d/d_item_data.h"
-
-#include <string_view>
 
 namespace dusk::mods::svc {
 namespace {
@@ -15,17 +14,9 @@ namespace {
 constexpr size_t kMaxCheckNameLength = 256;
 constexpr uint32_t kGiveFlagMask = ITEM_GIVE_SILENT | ITEM_GIVE_RESOLVE;
 
-bool is_valid_check_name(const char* name) {
-    if (name == nullptr) {
-        return false;
-    }
-    const std::string_view view{name};
-    return !view.empty() && view.size() <= kMaxCheckNameLength;
-}
-
 ModResult item_set_check_override(ModContext* context, const char* name, uint8_t itemNo) {
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !is_valid_check_name(name)) {
+    if (mod == nullptr || !utils::is_valid_name(name, kMaxCheckNameLength)) {
         return MOD_INVALID_ARGUMENT;
     }
     return item_check_set_override(*mod, name, itemNo);
@@ -33,7 +24,7 @@ ModResult item_set_check_override(ModContext* context, const char* name, uint8_t
 
 ModResult item_clear_check_override(ModContext* context, const char* name) {
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !is_valid_check_name(name)) {
+    if (mod == nullptr || !utils::is_valid_name(name, kMaxCheckNameLength)) {
         return MOD_INVALID_ARGUMENT;
     }
     return item_check_clear_override(*mod, name);
@@ -46,7 +37,9 @@ ModResult item_set_check_resolver(ModContext* context, const char* name, ItemChe
     }
 
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || fn == nullptr || (name != nullptr && !is_valid_check_name(name))) {
+    if (mod == nullptr || fn == nullptr ||
+        (name != nullptr && !utils::is_valid_name(name, kMaxCheckNameLength)))
+    {
         return MOD_INVALID_ARGUMENT;
     }
 
@@ -68,7 +61,9 @@ ModResult item_clear_check_resolver(ModContext* context, ItemCheckHandle handle)
 
 ModResult item_resolve_check(
     ModContext* context, const char* name, uint8_t originalItemNo, uint8_t* outItem) {
-    if (mod_from_context(context) == nullptr || !is_valid_check_name(name) || outItem == nullptr) {
+    if (mod_from_context(context) == nullptr || !utils::is_valid_name(name, kMaxCheckNameLength) ||
+        outItem == nullptr)
+    {
         return MOD_INVALID_ARGUMENT;
     }
     *outItem = item_check(name, originalItemNo, nullptr);
@@ -77,7 +72,7 @@ ModResult item_resolve_check(
 
 ModResult item_resolve_check_full(ModContext* context, const char* name, uint8_t originalItemNo,
     ItemCheckResolution* outResolution) {
-    if (mod_from_context(context) == nullptr || !is_valid_check_name(name) ||
+    if (mod_from_context(context) == nullptr || !utils::is_valid_name(name, kMaxCheckNameLength) ||
         outResolution == nullptr)
     {
         return MOD_INVALID_ARGUMENT;
@@ -89,7 +84,8 @@ ModResult item_resolve_check_full(ModContext* context, const char* name, uint8_t
 ModResult item_give_item(
     ModContext* context, const char* checkName, uint8_t itemNo, uint32_t flags) {
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || (checkName != nullptr && !is_valid_check_name(checkName)) ||
+    if (mod == nullptr ||
+        (checkName != nullptr && !utils::is_valid_name(checkName, kMaxCheckNameLength)) ||
         (flags & ~kGiveFlagMask) != 0)
     {
         return MOD_INVALID_ARGUMENT;

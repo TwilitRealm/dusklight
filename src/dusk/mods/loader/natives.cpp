@@ -6,6 +6,7 @@
 #include "dusk/data.hpp"
 #include "dusk/mods/log_buffer.hpp"
 #include "dusk/mods/svc/registry.hpp"
+#include "dusk/utilities.hpp"
 
 #include <borealis/io.hpp>
 #include <fmt/format.h>
@@ -155,7 +156,7 @@ NativeLocateResult locate_native_runtime(ModBundle& bundle) {
         if (!k_nativePlatform.empty() && name.starts_with(platformPrefix)) {
             const std::string_view relativeName{
                 name.data() + platformPrefix.size(), name.size() - platformPrefix.size()};
-            if (!is_safe_resource_path(relativeName)) {
+            if (!utils::is_safe_resource_path(relativeName)) {
                 continue;
             }
             result.runtimeEntries.push_back(name);
@@ -169,11 +170,6 @@ NativeLocateResult locate_native_runtime(ModBundle& bundle) {
         std::unique(result.runtimeEntries.begin(), result.runtimeEntries.end()),
         result.runtimeEntries.end());
     return result;
-}
-
-// True if the first `capacity` bytes of `str` contain a NUL.
-bool terminated_within(const char* str, size_t capacity) {
-    return std::memchr(str, '\0', capacity) != nullptr;
 }
 
 bool parse_meta(NativeMod& native, LoadedMod& mod) {
@@ -237,7 +233,8 @@ bool parse_meta(NativeMod& native, LoadedMod& mod) {
                 return invalid("truncated import record");
             }
             auto* record = reinterpret_cast<ModMetaImport*>(const_cast<uint8_t*>(cursor));
-            if (!terminated_within(record->service_id.chars, sizeof(record->service_id.chars))) {
+            if (!utils::bounded_string(record->service_id.chars, sizeof(record->service_id.chars)))
+            {
                 return invalid("unterminated import service id");
             }
             parsed.imports.push_back(record);
@@ -248,7 +245,8 @@ bool parse_meta(NativeMod& native, LoadedMod& mod) {
                 return invalid("truncated export record");
             }
             auto* record = reinterpret_cast<ModMetaExport*>(const_cast<uint8_t*>(cursor));
-            if (!terminated_within(record->service_id.chars, sizeof(record->service_id.chars))) {
+            if (!utils::bounded_string(record->service_id.chars, sizeof(record->service_id.chars)))
+            {
                 return invalid("unterminated export service id");
             }
             parsed.exports.push_back(record);
@@ -269,11 +267,12 @@ bool parse_meta(NativeMod& native, LoadedMod& mod) {
             auto* record = reinterpret_cast<ModMetaHookMem*>(const_cast<uint8_t*>(cursor));
             const char* strings = reinterpret_cast<const char*>(cursor) + sizeof(ModMetaHookMem);
             const size_t capacity = size - sizeof(ModMetaHookMem);
-            if (!terminated_within(strings, capacity)) {
+            const auto vtableName = utils::bounded_string(strings, capacity);
+            if (!vtableName) {
                 return invalid("unterminated hook vtable symbol");
             }
-            const size_t vtableLen = std::char_traits<char>::length(strings);
-            if (!terminated_within(strings + vtableLen + 1, capacity - vtableLen - 1)) {
+            const size_t vtableLen = vtableName->size();
+            if (!utils::bounded_string(strings + vtableLen + 1, capacity - vtableLen - 1)) {
                 return invalid("unterminated hook display name");
             }
             parsed.hookMems.push_back(record);
@@ -291,11 +290,12 @@ bool parse_meta(NativeMod& native, LoadedMod& mod) {
             }
             const char* strings = reinterpret_cast<const char*>(cursor) + sizeof(ModMetaHookMemExt);
             const size_t capacity = size - sizeof(ModMetaHookMemExt);
-            if (!terminated_within(strings, capacity)) {
+            const auto vtableName = utils::bounded_string(strings, capacity);
+            if (!vtableName) {
                 return invalid("unterminated extended hook vtable symbol");
             }
-            const size_t vtableLen = std::char_traits<char>::length(strings);
-            if (!terminated_within(strings + vtableLen + 1, capacity - vtableLen - 1)) {
+            const size_t vtableLen = vtableName->size();
+            if (!utils::bounded_string(strings + vtableLen + 1, capacity - vtableLen - 1)) {
                 return invalid("unterminated extended hook display name");
             }
             parsed.hookMemExts.push_back(record);
@@ -307,7 +307,7 @@ bool parse_meta(NativeMod& native, LoadedMod& mod) {
             }
             auto* record = reinterpret_cast<ModMetaHookName*>(const_cast<uint8_t*>(cursor));
             const char* name = reinterpret_cast<const char*>(cursor) + sizeof(ModMetaHookName);
-            if (!terminated_within(name, size - sizeof(ModMetaHookName))) {
+            if (!utils::bounded_string(name, size - sizeof(ModMetaHookName))) {
                 return invalid("unterminated hook symbol name");
             }
             parsed.hookNames.push_back(record);
@@ -446,7 +446,7 @@ void ModLoader::load_native(
             }
             const std::string_view relativeName{
                 entry.data() + platformPrefix.size(), entry.size() - platformPrefix.size()};
-            if (!is_safe_resource_path(relativeName)) {
+            if (!utils::is_safe_resource_path(relativeName)) {
                 log::write(mod.metadata.id, LOG_LEVEL_ERROR,
                     "unsafe native runtime path '{}'; skipping", entry);
                 return;
@@ -594,7 +594,7 @@ ModManifestInfo build_manifest_info(const ModMetaParsed& parsed) {
     ModManifestInfo info;
     info.imports.reserve(parsed.imports.size());
     for (const auto* record : parsed.imports) {
-        if (!svc::valid_service_id(record->service_id.chars)) {
+        if (!utils::is_valid_name(record->service_id.chars)) {
             continue;
         }
         info.imports.push_back({
@@ -606,7 +606,7 @@ ModManifestInfo build_manifest_info(const ModMetaParsed& parsed) {
     }
     info.exports.reserve(parsed.exports.size());
     for (const auto* record : parsed.exports) {
-        if (!svc::valid_service_id(record->service_id.chars)) {
+        if (!utils::is_valid_name(record->service_id.chars)) {
             continue;
         }
         info.exports.push_back({

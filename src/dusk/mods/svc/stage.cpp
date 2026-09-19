@@ -11,7 +11,6 @@
 #include <aurora/lib/logging.hpp>
 
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -222,14 +221,6 @@ void stage_remove_mod(LoadedMod& mod) {
 namespace {
 constexpr size_t kMaxStageNameLength = 8;
 
-bool is_valid_stage_name(const char* stage) {
-    if (stage == nullptr) {
-        return false;
-    }
-    const std::string_view view{stage};
-    return !view.empty() && view.size() <= kMaxStageNameLength;
-}
-
 bool is_valid_record_size(size_t size) {
     return size == kActrEntrySize || size == kTgscEntrySize;
 }
@@ -241,7 +232,7 @@ ModResult stage_patch_actor_(ModContext* context, const char* stage, uint8_t roo
     }
 
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !is_valid_stage_name(stage) || record == nullptr ||
+    if (mod == nullptr || !utils::is_valid_name(stage, kMaxStageNameLength) || record == nullptr ||
         !is_valid_record_size(recordSize))
     {
         return MOD_INVALID_ARGUMENT;
@@ -264,7 +255,7 @@ ModResult stage_delete_actor_(ModContext* context, const char* stage, uint8_t ro
     }
 
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !is_valid_stage_name(stage)) {
+    if (mod == nullptr || !utils::is_valid_name(stage, kMaxStageNameLength)) {
         return MOD_INVALID_ARGUMENT;
     }
 
@@ -283,8 +274,8 @@ ModResult stage_add_actor_(ModContext* context, const char* stage, uint8_t room,
     }
 
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !is_valid_stage_name(stage) || room == kRoomDefault ||
-        record == nullptr || !is_valid_record_size(recordSize))
+    if (mod == nullptr || !utils::is_valid_name(stage, kMaxStageNameLength) ||
+        room == kRoomDefault || record == nullptr || !is_valid_record_size(recordSize))
     {
         return MOD_INVALID_ARGUMENT;
     }

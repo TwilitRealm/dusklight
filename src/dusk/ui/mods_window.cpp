@@ -28,6 +28,7 @@
 #include <tracy/Tracy.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 
 #include <memory>
@@ -47,10 +48,10 @@ struct ModStatus {
 
 ModStatus mod_status(const mods::LoadedMod& mod) {
     if (mod.loadFailed) {
-        return {"failed", "Failed"};
+        return {"error", "Failed"};
     }
     if (mod.active) {
-        return {"active", "Active"};
+        return {"success", "Active"};
     }
     if (mod.suspendedByProvider) {
         return {"suspended", "Suspended"};
@@ -117,10 +118,13 @@ public:
     ModListEntry(Rml::Element* parent, const mods::LoadedMod& mod)
         : FluentComponent{append(parent, "mod-entry")} {
         mRoot->SetAttribute("mod-id", mod.metadata.id);
-        auto* icon = append(mRoot, "mod-icon");
+        mIcon = append(mRoot, "mod-icon");
+        mInactive = !mod.active;
         if (!mod.metadata.iconPath.empty()) {
-            auto* image = append(icon, "img");
-            image->SetAttribute("src", mod_image_source(mod, mod.metadata.iconPath));
+            auto* image = append(mIcon, "mod-icon-image");
+            image->SetProperty(
+                "decorator", fmt::format(R"(image-effects("{}" fill))",
+                                 escape(mod_image_source(mod, mod.metadata.iconPath))));
         }
 
         const auto status = mod_status(mod);
@@ -139,7 +143,7 @@ public:
         append_text(append(sub, "span"), "·");
         append_text(append(sub, "mod-version"), fmt::format("v{}", mod.metadata.version));
         append_text(append(sub, "span"), "·");
-        auto* statusElement = append(sub, "mod-status");
+        auto* statusElement = append(sub, "status-badge");
         if (status.badgeClass[0] != '\0') {
             statusElement->SetClass(status.badgeClass, true);
         }
@@ -157,6 +161,29 @@ public:
             return false;
         });
     }
+
+    void update() override {
+        if (mInactive) {
+            const auto setGray = [this](const char* source, Rml::PropertyId target) {
+                auto color = mIcon->GetProperty(source)->Get<Rml::Colourb>();
+                const auto gray = static_cast<Rml::byte>(std::lround(
+                    color.red * 0.2126f + color.green * 0.7152f + color.blue * 0.0722f));
+                color.red = color.green = color.blue = gray;
+                const Rml::Property value{color, Rml::Unit::COLOUR};
+                const auto* current = mIcon->GetLocalProperty(target);
+                if (current == nullptr || *current != value) {
+                    mIcon->SetProperty(target, value);
+                }
+            };
+            setGray("mod-icon-tint", Rml::PropertyId::Color);
+            setGray("mod-icon-background", Rml::PropertyId::BackgroundColor);
+        }
+        Component::update();
+    }
+
+private:
+    Rml::Element* mIcon = nullptr;
+    bool mInactive = false;
 };
 
 class OnlineModsEntry final : public FluentComponent<OnlineModsEntry> {
@@ -197,8 +224,9 @@ public:
         mRoot->SetClass("inactive", !mod.active);
         if (hasBanner) {
             auto* image = append(mRoot, "mod-header-image");
-            image->SetProperty("decorator", fmt::format(R"(image("{}" cover center center))",
-                                                mod_image_source(mod, mod.metadata.bannerPath)));
+            image->SetProperty(
+                "decorator", fmt::format(R"(image-effects("{}" cover))",
+                                 escape(mod_image_source(mod, mod.metadata.bannerPath))));
         }
 
         auto* actions = append(mRoot, "mod-actions");
@@ -243,6 +271,8 @@ private:
     Button& make_button(Rml::Element* parent, const ContextMenu::Item& item) {
         auto button = std::make_unique<IconButton>(
             parent, IconButton::Props{.icon = item.icon, .label = item.text});
+        button->root()->SetClass("overlay", true);
+        button->root()->SetClass("danger", item.destructive);
         Button& ref = *button;
         mChildren.emplace_back(std::move(button));
         mButtons.push_back(&ref);
@@ -414,6 +444,7 @@ Component* ModsWindow::selected_utility() const {
 }
 
 void ModsWindow::build_online(Pane& pane) {
+    mRoot->SetClass("image-header", false);
     mSelection = Selection::Online;
     mSelectedMod = nullptr;
     mSelectedModId.clear();
@@ -475,6 +506,7 @@ void ModsWindow::build_content(Rml::Element* content) {
 }
 
 void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
+    mRoot->SetClass("image-header", !mod.metadata.bannerPath.empty());
     pane.root()->SetAttribute("mod-id", mod.metadata.id);
     pane.add_child<ModDetailHeader>(mod, mod_actions(mod, false));
 
@@ -484,10 +516,10 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
     if (mod_uses_network(mod)) {
         append_text(title, "\u00a0");
         auto* badge = append(title, "status-badge");
-        badge->SetClass("network", true);
+        badge->SetClass("info", true);
         append_text(badge, "Network");
     }
-    auto* author = append(pane.root(), "mod-author");
+    auto* author = append(pane.root(), "small");
     append_text(author, fmt::format("by {}\u00a0·\u00a0", mod.metadata.author));
     const auto status = mod_status(mod);
     auto* badge = append(author, "status-badge");
@@ -499,7 +531,7 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
     if (mod.loadFailed && !mod.failureReason.empty()) {
         auto* row = append(pane.root(), "mod-info-row");
         auto* label = append(row, "b");
-        label->SetClass("failed", true);
+        label->SetClass("error", true);
         append_text(label, "Reason");
         append_text(append(row, "span"), mod.failureReason);
     } else if (mod.suspendedByProvider) {
@@ -634,9 +666,10 @@ void ModsWindow::update() {
         mContextMenu.dismiss();
         ZoneScopedN("Mod manager rebuild");
         const auto previousModId = mSelectedModId;
-        std::optional<Rml::Property> previousBannerFilter;
+        const auto desaturation = Rml::StyleSheetSpecification::GetPropertyId("image-desaturation");
+        std::optional<Rml::Property> previousDesaturation;
         if (auto* image = mContentRoot->QuerySelector("mod-header-image")) {
-            previousBannerFilter = *image->GetProperty(Rml::PropertyId::Filter);
+            previousDesaturation = *image->GetProperty(desaturation);
         }
         auto* list = mContentRoot->QuerySelector("pane.mod-list");
         const float listScrollTop = list != nullptr ? list->GetScrollTop() : 0.0f;
@@ -690,13 +723,13 @@ void ModsWindow::update() {
                 }
             }
         }
-        if (previousBannerFilter && previousModId == mSelectedModId) {
+        if (previousDesaturation && previousModId == mSelectedModId) {
             mDocument->UpdateDocument();
             if (auto* image = mContentRoot->QuerySelector("mod-header-image")) {
-                const auto target = *image->GetProperty(Rml::PropertyId::Filter);
-                if (*previousBannerFilter != target) {
-                    image->SetProperty(Rml::PropertyId::Filter, *previousBannerFilter);
-                    image->Animate(Rml::PropertyId::Filter, target, 0.2f,
+                const auto target = *image->GetProperty(desaturation);
+                if (*previousDesaturation != target) {
+                    image->SetProperty(desaturation, *previousDesaturation);
+                    image->Animate(desaturation, target, 0.2f,
                         Rml::Tween{Rml::Tween::Cubic, Rml::Tween::InOut}, 1, false);
                 }
             }

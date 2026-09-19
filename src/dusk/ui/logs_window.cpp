@@ -120,6 +120,12 @@ void LogsWindow::build_content(Rml::Element* content) {
         rebuild_lines();
     });
 
+    Rml::ElementList buttons;
+    toolbar->QuerySelectorAll(buttons, "button");
+    for (auto* button : buttons) {
+        button->SetClass("compact", true);
+    }
+
     auto& pane = add_child<Pane>(content, Pane::Type::Uncontrolled);
     pane.root()->SetClass("log-view", true);
     mScrollElem = pane.root();

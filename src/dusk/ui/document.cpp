@@ -16,7 +16,16 @@ Rml::ElementDocument* load_document(const Rml::String& source) {
     if (context == nullptr) {
         return nullptr;
     }
-    return context->LoadDocumentFromMemory(source);
+    auto* document = context->LoadDocumentFromMemory(source);
+    if (document != nullptr) {
+        if (auto global = Rml::Factory::InstanceStyleSheetFile("res/rml/global.rcss")) {
+            if (const auto* local = document->GetStyleSheetContainer()) {
+                global = global->CombineStyleSheetContainer(*local);
+            }
+            document->SetStyleSheetContainer(std::move(global));
+        }
+    }
+    return document;
 }
 
 }  // namespace

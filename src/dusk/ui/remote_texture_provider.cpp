@@ -43,7 +43,7 @@ using namespace std::chrono_literals;
 
 constexpr borealis::Log Log{"dusk::ui"};
 constexpr std::string_view kScheme = "https";
-constexpr std::string_view kAllowedPrefix = "https://staging.twilitrealm.workers.dev/images/v1/";
+constexpr std::string_view kAllowedPrefix = "https://twilitrealm.dev/images/v1/";
 constexpr size_t kMaxCachedImages = 64;
 constexpr size_t kMaxCachedImageBytes = 64 * 1024 * 1024;
 constexpr size_t kMaxPendingRequests = 4;

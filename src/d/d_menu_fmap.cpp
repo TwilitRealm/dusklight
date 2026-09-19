@@ -643,7 +643,7 @@ void dMenu_Fmap_c::_draw() {
 #if TARGET_PC
         if (dusk::game_clock::is_presentation_frame()) {
             mpDraw2DTop->setAllAlphaRate(pose.alpha, false);
-            presentAnims();
+            presentAnims(renderProcess);
             presentZoomView(renderProcess, zoomLevel, zoomBlend);
             zoom.needsRestore |= finishingZoom;
             mpDraw2DBack->setAllTrans(pose.x, pose.y);
@@ -697,15 +697,15 @@ void dMenu_Fmap_c::_draw() {
 }
 
 #if TARGET_PC
-void dMenu_Fmap_c::presentAnims() {
+void dMenu_Fmap_c::presentAnims(u8 process) {
     if (mAlphaRatio == 1.0f) {
-        if (mProcess == PROC_ALL_MAP) {
+        if (process == PROC_ALL_MAP) {
             mpDraw2DBack->allmap_move2(mpStick);
-        } else if (mProcess == PROC_REGION_MAP) {
+        } else if (process == PROC_REGION_MAP) {
             mpDraw2DBack->regionMapMove(mpStick);
-        } else if (mProcess == PROC_SPOT_MAP) {
+        } else if (process == PROC_SPOT_MAP) {
             mpDraw2DBack->stageMapMove(mpStick, 1, true);
-        } else if (mProcess == PROC_PORTAL_WARP_MAP || mProcess == PROC_PORTAL_DEMO5) {
+        } else if (process == PROC_PORTAL_WARP_MAP || process == PROC_PORTAL_DEMO5) {
             mpDraw2DBack->regionMapMove(mpStick);
         }
 

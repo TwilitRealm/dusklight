@@ -30,8 +30,8 @@ void append_achievement_info(Rml::Element* parent, const Achievement& a) {
     auto* name = append(header, "achievement-name");
     name->SetClass("unlocked", a.unlocked);
     append_text(name, a.name);
-    auto* badge = append(header, "achievement-badge");
-    badge->SetClass(a.unlocked ? "unlocked" : "locked", true);
+    auto* badge = append(header, "status-badge");
+    badge->SetClass(a.unlocked ? "success" : "error", true);
     append_text(badge, a.unlocked ? "Unlocked" : "Locked");
 
     auto* description = append(parent, "p");
@@ -41,7 +41,7 @@ void append_achievement_info(Rml::Element* parent, const Achievement& a) {
         const float fraction = a.goal > 0 ? float(a.progress) / float(a.goal) : 1.0f;
         auto* progress = append(parent, "progress");
         progress->SetAttribute("value", fraction);
-        progress->SetClass(a.unlocked ? "progress-done" : "progress-ongoing", true);
+        progress->SetClass(a.unlocked ? "success" : "info", true);
         append_text(
             append(parent, "achievement-progress"), fmt::format("{} / {}", a.progress, a.goal));
     }
@@ -53,7 +53,7 @@ public:
         : FluentComponent(createRowRoot(parent)) {
         auto& btn = add_child<Button>(Button::Props{"×"});
         mClearButton = &btn;
-        btn.root()->SetClass("achievement-clear", true);
+        btn.root()->SetClassNames("achievement-clear compact danger");
 
         btn.on_nav_command([this, key = std::string(a.key)](Rml::Event&, NavCommand cmd) {
             if (cmd == NavCommand::Confirm) {
@@ -147,6 +147,7 @@ AchievementsWindow::AchievementsWindow() {
             pane.add_section("Actions");
 
             auto& clearAllBtn = pane.add_button("Clear All Achievements");
+            clearAllBtn.root()->SetClass("danger", true);
             auto* clearAllPtr = &clearAllBtn;
             auto confirmingAll = std::make_shared<bool>(false);
 

@@ -1480,7 +1480,7 @@ void dFile_select_c::menuSelectStart() {
         mDataSelProc = DATASELPROC_NEXT_MODE_WAIT;
         dComIfGs_setDataNum(mSelectNum);
 #if TARGET_PC
-        dusk::mods::svc::save_slot_loaded(mSelectNum, &mSaveData[mSelectNum]);
+        dusk::mods::svc::save_slot_loaded(mSelectNum);
 
         const dusk::gamemode::GameMode* gameMode =
             dusk::gamemode::getGameModeManager().getCurrentGameMode();

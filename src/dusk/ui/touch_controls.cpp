@@ -954,7 +954,7 @@ void TouchControls::sync_action_bar_state() noexcept {
                              event->mSkipFunc != nullptr && !event->chkFlag2(2);
     const bool hidden =
         !skipVisible &&
-        (!controls_available(false) || dComIfGp_event_runCheck() ||
+        (!controls_available(true) || dComIfGp_event_runCheck() ||
             (dComIfGp_getMsgObjectClass() != nullptr && dMsgObject_isTalkNowCheck()));
     const auto& skip = mControlElements[static_cast<size_t>(Control::SKIP)];
     if (mActionBar != nullptr) {

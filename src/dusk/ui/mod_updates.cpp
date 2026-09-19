@@ -83,7 +83,7 @@ public:
         auto* actions = row.actions_root();
         auto& action = add_existing_item<IconButton>(
             actions, IconButton::Props{.icon = "file_download", .label = "Update"});
-        action.root()->SetClass("icon-action", true);
+        action.root()->SetClass("compact", true);
         action.root()->SetAttribute("focus-key", "mod-action-" + mId);
         action.on_pressed([this] { enqueue_mod_update(mId); });
         mAction = &action;
@@ -93,7 +93,7 @@ public:
             auto& changelog = add_existing_item<IconButton>(
                 actions, IconButton::Props{.icon = "description",
                              .label = isExpanded ? "Hide changelog" : "Show changelog"});
-            changelog.root()->SetClass("icon-action", true);
+            changelog.root()->SetClass("compact", true);
             changelog.root()->SetAttribute("focus-key", "changelog-" + mId);
             mChangelog = append(mRoot, "update-changelog");
             mChangelog->SetInnerRML(entry->result.target->changelogHtml);

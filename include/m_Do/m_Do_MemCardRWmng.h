@@ -24,7 +24,11 @@ struct mDoMemCdRWm_HeaderData {
 s32 mDoMemCdRWm_Restore(CARDFileInfo* param_0, void* param_1, u32 param_2);
 s32 mDoMemCdRWm_Store(CARDFileInfo* param_0, void* param_1, u32 param_2);
 static void mDoMemCdRWm_BuildHeader(mDoMemCdRWm_HeaderData* header);
+#if TARGET_PC
+static s32 mDoMemCdRWm_SetCardStat(CARDFileInfo* file);
+#else
 static void mDoMemCdRWm_SetCardStat(CARDFileInfo* file);
+#endif
 static BOOL mDoMemCdRWm_CheckCardStat(CARDFileInfo* file);
 static u32 mDoMemCdRWm_CalcCheckSum(void* data, u32 size);
 static u64 mDoMemCdRWm_CalcCheckSumGameData(void* data, u32 size);

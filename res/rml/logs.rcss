@@ -53,8 +53,6 @@ log-toolbar button {
     flex: 0 0 auto;
     font-family: var(--font-family-body);
     font-weight: normal;
-    font-size: var(--font-size-base);
-    padding: 5dp var(--space-md);
 }
 
 window.logs content pane.log-view {

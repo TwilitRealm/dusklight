@@ -379,8 +379,8 @@ cXyz sun_moon_offset(float daytime) {
         angleSin * kSunMoonDistance, -angleCos * kSunMoonDistance, angleCos * kSunMoonZDistance};
 }
 
-bool build_composite_pipeline(
-    bool blend, WGPURenderPipeline& outPipeline, WGPUBindGroupLayout& outLayout) {
+bool build_composite_pipeline(const GfxRenderTargetLayout& targetLayout, bool blend,
+    WGPURenderPipeline& outPipeline, WGPUBindGroupLayout& outLayout) {
     WGPUShaderSourceWGSL wgsl = WGPU_SHADER_SOURCE_WGSL_INIT;
     wgsl.code = {static_cast<const char*>(g_shaderSource.data), g_shaderSource.size};
     WGPUShaderModuleDescriptor moduleDesc = WGPU_SHADER_MODULE_DESCRIPTOR_INIT;
@@ -402,14 +402,14 @@ bool build_composite_pipeline(
     };
     WGPUColorTargetState colorTargets[GFX_MAX_COLOR_ATTACHMENTS];
     const uint32_t colorTargetCount = gfx_init_color_target_states(
-        &g_sceneTargetLayout, colorTargets, blend ? &blendState : nullptr, WGPUColorWriteMask_All);
+        &targetLayout, colorTargets, blend ? &blendState : nullptr, WGPUColorWriteMask_All);
     WGPUFragmentState fragment = WGPU_FRAGMENT_STATE_INIT;
     fragment.module = module;
     fragment.entryPoint = {"fs_main", WGPU_STRLEN};
     fragment.targetCount = colorTargetCount;
     fragment.targets = colorTargets;
     WGPUDepthStencilState depthStencil = WGPU_DEPTH_STENCIL_STATE_INIT;
-    depthStencil.format = g_sceneTargetLayout.depth_stencil_format;
+    depthStencil.format = targetLayout.depth_stencil_format;
     depthStencil.depthWriteEnabled = WGPUOptionalBool_False;
     depthStencil.depthCompare = WGPUCompareFunction_Always;
 
@@ -419,7 +419,7 @@ bool build_composite_pipeline(
     pipelineDesc.vertex.entryPoint = {"vs_main", WGPU_STRLEN};
     pipelineDesc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
     pipelineDesc.depthStencil = &depthStencil;
-    pipelineDesc.multisample.count = g_sceneTargetLayout.sample_count;
+    pipelineDesc.multisample.count = targetLayout.sample_count;
     pipelineDesc.fragment = &fragment;
     outPipeline = wgpuDeviceCreateRenderPipeline(g_deviceInfo.device, &pipelineDesc);
     wgpuShaderModuleRelease(module);
@@ -428,6 +428,39 @@ bool build_composite_pipeline(
     }
     outLayout = wgpuRenderPipelineGetBindGroupLayout(outPipeline, 0);
     return outLayout != nullptr;
+}
+
+void release_pipelines() {
+    for (auto* pipeline : {&g_compositePipeline, &g_compositeDebugPipeline}) {
+        if (*pipeline != nullptr) {
+            wgpuRenderPipelineRelease(*pipeline);
+            *pipeline = nullptr;
+        }
+    }
+    for (auto* layout : {&g_compositeLayout, &g_compositeDebugLayout}) {
+        if (*layout != nullptr) {
+            wgpuBindGroupLayoutRelease(*layout);
+            *layout = nullptr;
+        }
+    }
+    g_sceneTargetLayout = GFX_RENDER_TARGET_LAYOUT_INIT;
+}
+
+bool ensure_pipelines(const GfxRenderTargetLayout& layout) {
+    if (g_compositePipeline != nullptr && g_compositeDebugPipeline != nullptr &&
+        g_sceneTargetLayout.key == layout.key)
+    {
+        return true;
+    }
+    release_pipelines();
+    if (!build_composite_pipeline(layout, true, g_compositePipeline, g_compositeLayout) ||
+        !build_composite_pipeline(layout, false, g_compositeDebugPipeline, g_compositeDebugLayout))
+    {
+        release_pipelines();
+        return false;
+    }
+    g_sceneTargetLayout = layout;
+    return true;
 }
 
 void release_debug_present_pipeline() {
@@ -517,7 +550,7 @@ WGPUBindGroup create_composite_bind_group(WGPUDevice device, WGPUBindGroupLayout
 // Render worker thread: fullscreen deferred-shadow composite.
 void on_draw(
     ModContext*, const GfxDrawContext* ctx, const void* payload, size_t payloadSize, void*) {
-    if (payloadSize != sizeof(DrawPayload) || ctx->layout.key != g_sceneTargetLayout.key) {
+    if (payloadSize != sizeof(DrawPayload) || !ensure_pipelines(ctx->layout)) {
         return;
     }
     DrawPayload data;
@@ -1242,14 +1275,6 @@ MOD_EXPORT ModResult mod_initialize(ModError* error) {
     if (svc_gfx->get_device_info(mod_ctx, &g_deviceInfo) != MOD_OK) {
         return mods::set_error(error, MOD_ERROR, "failed to query device info");
     }
-    if (svc_gfx->get_scene_target_layout(mod_ctx, &g_sceneTargetLayout) != MOD_OK) {
-        return mods::set_error(error, MOD_ERROR, "failed to query scene target layout");
-    }
-    if (!build_composite_pipeline(true, g_compositePipeline, g_compositeLayout) ||
-        !build_composite_pipeline(false, g_compositeDebugPipeline, g_compositeDebugLayout))
-    {
-        return mods::set_error(error, MOD_ERROR, "failed to create composite pipeline");
-    }
 
     GfxDrawTypeDesc drawDesc = GFX_DRAW_TYPE_DESC_INIT;
     drawDesc.label = "shadow composite";
@@ -1316,22 +1341,7 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     close_debug_window();
     release_debug_present_pipeline();
     svc_resource->free(mod_ctx, &g_shaderSource);
-    if (g_compositePipeline != nullptr) {
-        wgpuRenderPipelineRelease(g_compositePipeline);
-        g_compositePipeline = nullptr;
-    }
-    if (g_compositeDebugPipeline != nullptr) {
-        wgpuRenderPipelineRelease(g_compositeDebugPipeline);
-        g_compositeDebugPipeline = nullptr;
-    }
-    if (g_compositeLayout != nullptr) {
-        wgpuBindGroupLayoutRelease(g_compositeLayout);
-        g_compositeLayout = nullptr;
-    }
-    if (g_compositeDebugLayout != nullptr) {
-        wgpuBindGroupLayoutRelease(g_compositeDebugLayout);
-        g_compositeDebugLayout = nullptr;
-    }
+    release_pipelines();
     g_cvarEnabled = g_cvarMapSize = g_cvarNoFrustumClipping = 0;
     g_cvarStrength = 0;
     g_cvarPcf = g_cvarBias = g_cvarBoxRadius = g_cvarEdgeFadeWidth = g_cvarContactShadows =

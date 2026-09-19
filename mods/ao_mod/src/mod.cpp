@@ -1,8 +1,8 @@
 // Ambient occlusion (GTAO) example mod.
 //
 // Showcases the gfx service's compute tasks and the camera service: after opaque scene draws,
-// before translucent/fog overlays, the scene depth is resolved and a three-dispatch compute
-// chain (depth MIP prefilter, GTAO, spatial denoise) produces a visibility texture that a
+// before translucent/fog overlays, scene depth and normals are resolved and a three-dispatch
+// compute chain (depth MIP prefilter, GTAO, spatial denoise) produces a visibility texture that a
 // fullscreen draw multiplies over the world.
 //
 // The WGSL in res/ is ported from Bevy Engine's SSAO implementation (MIT OR Apache-2.0),
@@ -85,11 +85,14 @@ struct AoTargets {
     WGPUTexture aoFinal = nullptr;
     WGPUTextureView aoFinalView = nullptr;
 };
+
 AoTargets g_targets;
+
 struct RetiredTargets {
     AoTargets targets;
     int framesLeft = 0;
 };
+
 std::vector<RetiredTargets> g_retiredTargets;
 
 bool g_warnedNoDepth = false;
@@ -110,10 +113,12 @@ struct AoUniforms {
     uint32_t debug_view;
     float _pad;
 };
+
 static_assert(sizeof(AoUniforms) % 16 == 0);
 
 struct ComputePayload {
     WGPUTextureView depth;  // frame-pooled scene depth snapshot
+    WGPUTextureView normal;
     WGPUTextureView preprocessedDepthMips[5];
     WGPUTextureView preprocessedDepthAll;
     WGPUTextureView aoNoisy;
@@ -124,17 +129,20 @@ struct ComputePayload {
     uint32_t width;
     uint32_t height;
 };
+
 static_assert(sizeof(ComputePayload) <= GFX_INLINE_DRAW_PAYLOAD_SIZE);
 static_assert(std::is_trivially_copyable_v<ComputePayload>);
 
 struct CompositePayload {
     WGPUTextureView aoFinal;
-    WGPUTextureView preprocessedDepth;  // debug views reconstruct normals/depth from it
-    WGPUTextureView sceneDepth;         // raw snapshot, for the bypass debug views
+    WGPUTextureView preprocessedDepth;
+    WGPUTextureView sceneDepth;  // raw snapshot, for the bypass debug views
+    WGPUTextureView normal;
     uint32_t uniform_offset;
     uint32_t uniform_size;
     uint32_t debug_view;
 };
+
 static_assert(sizeof(CompositePayload) <= GFX_INLINE_DRAW_PAYLOAD_SIZE);
 static_assert(std::is_trivially_copyable_v<CompositePayload>);
 
@@ -205,8 +213,8 @@ bool build_compute_pipeline(const char* label, const ResourceBuffer& source, con
     return outLayout != nullptr;
 }
 
-bool build_composite_pipeline(
-    bool blend, WGPURenderPipeline& outPipeline, WGPUBindGroupLayout& outLayout) {
+bool build_composite_pipeline(const GfxRenderTargetLayout& targetLayout, bool blend,
+    WGPURenderPipeline& outPipeline, WGPUBindGroupLayout& outLayout) {
     WGPUShaderModule module = create_shader_module("AO composite", g_compositeSource);
     if (module == nullptr) {
         return false;
@@ -229,7 +237,7 @@ bool build_composite_pipeline(
     };
     WGPUColorTargetState colorTargets[GFX_MAX_COLOR_ATTACHMENTS];
     const uint32_t colorTargetCount = gfx_init_color_target_states(
-        &g_sceneTargetLayout, colorTargets, blend ? &blendState : nullptr, WGPUColorWriteMask_All);
+        &targetLayout, colorTargets, blend ? &blendState : nullptr, WGPUColorWriteMask_All);
     WGPUFragmentState fragment = WGPU_FRAGMENT_STATE_INIT;
     fragment.module = module;
     fragment.entryPoint = {"fs_main", WGPU_STRLEN};
@@ -237,7 +245,7 @@ bool build_composite_pipeline(
     fragment.targets = colorTargets;
     // Depth state must match the EFB pass despite never touching depth.
     WGPUDepthStencilState depthStencil = WGPU_DEPTH_STENCIL_STATE_INIT;
-    depthStencil.format = g_sceneTargetLayout.depth_stencil_format;
+    depthStencil.format = targetLayout.depth_stencil_format;
     depthStencil.depthWriteEnabled = WGPUOptionalBool_False;
     depthStencil.depthCompare = WGPUCompareFunction_Always;
 
@@ -247,7 +255,7 @@ bool build_composite_pipeline(
     pipelineDesc.vertex.entryPoint = {"vs_main", WGPU_STRLEN};
     pipelineDesc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
     pipelineDesc.depthStencil = &depthStencil;
-    pipelineDesc.multisample.count = g_sceneTargetLayout.sample_count;
+    pipelineDesc.multisample.count = targetLayout.sample_count;
     pipelineDesc.fragment = &fragment;
     outPipeline = wgpuDeviceCreateRenderPipeline(g_deviceInfo.device, &pipelineDesc);
     wgpuShaderModuleRelease(module);
@@ -256,6 +264,39 @@ bool build_composite_pipeline(
     }
     outLayout = wgpuRenderPipelineGetBindGroupLayout(outPipeline, 0);
     return outLayout != nullptr;
+}
+
+void release_pipelines() {
+    for (auto* pipeline : {&g_compositePipeline, &g_compositeDebugPipeline}) {
+        if (*pipeline != nullptr) {
+            wgpuRenderPipelineRelease(*pipeline);
+            *pipeline = nullptr;
+        }
+    }
+    for (auto* layout : {&g_compositeLayout, &g_compositeDebugLayout}) {
+        if (*layout != nullptr) {
+            wgpuBindGroupLayoutRelease(*layout);
+            *layout = nullptr;
+        }
+    }
+    g_sceneTargetLayout = GFX_RENDER_TARGET_LAYOUT_INIT;
+}
+
+bool ensure_pipelines(const GfxRenderTargetLayout& layout) {
+    if (g_compositePipeline != nullptr && g_compositeDebugPipeline != nullptr &&
+        g_sceneTargetLayout.key == layout.key)
+    {
+        return true;
+    }
+    release_pipelines();
+    if (!build_composite_pipeline(layout, true, g_compositePipeline, g_compositeLayout) ||
+        !build_composite_pipeline(layout, false, g_compositeDebugPipeline, g_compositeDebugLayout))
+    {
+        release_pipelines();
+        return false;
+    }
+    g_sceneTargetLayout = layout;
+    return true;
 }
 
 // Hilbert curve index LUT for the R2 noise sequence, generated once at init.
@@ -413,7 +454,7 @@ void on_compute(
     }
     ComputePayload data;
     std::memcpy(&data, payload, sizeof(data));
-    if (data.depth == nullptr || g_preprocessPipeline == nullptr) {
+    if (data.depth == nullptr || data.normal == nullptr || g_preprocessPipeline == nullptr) {
         return;
     }
 
@@ -448,10 +489,10 @@ void on_compute(
     WGPUBindGroup mip4Group =
         makeBindGroup(g_mip4Layout, {textureEntry(6, data.preprocessedDepthMips[3]),
                                         textureEntry(7, data.preprocessedDepthMips[4])});
-    WGPUBindGroup gtaoGroup = makeBindGroup(
-        g_gtaoLayout, {textureEntry(0, data.preprocessedDepthAll),
-                          textureEntry(1, g_hilbertLutView), textureEntry(2, data.aoNoisy),
-                          textureEntry(3, data.depthDifferences), uniformEntry(4)});
+    WGPUBindGroup gtaoGroup = makeBindGroup(g_gtaoLayout,
+        {textureEntry(0, data.preprocessedDepthAll), textureEntry(1, g_hilbertLutView),
+            textureEntry(2, data.aoNoisy), textureEntry(3, data.depthDifferences), uniformEntry(4),
+            textureEntry(5, data.normal)});
     WGPUBindGroup denoiseGroup = makeBindGroup(
         g_denoiseLayout, {textureEntry(0, data.aoNoisy), textureEntry(1, data.depthDifferences),
                              textureEntry(2, data.aoFinal), uniformEntry(3)});
@@ -503,7 +544,7 @@ void on_compute(
 // Render worker thread: composite the AO over the scene (or show it, in debug view).
 void on_draw(
     ModContext*, const GfxDrawContext* ctx, const void* payload, size_t payloadSize, void*) {
-    if (payloadSize != sizeof(CompositePayload) || ctx->layout.key != g_sceneTargetLayout.key) {
+    if (payloadSize != sizeof(CompositePayload) || !ensure_pipelines(ctx->layout)) {
         return;
     }
     CompositePayload data;
@@ -512,13 +553,13 @@ void on_draw(
         data.debug_view != 0 ? g_compositeDebugPipeline : g_compositePipeline;
     WGPUBindGroupLayout layout = data.debug_view != 0 ? g_compositeDebugLayout : g_compositeLayout;
     if (data.aoFinal == nullptr || data.preprocessedDepth == nullptr ||
-        data.sceneDepth == nullptr || pipeline == nullptr)
+        data.sceneDepth == nullptr || data.normal == nullptr || pipeline == nullptr)
     {
         return;
     }
 
-    WGPUBindGroupEntry entries[4] = {WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT,
-        WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT};
+    WGPUBindGroupEntry entries[5] = {WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT,
+        WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT, WGPU_BIND_GROUP_ENTRY_INIT};
     entries[0].binding = 0;
     entries[0].textureView = data.aoFinal;
     entries[1].binding = 1;
@@ -529,9 +570,11 @@ void on_draw(
     entries[3].buffer = ctx->uniform_buffer;
     entries[3].offset = data.uniform_offset;
     entries[3].size = data.uniform_size;
+    entries[4].binding = 4;
+    entries[4].textureView = data.normal;
     WGPUBindGroupDescriptor bindGroupDesc = WGPU_BIND_GROUP_DESCRIPTOR_INIT;
     bindGroupDesc.layout = layout;
-    bindGroupDesc.entryCount = 4;
+    bindGroupDesc.entryCount = 5;
     bindGroupDesc.entries = entries;
     WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(ctx->device, &bindGroupDesc);
     if (bindGroup == nullptr) {
@@ -564,6 +607,7 @@ void on_scene_after_opaque(ModContext*, const GfxStageContext* stageCtx, void*) 
     GfxResolveDesc resolveDesc = GFX_RESOLVE_DESC_INIT;
     resolveDesc.color = false;
     resolveDesc.depth = true;
+    resolveDesc.normal = true;
     GfxResolvedTargets resolved = GFX_RESOLVED_TARGETS_INIT;
     if (svc_gfx->resolve_pass(mod_ctx, &resolveDesc, &resolved) != MOD_OK ||
         resolved.depth == nullptr)
@@ -572,6 +616,11 @@ void on_scene_after_opaque(ModContext*, const GfxStageContext* stageCtx, void*) 
             g_warnedNoDepth = true;
             svc_log->warn(mod_ctx, "depth snapshots unavailable; AO disabled");
         }
+        return;
+    }
+
+    // The first request enables normals next frame; unsupported devices keep returning null.
+    if (resolved.normal == nullptr) {
         return;
     }
 
@@ -611,6 +660,7 @@ void on_scene_after_opaque(ModContext*, const GfxStageContext* stageCtx, void*) 
 
     ComputePayload computePayload{};
     computePayload.depth = resolved.depth;
+    computePayload.normal = resolved.normal;
     for (int mip = 0; mip < 5; ++mip) {
         computePayload.preprocessedDepthMips[mip] = g_targets.preprocessedDepthMips[mip];
     }
@@ -629,7 +679,7 @@ void on_scene_after_opaque(ModContext*, const GfxStageContext* stageCtx, void*) 
     }
 
     const CompositePayload drawPayload{g_targets.aoFinalView, g_targets.preprocessedDepthAll,
-        resolved.depth, uniformRange.offset, uniformRange.size, debugMode};
+        resolved.depth, resolved.normal, uniformRange.offset, uniformRange.size, debugMode};
     svc_gfx->push_draw(mod_ctx, g_drawType, &drawPayload, sizeof(drawPayload));
 }
 
@@ -815,9 +865,6 @@ MOD_EXPORT ModResult mod_initialize(ModError* error) {
     if (svc_gfx->get_device_info(mod_ctx, &g_deviceInfo) != MOD_OK) {
         return mods::set_error(error, MOD_ERROR, "failed to query device info");
     }
-    if (svc_gfx->get_scene_target_layout(mod_ctx, &g_sceneTargetLayout) != MOD_OK) {
-        return mods::set_error(error, MOD_ERROR, "failed to query scene target layout");
-    }
     if (!build_compute_pipeline("AO preprocess depth", g_preprocessSource, "preprocess_depth",
             g_preprocessPipeline, g_preprocessLayout) ||
         !build_compute_pipeline("AO downsample mip4", g_preprocessSource, "downsample_mip4",
@@ -827,11 +874,6 @@ MOD_EXPORT ModResult mod_initialize(ModError* error) {
             "AO denoise", g_denoiseSource, "spatial_denoise", g_denoisePipeline, g_denoiseLayout))
     {
         return mods::set_error(error, MOD_ERROR, "failed to create AO compute pipelines");
-    }
-    if (!build_composite_pipeline(true, g_compositePipeline, g_compositeLayout) ||
-        !build_composite_pipeline(false, g_compositeDebugPipeline, g_compositeDebugLayout))
-    {
-        return mods::set_error(error, MOD_ERROR, "failed to create AO composite pipeline");
     }
     if (!build_hilbert_lut()) {
         return mods::set_error(error, MOD_ERROR, "failed to create AO noise LUT");
@@ -905,16 +947,7 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     releaseLayout(g_mip4Layout);
     releaseLayout(g_gtaoLayout);
     releaseLayout(g_denoiseLayout);
-    if (g_compositePipeline != nullptr) {
-        wgpuRenderPipelineRelease(g_compositePipeline);
-        g_compositePipeline = nullptr;
-    }
-    if (g_compositeDebugPipeline != nullptr) {
-        wgpuRenderPipelineRelease(g_compositeDebugPipeline);
-        g_compositeDebugPipeline = nullptr;
-    }
-    releaseLayout(g_compositeLayout);
-    releaseLayout(g_compositeDebugLayout);
+    release_pipelines();
     if (g_hilbertLutView != nullptr) {
         wgpuTextureViewRelease(g_hilbertLutView);
         g_hilbertLutView = nullptr;

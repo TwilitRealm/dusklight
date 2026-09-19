@@ -7,6 +7,7 @@
 #include "mod_texture_provider.hpp"
 #include "prelaunch.hpp"
 #include "remote_texture_provider.hpp"
+#include "saves_window.hpp"
 #include "window.hpp"
 
 #include "dusk/config.hpp"
@@ -49,6 +50,7 @@ struct ScopedStyles {
     std::string id;
     Rml::SharedPtr<Rml::StyleSheetContainer> sheet;
 };
+
 std::vector<ScopedStyles> sScopedStyles;
 
 std::vector<const Rml::StyleSheetContainer*> scoped_sheets(DocumentScope scope) {
@@ -82,6 +84,7 @@ std::vector<std::filesystem::path> sDroppedPackages;
 struct PendingDrop {
     borealis::Task<std::vector<DropPackage>> inspection;
 };
+
 std::vector<PendingDrop> sPendingDrops;
 
 // Sometimes gamepads can connect and disconnect quickly, especially during
@@ -112,6 +115,10 @@ bool initialize() noexcept {
     register_icon_texture_provider();
     register_mod_texture_provider();
     register_remote_texture_provider();
+    Rml::StyleSheetSpecification::RegisterProperty("mod-icon-tint", "transparent", false)
+        .AddParser("color");
+    Rml::StyleSheetSpecification::RegisterProperty("mod-icon-background", "transparent", false)
+        .AddParser("color");
     sInitialized = true;
     return true;
 }
@@ -147,33 +154,45 @@ const char* battery_icon(SDL_PowerState state, int level) noexcept {
         return "e1a4";  // Battery Full
     }
     if (state == SDL_POWERSTATE_CHARGING) {
-        if (level >= 90)
+        if (level >= 90) {
             return "f0a7";  // Battery Charging 90
-        if (level >= 80)
+        }
+        if (level >= 80) {
             return "f0a6";  // Battery Charging 80
-        if (level >= 60)
+        }
+        if (level >= 60) {
             return "f0a5";  // Battery Charging 60
-        if (level >= 50)
+        }
+        if (level >= 50) {
             return "f0a4";  // Battery Charging 50
-        if (level >= 30)
+        }
+        if (level >= 30) {
             return "f0a3";  // Battery Charging 30
-        if (level >= 20)
+        }
+        if (level >= 20) {
             return "f0a2";  // Battery Charging 20
-        return "e1a3";      // Battery Charging Full (we use it as empty)
+        }
+        return "e1a3";  // Battery Charging Full (we use it as empty)
     }
-    if (level >= 90)
+    if (level >= 90) {
         return "ebd2";  // Battery 6 Bar
-    if (level >= 80)
+    }
+    if (level >= 80) {
         return "ebd4";  // Battery 5 Bar
-    if (level >= 60)
+    }
+    if (level >= 60) {
         return "ebe2";  // Battery 4 Bar
-    if (level >= 50)
+    }
+    if (level >= 50) {
         return "ebdd";  // Battery 3 Bar
-    if (level >= 30)
+    }
+    if (level >= 30) {
         return "ebe0";  // Battery 2 Bar
-    if (level >= 20)
+    }
+    if (level >= 20) {
         return "ebd9";  // Battery 1 Bar
-    return "e19c";      // Battery Alert
+    }
+    return "e19c";  // Battery Alert
 }
 
 const char* connection_state_icon(SDL_JoystickConnectionState state) noexcept {
@@ -197,20 +216,24 @@ void handle_event(const SDL_Event& event) noexcept {
     } else if (event.type == SDL_EVENT_DROP_FILE && event.drop.data != nullptr) {
         sDroppedPackages.push_back(borealis::io::fs_path_from_utf8(event.drop.data));
     } else if (event.type == SDL_EVENT_DROP_COMPLETE) {
-        if (sDroppedPackages.empty()) {
-            push_toast({
-                .type = "warning",
-                .title = "No packages found",
-                .content = "Drop a Dusklight package to import it.",
-                .duration = std::chrono::seconds{4},
-            });
-        } else {
+        if (!sDroppedPackages.empty()) {
             auto paths = std::exchange(sDroppedPackages, {});
-            sPendingDrops.push_back({
-                borealis::spawn([paths = std::move(paths)](borealis::TaskContext& context) {
-                    return inspect_drop_packages(paths, context);
-                }),
+            std::erase_if(paths, [](const std::filesystem::path& path) {
+                const auto extension = Rml::StringUtilities::ToLower(
+                    borealis::io::fs_path_to_string(path.extension()));
+                if (extension != ".gci" && extension != ".raw" && extension != ".dusksave") {
+                    return false;
+                }
+                import_save_location(borealis::io::fs_path_to_string(path));
+                return true;
             });
+            if (!paths.empty()) {
+                sPendingDrops.push_back({
+                    borealis::spawn([paths = std::move(paths)](borealis::TaskContext& context) {
+                        return inspect_drop_packages(paths, context);
+                    }),
+                });
+            }
         }
     } else if (event.type == SDL_EVENT_GAMEPAD_ADDED) {
         auto* gamepad = SDL_GetGamepadFromID(event.gdevice.which);

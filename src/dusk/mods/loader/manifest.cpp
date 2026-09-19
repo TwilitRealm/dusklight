@@ -5,6 +5,7 @@
 #include "packages.hpp"
 
 #include "dusk/mods/log_buffer.hpp"
+#include "dusk/utilities.hpp"
 
 #include <borealis/io.hpp>
 #include <fmt/format.h>
@@ -24,44 +25,9 @@ namespace {
 class InvalidModDataException : public std::runtime_error {
 public:
     explicit InvalidModDataException(const std::string& msg) : runtime_error(msg) {}
+
     explicit InvalidModDataException(const char* msg) : runtime_error(msg) {}
 };
-
-void validate_mod_id(std::string_view const str) {
-    if (str.empty()) {
-        throw InvalidModDataException("Missing ID value in mod metadata");
-    }
-
-    bool lastWasPeriod = false;
-    for (auto const chr : str) {
-        if (chr == '.') {
-            if (lastWasPeriod) {
-                throw InvalidModDataException("Cannot have two consecutive periods in mod ID");
-            }
-            lastWasPeriod = true;
-            continue;
-        }
-
-        lastWasPeriod = false;
-
-        if (chr == '_')
-            continue;
-
-        if (chr >= '0' && chr <= '9')
-            continue;
-
-        if (chr >= 'a' && chr <= 'z')
-            continue;
-
-        if (chr >= 'A' && chr <= 'Z')
-            continue;
-
-        throw InvalidModDataException(
-            fmt::format("Invalid character '{}' in mod ID. Valid characters are period, "
-                        "underscore, and alphanumerics.",
-                chr));
-    }
-}
 
 bool bundle_has_file(ModBundle& bundle, const std::string& path) {
     try {
@@ -75,7 +41,7 @@ bool bundle_has_file(ModBundle& bundle, const std::string& path) {
 std::string resolve_image_path(ModBundle& bundle, const std::string& modId, std::string_view key,
     const std::string& manifestPath, const std::string& defaultPath) {
     if (!manifestPath.empty()) {
-        if (!is_safe_resource_path(manifestPath)) {
+        if (!utils::is_safe_resource_path(manifestPath)) {
             log::write(
                 modId, LOG_LEVEL_WARN, "invalid {} path '{}' in mod.json", key, manifestPath);
         } else if (!bundle_has_file(bundle, manifestPath)) {
@@ -150,7 +116,12 @@ LoadedManifest load_manifest(const std::filesystem::path& modPath, ModBundle& bu
     std::string metaIcon = j.value("icon", "");
     std::string metaBanner = j.value("banner", "");
 
-    validate_mod_id(metaId);
+    if (!utils::is_valid_mod_id(metaId)) {
+        throw InvalidModDataException{fmt::format(
+            "Invalid mod ID '{}'; expected lowercase letters, digits, or underscores separated "
+            "by single periods, with no leading or trailing period.",
+            metaId)};
+    }
 
     if (metaName.empty()) {
         metaName = borealis::io::fs_path_to_string(modPath.stem());

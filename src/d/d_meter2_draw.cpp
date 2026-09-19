@@ -486,6 +486,13 @@ dMeter2Draw_c::~dMeter2Draw_c() {
             field_0x9c[i] = NULL;
         }
     }
+
+#if TARGET_PC
+    // Archive overlays are freed on removal, so don't leave stale pointers around
+    dMeter2Info_setMsgResource(NULL);
+    dMeter2Info_setStageMsgResource(NULL);
+    dMeter2Info_setMsgUnitResource(NULL);
+#endif
 }
 
 void dMeter2Draw_c::init() {

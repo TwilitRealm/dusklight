@@ -142,7 +142,7 @@ menu-list {
 }
 
 #menu-list button:disabled {
-    opacity: 0.75;
+    opacity: 0.65;
     cursor: default;
     decorator: var(--menu-button-decorator);
 }
@@ -219,8 +219,8 @@ menu-list {
     display: flex;
 }
 
-#menu-list button:hover,
-#menu-list button:focus-visible {
+#menu-list button:not(:disabled):hover,
+#menu-list button:not(:disabled):focus-visible {
     color: var(--color-black);
     decorator: var(--menu-button-decorator-hover);
 }
@@ -314,8 +314,6 @@ body.mirrored version-info {
     display: none;
     width: 24dp;
     height: 24dp;
-    font-family: var(--font-family-icons);
-    font-weight: normal;
     font-size: var(--font-size-4xl);
 }
 
@@ -392,8 +390,6 @@ update-status[state=available] #update-download {
     display: block;
     width: 18dp;
     height: 18dp;
-    font-family: var(--font-family-icons);
-    font-weight: normal;
     decorator: text("&#xe5c8;" center center);
 }
 

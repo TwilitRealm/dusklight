@@ -5,6 +5,7 @@
 #include "dusk/logging.h"
 #include "dusk/mods/loader/loader.hpp"
 #include "dusk/settings.h"
+#include "dusk/utilities.hpp"
 
 #include "helpers/bits.hpp"
 
@@ -162,14 +163,6 @@ uint8_t active_language() {
 
 bool valid_group(uint16_t group) {
     return group <= kGroupMax;
-}
-
-bool valid_debug_name(const char* name) {
-    if (name == nullptr) {
-        return false;
-    }
-    const std::string_view value{name};
-    return !value.empty() && value.size() <= kDebugNameMax;
 }
 
 int32_t mod_priority(const mods::LoadedMod& mod) {
@@ -1230,7 +1223,9 @@ ModResult register_query(ModContext* context, const char* debugName, FlowQueryFn
         *outId = 0;
     }
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !flow::valid_debug_name(debugName) || fn == nullptr || outId == nullptr) {
+    if (mod == nullptr || !utils::is_valid_name(debugName, flow::kDebugNameMax) || fn == nullptr ||
+        outId == nullptr)
+    {
         return MOD_INVALID_ARGUMENT;
     }
     uint16_t id = 0;
@@ -1254,7 +1249,9 @@ ModResult register_event(ModContext* context, const char* debugName, FlowEventFn
         *outId = 0;
     }
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !flow::valid_debug_name(debugName) || fn == nullptr || outId == nullptr) {
+    if (mod == nullptr || !utils::is_valid_name(debugName, flow::kDebugNameMax) || fn == nullptr ||
+        outId == nullptr)
+    {
         return MOD_INVALID_ARGUMENT;
     }
     uint8_t id = 0;

@@ -182,20 +182,27 @@ extern "C" int commit_code_patch(
     }
 
     pthread_mutex_lock(&sPatchMutex);
-    mach_vm_address_t region = page;
-    mach_vm_size_t regionSize = 0;
-    vm_region_basic_info_data_64_t info{};
-    mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
-    mach_port_t object = MACH_PORT_NULL;
-    auto result = mach_vm_region(mach_task_self(), &region, &regionSize, VM_REGION_BASIC_INFO_64,
-        reinterpret_cast<vm_region_info_t>(&info), &count, &object);
-    if (object != MACH_PORT_NULL) {
-        mach_port_deallocate(mach_task_self(), object);
-    }
-    if (result == KERN_SUCCESS && (region > page || regionSize < page + length - region ||
-                                      info.protection != (VM_PROT_READ | VM_PROT_EXECUTE)))
-    {
-        result = KERN_PROTECTION_FAILURE;
+    auto result = KERN_SUCCESS;
+    for (auto checkPage = page; checkPage < page + length; checkPage += pageSize) {
+        mach_vm_address_t region = checkPage;
+        mach_vm_size_t regionSize = 0;
+        vm_region_basic_info_data_64_t info{};
+        mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
+        mach_port_t object = MACH_PORT_NULL;
+        result = mach_vm_region(mach_task_self(), &region, &regionSize, VM_REGION_BASIC_INFO_64,
+            reinterpret_cast<vm_region_info_t>(&info), &count, &object);
+        if (object != MACH_PORT_NULL) {
+            mach_port_deallocate(mach_task_self(), object);
+        }
+        if (result != KERN_SUCCESS) {
+            break;
+        }
+        if (region > checkPage || regionSize < checkPage + pageSize - region ||
+            info.protection != (VM_PROT_READ | VM_PROT_EXECUTE))
+        {
+            result = KERN_PROTECTION_FAILURE;
+            break;
+        }
     }
     if (result == KERN_SUCCESS) {
         const auto currentThread = mach_thread_self();
@@ -206,7 +213,8 @@ extern "C" int commit_code_patch(
         vm_deallocate(mach_task_self(), 0, 0);
         mach_port_deallocate(mach_task_self(), MACH_PORT_NULL);
         sys_icache_invalidate(targetPointer, size);
-        result = mach_vm_protect(mach_task_self(), page, length, false, info.protection);
+        result =
+            mach_vm_protect(mach_task_self(), page, length, false, VM_PROT_READ | VM_PROT_EXECUTE);
         if (result == KERN_SUCCESS) {
             for (unsigned attempt = 0; attempt < kMaxAttempts; ++attempt) {
                 result = commit_patch(target, oldCode, newCode, size, page, length, currentThread);

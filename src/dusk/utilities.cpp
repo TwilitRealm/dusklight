@@ -1,6 +1,8 @@
 #include "utilities.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cstring>
 
 namespace dusk::utils {
 namespace {
@@ -20,6 +22,18 @@ constexpr std::array<uint32_t, 256> generate_crc32_table() {
 }
 
 constexpr std::array<uint32_t, 256> kCrc32Table = generate_crc32_table();
+
+bool is_ascii_lowercase_alphanumeric(char value) {
+    return (value >= 'a' && value <= 'z') || (value >= '0' && value <= '9');
+}
+
+bool is_ascii_alphanumeric(char value) {
+    return is_ascii_lowercase_alphanumeric(value) || (value >= 'A' && value <= 'Z');
+}
+
+bool is_filename_character(char value) {
+    return is_ascii_alphanumeric(value) || value == '.' || value == '_' || value == '-';
+}
 
 }  // namespace
 
@@ -92,4 +106,75 @@ uint32_t crc32(const void* data, size_t size) {
     }
     return ~crc;
 }
+
+std::optional<std::string_view> bounded_string(const char* value, size_t capacity) {
+    if (value == nullptr || capacity == 0) {
+        return std::nullopt;
+    }
+    const auto* end = static_cast<const char*>(std::memchr(value, '\0', capacity));
+    if (end == nullptr) {
+        return std::nullopt;
+    }
+    return std::string_view{value, static_cast<size_t>(end - value)};
+}
+
+bool is_valid_name(std::string_view name, size_t maxBytes) {
+    return !name.empty() && name.size() <= maxBytes && name.find('\0') == std::string_view::npos;
+}
+
+bool is_valid_name(const char* name, size_t maxBytes) {
+    return name != nullptr && is_valid_name(std::string_view{name}, maxBytes);
+}
+
+bool is_valid_mod_id(std::string_view id) {
+    if (!is_valid_name(id) || id.front() == '.' || id.back() == '.' ||
+        id.find("..") != std::string_view::npos)
+    {
+        return false;
+    }
+    return std::ranges::all_of(id, [](char value) {
+        return is_ascii_lowercase_alphanumeric(value) || value == '_' || value == '.';
+    });
+}
+
+bool is_valid_save_name(std::string_view name) {
+    return is_valid_name(name, 31) && name != "." && name != ".." &&
+           std::ranges::all_of(name, is_filename_character);
+}
+
+bool is_valid_config_name(std::string_view name) {
+    return is_valid_name(name, 64) && std::ranges::all_of(name, [](char value) {
+        return is_ascii_alphanumeric(value) || value == '_' || value == '-';
+    });
+}
+
+bool is_safe_path_component(std::string_view name) {
+    return is_valid_name(name) && name != "." && name != ".." &&
+           name.find_first_of("/\\:") == std::string_view::npos;
+}
+
+bool is_safe_resource_path(std::string_view path) {
+    while (true) {
+        const auto separator = path.find_first_of("/\\");
+        if (!is_safe_path_component(path.substr(0, separator))) {
+            return false;
+        }
+        if (separator == std::string_view::npos) {
+            return true;
+        }
+        path.remove_prefix(separator + 1);
+    }
+}
+
+bool is_valid_disc_path(std::string_view path) {
+    return path.starts_with('/') && is_safe_resource_path(path.substr(1));
+}
+
+std::string safe_filename(std::string_view value) {
+    std::string result{value};
+    std::ranges::replace_if(
+        result, [](char character) { return !is_filename_character(character); }, '_');
+    return result;
+}
+
 }  // namespace dusk::utils

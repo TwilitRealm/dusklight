@@ -35,7 +35,7 @@ public:
         auto& pause = add_existing_item<IconButton>(
             row.actions_root(), IconButton::Props{.icon = "pause", .label = "Pause"});
         mPause = &pause;
-        pause.root()->SetClass("icon-action", true);
+        pause.root()->SetClass("compact", true);
         // The update action keeps focus when its package becomes a download.
         pause.root()->SetAttribute("focus-key", "mod-action-" + item.modId);
         pause.on_pressed([this] {
@@ -52,7 +52,7 @@ public:
         auto& cancel = add_existing_item<IconButton>(
             row.actions_root(), IconButton::Props{.icon = "close", .label = "Cancel"});
         mCancel = &cancel;
-        cancel.root()->SetClass("icon-action", true);
+        cancel.root()->SetClass("compact", true);
         cancel.root()->SetAttribute("focus-key", "queue-clear-" + item.modId);
         cancel.on_pressed([this] {
             if (const auto item = mods::queue::find(mId)) {

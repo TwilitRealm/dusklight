@@ -19,8 +19,9 @@ typedef uint64_t SaveObserverHandle;
 /*
  * Per-slot mod storage.
  *
- * Blobs are scoped to the calling mod and saved alongside each slot. Current-slot calls return
- * MOD_UNAVAILABLE when no slot is active.
+ * Blobs are scoped to the calling mod, active CARD save file, and slot. Current-slot calls
+ * return MOD_UNAVAILABLE when no slot is active.
+ * Names must contain 1-256 bytes, excluding the NUL terminator.
  *
  * Callbacks run on the game thread. Observer registrations are removed when the calling mod is
  * detached.
@@ -54,7 +55,7 @@ typedef struct SaveService {
 
     ModResult (*unobserve_saves)(ModContext* ctx, SaveObserverHandle handle);
 
-    /* Read the calling mod's blob from any slot. Uses the get_blob buffer contract. */
+    /* Read the calling mod's blob from any slot in the active save file. */
     ModResult (*peek_blob)(
         ModContext* ctx, uint32_t slot, const char* name, void* buf, size_t* inout_size);
 

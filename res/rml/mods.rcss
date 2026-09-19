@@ -48,12 +48,6 @@ mod-info-row > span {
     flex: 1 1 0;
 }
 
-.mod-path {
-    font-size: var(--font-size-sm);
-    word-break: break-all;
-    opacity: 0.7;
-}
-
 mod-entry {
     display: flex;
     flex-flow: row;
@@ -80,25 +74,9 @@ mod-entry:selected {
     decorator: vertical-gradient(rgba(var(--color-accent-rgb), 16) rgba(var(--color-accent-rgb), 64));
 }
 
-mod-icon {
-    display: block;
-    flex: 0 0 auto;
-    width: 56dp;
-    height: 56dp;
-    border-radius: var(--radius-panel);
-    font-family: var(--font-family-icons);
-    font-size: 36dp;
-    background-color: rgba(var(--color-control-rgb), 20%);
-    color: rgba(var(--color-text-rgb), 45%);
-    decorator: text("&#xe87b;" center center);
-    overflow: hidden;
-}
-
-mod-icon img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: var(--radius-panel);
+mod-entry mod-icon {
+    mod-icon-tint: rgba(var(--color-text-rgb), 45%);
+    mod-icon-background: rgba(var(--color-control-rgb), 20%);
 }
 
 mod-info {
@@ -152,14 +130,6 @@ mod-meta > mod-author {
     text-overflow: ellipsis;
 }
 
-mod-status.active {
-    color: var(--color-success);
-}
-
-mod-status.failed {
-    color: var(--color-error);
-}
-
 mod-network {
     flex: 0 0 auto;
     padding: 1dp 5dp;
@@ -185,7 +155,7 @@ mod-info > small {
 }
 
 mod-entry.inactive mod-icon {
-    filter: grayscale(1);
+    image-desaturation: 1;
 }
 
 mod-entry.inactive mod-info {
@@ -210,12 +180,12 @@ mod-header-image {
     bottom: 0;
     left: 0;
     pointer-events: none;
-    mask-image: linear-gradient(180deg, #fff 40%, transparent);
-    filter: grayscale(0);
+    image-fade-start: 0.4;
+    image-desaturation: 0;
 }
 
 mod-header.inactive mod-header-image {
-    filter: grayscale(1);
+    image-desaturation: 1;
 }
 
 mod-actions {
@@ -225,14 +195,6 @@ mod-actions {
     display: flex;
     flex-flow: row;
     gap: var(--space-sm);
-}
-
-mod-actions button {
-    --button-background: rgba(var(--color-surface-rgb), 80%);
-    --button-background-hover: rgba(var(--color-control-rgb), 90%);
-    --button-background-selected: rgba(var(--color-control-rgb), 90%);
-    --button-background-active: rgba(var(--color-surface-rgb), 90%);
-    box-shadow: rgba(var(--color-border-rgb), 60%) 0 0 0 1dp;
 }
 
 mod-header.no-banner {
@@ -257,12 +219,6 @@ mod-title small {
     color: rgba(var(--color-text-rgb), 55%);
 }
 
-mod-author {
-    display: block;
-    font-size: var(--font-size-base);
-    color: rgba(var(--color-text-rgb), 55%);
-}
-
 mod-restart-note {
     font-size: var(--font-size-base);
     color: var(--color-warning);
@@ -273,24 +229,12 @@ mod-description {
     line-height: 1.5;
 }
 
-status-badge {
-    font-size: var(--font-size-sm);
-    opacity: 0.7;
+mod-info status-badge {
+    font-size: var(--font-size-xs);
 }
 
-status-badge.active,
-mod-info-row > b.active {
-    color: var(--color-success);
-    opacity: 1;
-}
-
-status-badge.failed,
-mod-info-row > b.failed {
+mod-info-row > b.error {
     color: var(--color-error);
-    opacity: 1;
-}
-status-badge.network {
-    color: var(--color-info);
     opacity: 1;
 }
 

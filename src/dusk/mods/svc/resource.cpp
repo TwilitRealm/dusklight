@@ -2,6 +2,7 @@
 
 #include <borealis/log.hpp>
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 #include "mods/svc/resource.h"
 
 #include <fmt/format.h>
@@ -46,7 +47,7 @@ ModResult resource_load(ModContext* context, const char* relativePath, ResourceB
     outBuffer->data = nullptr;
     outBuffer->size = 0;
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || relativePath == nullptr || !is_safe_resource_path(relativePath)) {
+    if (mod == nullptr || relativePath == nullptr || !utils::is_safe_resource_path(relativePath)) {
         return MOD_INVALID_ARGUMENT;
     }
 
@@ -95,10 +96,10 @@ void resource_free(ModContext* context, ResourceBuffer* buffer) {
     buffer->size = 0;
 }
 
-
 bool file_exists(ModContext* ctx, char const* relative_path) {
     auto* mod = mod_from_context(ctx);
-    if (mod == nullptr || relative_path == nullptr || !is_safe_resource_path(relative_path)) {
+    if (mod == nullptr || relative_path == nullptr || !utils::is_safe_resource_path(relative_path))
+    {
         return MOD_INVALID_ARGUMENT;
     }
 
@@ -107,7 +108,8 @@ bool file_exists(ModContext* ctx, char const* relative_path) {
 
 bool directory_exists(ModContext* ctx, char const* relative_path) {
     auto* mod = mod_from_context(ctx);
-    if (mod == nullptr || relative_path == nullptr || !is_safe_resource_path(relative_path)) {
+    if (mod == nullptr || relative_path == nullptr || !utils::is_safe_resource_path(relative_path))
+    {
         return MOD_INVALID_ARGUMENT;
     }
 

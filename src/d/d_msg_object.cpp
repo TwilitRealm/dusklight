@@ -603,13 +603,13 @@ void dMsgObject_c::presentAnims() {
         return;
     }
     auto& animations = found->second;
-    if (animations.phase < 0) {
+    const u16 status = getStatusLocal();
+    if (animations.phase != status) {
         return;
     }
 
-    const u16 status = animations.phase;
     auto& animation = animations.frame;
-    const f32 frame = animation.advance(getStatusLocal() == animations.phase ? field_0x16a : animation.value());
+    const f32 frame = animation.advance(field_0x16a);
     f32 target = 0.0f;
     if (status == 2) {
         if (isPlaceMessage() || isStaffMessage()) {
@@ -1324,6 +1324,10 @@ void dMsgObject_c::continueProc() {
         updateEquipBombInfoLocal();
         offAutoMessageFlagLocal();
         setMessageIndex(field_0x100->msg_idx, field_0x100->select_msg_idx, true);
+#if TARGET_PC
+        sMessageAnimations.erase(this);
+        mpOutFont->setAlphaRatio(1.0f);
+#endif
         mpScrnDraw->fukiPosCalc(pRef->getFukiPosType());
         SAFE_STRCPY(pRef->getTextPtr(), "");
         SAFE_STRCPY(pRef->getTextSPtr(), "");
@@ -1854,6 +1858,7 @@ u16 dMsgObject_c::getStatusLocal() {
 }
 
 void dMsgObject_c::delete_screen(bool param_1) {
+    IF_DUSK(sMessageAnimations.erase(this));
     if (mpOutFont != NULL) {
         JKR_DELETE(mpOutFont);
         mpOutFont = NULL;

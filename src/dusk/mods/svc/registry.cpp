@@ -3,6 +3,7 @@
 #include "dusk/app_info.hpp"
 #include "dusk/logging.h"
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 
 #include <fmt/format.h>
 
@@ -76,13 +77,9 @@ std::vector<ServiceExport> list_services() {
     return services;
 }
 
-bool valid_service_id(const char* serviceId) {
-    return serviceId != nullptr && serviceId[0] != '\0';
-}
-
 ModResult register_service(const char* serviceId, const uint16_t majorVersion,
     const uint16_t minorVersion, const void* service, LoadedMod* provider, const bool deferred) {
-    if (!valid_service_id(serviceId)) {
+    if (!utils::is_valid_name(serviceId)) {
         DuskLog.error("[{}] attempted to register a service with no id", mod_id(provider));
         return MOD_INVALID_ARGUMENT;
     }
@@ -113,7 +110,7 @@ ModResult register_service(const char* serviceId, const uint16_t majorVersion,
 
 ModResult publish_deferred_service(
     LoadedMod& provider, const char* serviceId, const uint16_t majorVersion, const void* service) {
-    if (!valid_service_id(serviceId) || service == nullptr) {
+    if (!utils::is_valid_name(serviceId) || service == nullptr) {
         return MOD_INVALID_ARGUMENT;
     }
 
@@ -155,7 +152,7 @@ const ServiceRecord* find_service(
 }
 
 const ServiceRecord* find_service_record(const char* serviceId, const uint16_t majorVersion) {
-    if (!valid_service_id(serviceId)) {
+    if (!utils::is_valid_name(serviceId)) {
         return nullptr;
     }
 
@@ -304,7 +301,7 @@ bool ModLoader::register_static_service_exports(LoadedMod& mod) {
     }
 
     for (const auto* serviceExport : mod.native->parsed.exports) {
-        if (!svc::valid_service_id(serviceExport->service_id.chars)) {
+        if (!utils::is_valid_name(serviceExport->service_id.chars)) {
             fail_mod(mod, MOD_INVALID_ARGUMENT, "Invalid service export descriptor");
             return false;
         }
@@ -347,7 +344,7 @@ std::string ModLoader::describe_missing_import(
             continue;
         }
         for (const auto* serviceExport : other.native->parsed.exports) {
-            if (svc::valid_service_id(serviceExport->service_id.chars) &&
+            if (utils::is_valid_name(serviceExport->service_id.chars) &&
                 std::string_view{serviceExport->service_id.chars} == serviceId &&
                 serviceExport->major_version == majorVersion)
             {
@@ -367,7 +364,7 @@ bool ModLoader::resolve_service_imports(LoadedMod& mod) {
     }
 
     for (const auto* serviceImport : mod.native->parsed.imports) {
-        if (!svc::valid_service_id(serviceImport->service_id.chars) ||
+        if (!utils::is_valid_name(serviceImport->service_id.chars) ||
             serviceImport->slot == nullptr)
         {
             fail_mod(mod, MOD_INVALID_ARGUMENT, "Invalid service import descriptor");

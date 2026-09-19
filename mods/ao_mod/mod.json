@@ -3,5 +3,5 @@
   "name": "[Demo] Ambient Occlusion",
   "version": "1.0.0",
   "author": "Twilit Realm",
-  "description": "Ground-truth ambient occlusion (GTAO) computed from the scene depth buffer and composited over the game. Ported from Bevy Engine's SSAO and Intel XeGTAO."
+  "description": "Ground-truth ambient occlusion (GTAO) computed from scene depth and normals and composited over the game. Ported from Bevy Engine's SSAO and Intel XeGTAO."
 }

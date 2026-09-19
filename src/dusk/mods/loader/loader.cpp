@@ -15,7 +15,6 @@
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/log_buffer.hpp"
 #include "dusk/mods/manifest.hpp"
-#include "dusk/mods/path.hpp"
 #include "dusk/mods/queue.hpp"
 #include "dusk/mods/svc/config.hpp"
 #include "dusk/mods/svc/hook.hpp"
@@ -24,6 +23,7 @@
 #include "dusk/ui/mod_texture_provider.hpp"
 #include "dusk/ui/mods_window.hpp"
 #include "dusk/ui/ui.hpp"
+#include "dusk/utilities.hpp"
 
 #include <borealis/io.hpp>
 #include <borealis/update.hpp>
@@ -1030,7 +1030,7 @@ ModLoader::OperationResult ModLoader::install_staged(
         }
     }
 
-    const auto destination = userDir / fmt::format("{}.dusk", safe_filename(metadata.id));
+    const auto destination = userDir / fmt::format("{}.dusk", utils::safe_filename(metadata.id));
     auto* installed = find_mod(metadata.id);
     if (installed != nullptr && !can_update(*installed)) {
         return {

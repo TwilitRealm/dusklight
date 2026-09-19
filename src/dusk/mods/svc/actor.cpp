@@ -6,6 +6,7 @@
 
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 
 #include "d/d_stage.h"
 #include "f_op/f_op_actor_tag.h"
@@ -60,10 +61,11 @@ ModResult register_actor(ModContext* ctx, const ActorProfileDesc* desc, ProfileN
     {
         return MOD_INVALID_ARGUMENT;
     }
-    if (desc->name[0] == '\0' || std::memchr(desc->name, '\0', sizeof(desc->name)) == nullptr ||
-        desc->process_size < sizeof(fopAc_ac_c) || desc->create_function == nullptr ||
-        desc->delete_function == nullptr || desc->execute_function == nullptr ||
-        desc->is_delete_function == nullptr || desc->draw_function == nullptr)
+    const auto name = utils::bounded_string(desc->name, sizeof(desc->name));
+    if (!name || name->empty() || desc->process_size < sizeof(fopAc_ac_c) ||
+        desc->create_function == nullptr || desc->delete_function == nullptr ||
+        desc->execute_function == nullptr || desc->is_delete_function == nullptr ||
+        desc->draw_function == nullptr)
     {
         return MOD_INVALID_ARGUMENT;
     }

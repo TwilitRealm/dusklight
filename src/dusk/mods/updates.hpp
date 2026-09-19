@@ -28,7 +28,6 @@ struct InstalledPackage {
 struct UpdateEnvironment {
     std::string platform;
     uint32_t abi = 0;
-    bool nativeUpdates = true;
     std::vector<ServiceExport> services;
     std::vector<InstalledPackage> mods;
     bool operator==(const UpdateEnvironment&) const = default;

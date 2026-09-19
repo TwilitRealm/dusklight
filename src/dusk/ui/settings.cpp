@@ -8,6 +8,7 @@
 #include "number_button.hpp"
 #include "pane.hpp"
 #include "prelaunch.hpp"
+#include "saves_window.hpp"
 #include "touch_controls_editor.hpp"
 #include "ui.hpp"
 
@@ -76,6 +77,13 @@ constexpr std::array kAudioOutputModeNames = {
     "7.1 Surround",
 };
 
+constexpr std::array kLetterboxModes = {
+    "Off",
+    "On",
+    "Only During Gameplay",
+    "Only During Cutscenes",
+};
+
 constexpr std::array kTouchTargetingLabels = {
     "Hybrid",
     "Hold",
@@ -97,6 +105,12 @@ constexpr std::array kMenuScalingModeLabels = {
     "GameCube",
     "Wii",
     "Dusklight",
+};
+
+constexpr std::array kAlwaysGreatspinModes = {
+    "Off",
+    "After Learning Skill",
+    "Always",
 };
 
 constexpr std::array kMagicArmorModes = {
@@ -246,10 +260,8 @@ class DataFolderPathText : public Component {
 public:
     explicit DataFolderPathText(Rml::Element* parent)
         : Component(append(parent, "data-folder-path")) {
-        auto* current = append(mRoot, "data-folder-current");
-        append_text(current, "Current data folder:");
-        append(current, "br");
-        mPath = append(current, "data-folder-value");
+        append_text_element(mRoot, "small", "Current data folder:");
+        mPath = append(mRoot, "file-path");
     }
 
     void update() override {
@@ -659,6 +671,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                             });
                     }
                 });
+            add_save_files_control(leftPane, rightPane);
         });
     }
 
@@ -872,6 +885,38 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                             "during some cutscenes, particularly on ultra-wide displays. "
                             "Visuals beyond the original intended framing may appear buggy.",
             });
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Disable Letterboxing",
+                .getValue =
+                    [] {
+                        return kLetterboxModes[static_cast<u8>(getSettings().game.disableLetterboxing.getValue())];
+                    },
+                .isModified =
+                    [] {
+                        return getSettings().game.disableLetterboxing.getValue() !=
+                               getSettings().game.disableLetterboxing.getDefaultValue();
+                    },
+            }),
+            rightPane, [](Pane& pane) {
+                for (int i = 0; i < static_cast<int>(kLetterboxModes.size()); i++) {
+                    pane.add_button({
+                            .text = kLetterboxModes[i],
+                            .isSelected =
+                                [i] {
+                                    return getSettings().game.disableLetterboxing.getValue() == static_cast<LetterboxMode>(i);
+                                },
+                        })
+                        .on_pressed([i] {
+                            mDoAud_seStartMenu(kSoundItemChange);
+                            getSettings().game.disableLetterboxing.setValue(static_cast<LetterboxMode>(i));
+                            config::save();
+                        });
+                }
+                pane.add_rml(
+                    "<br/>Disable the top and bottom black bars during L-targeting, aiming, "
+                    "cutscenes, dialogue, etc.");
+            });
     });
 
     add_tab("Input", [this](Rml::Element* content) {
@@ -1083,7 +1128,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                 }
             });
 
-        // TODO: Individual sliders for Main Music, Sub Music, Sound Effects, and Fanfare.
+        // TODO: Individual sliders for Sub Music, Sound Effects, and Fanfare.
         leftPane.add_section("Volume");
         leftPane.register_control(
             leftPane.add_child<NumberButton>(NumberButton::Props{
@@ -1106,6 +1151,27 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             rightPane, [](Pane& pane) {
                 pane.clear();
                 pane.add_text("Adjusts the volume of all sounds in the game.");
+            });
+        leftPane.register_control(
+            leftPane.add_child<NumberButton>(NumberButton::Props{
+                .key = "Main Music Volume",
+                .getValue = [] { return getSettings().audio.mainMusicVolume.getValue(); },
+                .setValue =
+                    [](int value) {
+                        getSettings().audio.mainMusicVolume.setValue(value);
+                        config::save();
+                    },
+                .isModified =
+                    [] {
+                        return getSettings().audio.mainMusicVolume.getValue() !=
+                               getSettings().audio.mainMusicVolume.getDefaultValue();
+                    },
+                .max = 100,
+                .suffix = "%",
+            }),
+            rightPane, [](Pane& pane) {
+                pane.clear();
+                pane.add_text("Adjusts the volume of all music in the game.");
             });
 
         leftPane.add_section("Effects");
@@ -1203,6 +1269,8 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             "Wallet sizes are like in the HD version. (500, 1000, 2000)");
         addOption("Disable Rupee Cutscenes", getSettings().game.disableRupeeCutscenes,
             "Rupees will not play cutscenes after you have collected them the first time.");
+        addSpeedrunDisabledOption("Faster Scene Transitions", getSettings().game.fastTransitions,
+            "Reduces how long the transitions take when changing maps.");
         addOption("Faster Climbing", getSettings().game.fastClimbing,
             "Quicker climbing on ladders and vines like the HD version.");
         addOption("Faster Tears of Light", getSettings().game.fastTears,
@@ -1213,6 +1281,8 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             "Skips the delay when writing to the Memory Card.");
         addOption("Hold B for Instant Text", getSettings().game.instantText,
             "Makes text scroll immediately by holding B.");
+        addSpeedrunDisabledOption("Hold Button to Mash", getSettings().game.holdToMash,
+            "Hold the indicated button to mash automatically.");
         addOption("No Climbing Miss Animation", getSettings().game.noMissClimbing,
             "Prevents Link from playing a struggle animation when grabbing ledges or "
             "climbing on vines.");
@@ -1307,8 +1377,40 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
 
         addCheat("Super Clawshot", getSettings().game.superClawshot,
             "Extends Clawshot behavior beyond the normal game rules.");
-        addCheat("Always Greatspin", getSettings().game.alwaysGreatspin,
-            "Allows the Great Spin attack without requiring full health.");
+        leftPane.register_control(
+            leftPane.add_select_button({
+                .key = "Always Greatspin",
+                .getValue =
+                    [] {
+                        return kAlwaysGreatspinModes[static_cast<u8>(
+                            getSettings().game.alwaysGreatspin.getValue())];
+                    },
+                .isDisabled = [] { return dusk::speedrun::isActive(); },
+                .isModified =
+                    [] {
+                        return getSettings().game.alwaysGreatspin.getValue() !=
+                               getSettings().game.alwaysGreatspin.getDefaultValue();
+                    },
+            }),
+            rightPane, [](Pane& pane) {
+                for (int i = 0; i < static_cast<int>(kAlwaysGreatspinModes.size()); i++) {
+                    pane.add_button({
+                            .text = kAlwaysGreatspinModes[i],
+                            .isSelected =
+                                [i] {
+                                    return getSettings().game.alwaysGreatspin.getValue() ==
+                                           static_cast<AlwaysGreatspinMode>(i);
+                                },
+                        })
+                        .on_pressed([i] {
+                            mDoAud_seStartMenu(kSoundItemChange);
+                            getSettings().game.alwaysGreatspin.setValue(
+                                static_cast<AlwaysGreatspinMode>(i));
+                            config::save();
+                        });
+                }
+                pane.add_rml("<br/>Allows the Great Spin attack without requiring full health.");
+            });
         addCheat("Fast Iron Boots", getSettings().game.enableFastIronBoots,
             "Speeds up movement while heavy, including wearing the Iron Boots, holding the Ball and Chain, wearing Magic Armor without rupees, etc.");
         addCheat("Can Transform Anywhere", getSettings().game.canTransformAnywhere,

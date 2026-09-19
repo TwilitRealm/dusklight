@@ -33,7 +33,7 @@
 
 #define GFX_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "gfx"
 #define GFX_SERVICE_MAJOR 1u
-#define GFX_SERVICE_MINOR 2u
+#define GFX_SERVICE_MINOR 3u
 
 /* Maximum size for push_draw payload */
 #define GFX_INLINE_DRAW_PAYLOAD_SIZE 128u
@@ -110,7 +110,8 @@ typedef struct GfxRange {
 
 /*
  * Device and legacy primary scene-pass configuration. Use get_scene_target_layout when creating
- * scene pipelines. Offscreen passes from create_pass are always single-sample.
+ * scene pipelines, and rebuild pipelines if GfxDrawContext.layout key changes. Offscreen passes
+ * from create_pass are always single-sample.
  */
 typedef struct GfxDeviceInfo {
     uint32_t struct_size;
@@ -196,9 +197,11 @@ typedef struct GfxResolveDesc {
     uint32_t struct_size;
     bool color;
     bool depth;
+    /* Minor version 3 */
+    uint32_t normal; /* 0 or 1 (not a bool to avoid using the previous padding) */
 } GfxResolveDesc;
 
-#define GFX_RESOLVE_DESC_INIT {sizeof(GfxResolveDesc), true, false}
+#define GFX_RESOLVE_DESC_INIT {sizeof(GfxResolveDesc), true, false, 0u}
 
 typedef struct GfxResolvedTargets {
     uint32_t struct_size;
@@ -207,10 +210,12 @@ typedef struct GfxResolvedTargets {
     WGPUTextureFormat color_format;
     uint32_t width;
     uint32_t height;
+    /* Minor version 3 */
+    WGPUTextureView normal; /* view-space normal snapshot, RGB10A2Unorm when available */
 } GfxResolvedTargets;
 
 #define GFX_RESOLVED_TARGETS_INIT                                                                  \
-    {sizeof(GfxResolvedTargets), NULL, NULL, WGPUTextureFormat_Undefined, 0u, 0u}
+    {sizeof(GfxResolvedTargets), NULL, NULL, WGPUTextureFormat_Undefined, 0u, 0u, NULL}
 
 /*
  * Passed to GfxComputeFn on the render worker thread; valid only during the call. The encoder is

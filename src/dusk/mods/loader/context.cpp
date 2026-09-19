@@ -18,28 +18,6 @@ const char* mod_id_from_context(ModContext* context) {
     return mod != nullptr ? mod->metadata.id.c_str() : "mod";
 }
 
-bool is_safe_resource_path(std::string_view path) {
-    if (path.empty() || path.starts_with('/') || path.starts_with('\\') ||
-        path.find(':') != std::string_view::npos)
-    {
-        return false;
-    }
-
-    while (!path.empty()) {
-        const auto slash = path.find_first_of("/\\");
-        const auto segment = path.substr(0, slash);
-        if (segment.empty() || segment == "." || segment == "..") {
-            return false;
-        }
-        if (slash == std::string_view::npos) {
-            break;
-        }
-        path.remove_prefix(slash + 1);
-    }
-
-    return true;
-}
-
 void fail_mod(LoadedMod& mod, ModResult code, std::string_view message) {
     const bool firstFailure = !mod.loadFailed;
     mod.active = false;

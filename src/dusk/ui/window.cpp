@@ -34,6 +34,7 @@ Rml::String window_document_source(const std::vector<Rml::String>& styleSheets) 
 <rml>
 <head>
     <link type="text/rcss" href="res/rml/theme.rcss" />
+    <link type="text/rcss" href="res/rml/controls.rcss" />
     <link type="text/rcss" href="res/rml/tabbing.rcss" />
     <link type="text/rcss" href="res/rml/window.rcss" />
 {}</head>
@@ -49,6 +50,7 @@ const Rml::String kDocumentSourceSmall = R"RML(
 <rml>
 <head>
     <link type="text/rcss" href="res/rml/theme.rcss" />
+    <link type="text/rcss" href="res/rml/controls.rcss" />
     <link type="text/rcss" href="res/rml/window.rcss" />
 </head>
 <body>

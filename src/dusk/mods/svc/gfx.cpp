@@ -16,6 +16,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <memory>
 #include <mutex>
@@ -676,7 +677,12 @@ ModResult gfx_resolve_pass(LoadedMod& mod, const GfxResolveDesc& desc, GfxResolv
 
     aurora::gfx::ResolvedTargets resolved;
     if (!aurora::gfx::resolve_pass(
-            aurora::gfx::ResolveDesc{.color = desc.color, .depth = desc.depth}, resolved))
+            aurora::gfx::ResolveDesc{
+                .color = desc.color,
+                .depth = desc.depth,
+                .normal = desc.normal != 0,
+            },
+            resolved))
     {
         return MOD_UNAVAILABLE;
     }
@@ -689,6 +695,7 @@ ModResult gfx_resolve_pass(LoadedMod& mod, const GfxResolveDesc& desc, GfxResolv
     out.color_format = static_cast<WGPUTextureFormat>(resolved.colorFormat);
     out.width = resolved.width;
     out.height = resolved.height;
+    out.normal = resolved.normal.Get();
     return MOD_OK;
 }
 
@@ -1329,17 +1336,35 @@ ModResult gfx_resolve_pass_impl(
     ModContext* context, const GfxResolveDesc* desc, GfxResolvedTargets* outTargets) {
     OH_FUCK_SYNC
 
-    if (outTargets != nullptr && outTargets->struct_size >= sizeof(GfxResolvedTargets)) {
-        *outTargets = GfxResolvedTargets{.struct_size = sizeof(GfxResolvedTargets)};
+    constexpr size_t legacyDescSize = offsetof(GfxResolveDesc, normal);
+    constexpr size_t legacyTargetsSize = offsetof(GfxResolvedTargets, normal);
+    const size_t outputSize = outTargets != nullptr ? std::min<size_t>(outTargets->struct_size,
+                                                          sizeof(GfxResolvedTargets)) :
+                                                      0;
+    GfxResolvedTargets resolved = GFX_RESOLVED_TARGETS_INIT;
+    if (outputSize >= legacyTargetsSize) {
+        resolved.struct_size = static_cast<uint32_t>(outputSize);
+        std::memcpy(outTargets, &resolved, outputSize);
     }
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || desc == nullptr || desc->struct_size < sizeof(GfxResolveDesc) ||
-        outTargets == nullptr || outTargets->struct_size < sizeof(GfxResolvedTargets) ||
-        (!desc->color && !desc->depth))
+    if (mod == nullptr || desc == nullptr || desc->struct_size < legacyDescSize ||
+        outputSize < legacyTargetsSize)
     {
         return MOD_INVALID_ARGUMENT;
     }
-    return gfx_resolve_pass(*mod, *desc, *outTargets);
+    GfxResolveDesc request = GFX_RESOLVE_DESC_INIT;
+    request.color = desc->color;
+    request.depth = desc->depth;
+    request.normal = desc->struct_size >= sizeof(GfxResolveDesc) ? desc->normal : 0;
+    if ((!request.color && !request.depth && !request.normal) ||
+        (request.normal && outputSize < sizeof(GfxResolvedTargets)))
+    {
+        return MOD_INVALID_ARGUMENT;
+    }
+    const auto result = gfx_resolve_pass(*mod, request, resolved);
+    resolved.struct_size = static_cast<uint32_t>(outputSize);
+    std::memcpy(outTargets, &resolved, outputSize);
+    return result;
 }
 
 ModResult gfx_create_pass_impl(ModContext* context, uint32_t width, uint32_t height) {

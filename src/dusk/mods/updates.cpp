@@ -18,10 +18,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#endif
-
 namespace dusk::mods::updates {
 namespace {
 
@@ -145,9 +141,6 @@ UpdateEnvironment capture_environment() {
     UpdateEnvironment result;
     result.platform = catalog::platform();
     result.abi = MOD_ABI_VERSION;
-#if defined(__APPLE__) && (TARGET_OS_IOS || TARGET_OS_TV)
-    result.nativeUpdates = false;
-#endif
     result.services = svc::list_services();
     for (const auto& mod : ModLoader::instance().mods()) {
         InstalledPackage installed{
@@ -202,7 +195,7 @@ std::string validate(const UpdateEnvironment& environment, const UpdatePrecondit
     }
     const auto& candidate = update.compatibility;
     if (candidate.containsNativeCode) {
-        if (!environment.nativeUpdates) {
+        if (!catalog::supports_native_installs()) {
             return "Native mod updates are not supported on this device.";
         }
         if (environment.platform.empty() || std::ranges::find(candidate.platforms,

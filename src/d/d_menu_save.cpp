@@ -1456,9 +1456,8 @@ void dMenu_save_c::memCardDataSaveWait() {
     if (mCmdState != 0) {
 #if TARGET_PC
         if (mCmdState == 1) {
-                dusk::mods::svc::save_slot_written(
-                    mSelectedFile, mSaveBuffer + mSelectedFile * QUEST_LOG_SIZE);
-            }
+            dusk::mods::svc::save_slot_written(mSelectedFile);
+        }
 #endif
         printf("save cmdState %d\n", mCmdState);
         mMenuProc = PROC_MEMCARD_DATA_SAVE_WAIT2;

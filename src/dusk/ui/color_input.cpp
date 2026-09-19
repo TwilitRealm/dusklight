@@ -546,8 +546,8 @@ void ColorInput::add_history(NavGroup& navigation) {
 void ColorInput::add_swatch_button(NavGroup& navigation, const Rml::String& value) {
     auto& button = navigation.add_item<Button>("");
     button.root()->SetClass("color-swatch-button", true);
-    dusk::ui::clear_children(button.root());
-    auto* chip = append(button.root(), "color-chip");
+    ui::clear_children(button.root());
+    auto* chip = append(button.root(), "color-swatch");
     apply_swatch(chip, value, mProps.alpha);
     Rml::String title = value == "rainbow" ? "Rainbow" : value;
     if (const auto color = parse_color(value, mProps.alpha)) {

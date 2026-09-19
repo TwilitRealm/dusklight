@@ -94,8 +94,12 @@ s32 mDoMemCdRWm_Store(CARDFileInfo* file, void* data, u32 length) {
         return ret;
     }
 
+#if TARGET_PC
+    return mDoMemCdRWm_SetCardStat(file);
+#else
     mDoMemCdRWm_SetCardStat(file);
     return ret;
+#endif
 }
 
 s32 mDoMemCdRWm_Restore(CARDFileInfo* file, void* data, u32 length) {
@@ -388,9 +392,18 @@ static void mDoMemCdRWm_BuildHeader(mDoMemCdRWm_HeaderData* header) {
     dComIfGp_getCardIconResArchive()->removeResourceAll();
 }
 
+#if TARGET_PC
+static s32 mDoMemCdRWm_SetCardStat(CARDFileInfo* file) {
+    CARDStat stat;
+    const s32 result = CARDGetStatus(file->chan, file->fileNo, &stat);
+    if (result != CARD_RESULT_READY) {
+        return result;
+    }
+#else
 static void mDoMemCdRWm_SetCardStat(CARDFileInfo* file) {
     CARDStat stat;
     mDoMemCd_getCardStatus(file->fileNo, &stat);
+#endif
 
     stat.iconAddr = 0;
     stat.commentAddr = 0x2400;
@@ -413,7 +426,11 @@ static void mDoMemCdRWm_SetCardStat(CARDFileInfo* file) {
     CARDSetIconSpeed(&stat, 6, CARD_STAT_SPEED_END);
     CARDSetIconSpeed(&stat, 7, CARD_STAT_SPEED_END);
 
+#if TARGET_PC
+    return CARDSetStatus(file->chan, file->fileNo, &stat);
+#else
     mDoMemCd_setCardStatus(file->fileNo, &stat);
+#endif
 }
 
 static BOOL mDoMemCdRWm_CheckCardStat(CARDFileInfo* file) {

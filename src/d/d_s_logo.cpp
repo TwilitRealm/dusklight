@@ -807,8 +807,7 @@ void dScnLogo_c::nextSceneChange() {
                 dComIfGs_setNoFile(dusk::SaveRequested);
                 dComIfGs_setDataNum(saveSlot);
                 if (status == 1) {
-                    dusk::mods::svc::save_slot_loaded(
-                        saveSlot, buf + saveSlot * SAVEDATA_SIZE);
+                    dusk::mods::svc::save_slot_loaded(saveSlot);
                     const dusk::gamemode::GameMode* gameMode =
                         dusk::gamemode::getGameModeManager().getCurrentGameMode();
                     if (gameMode) {

@@ -1,0 +1,244 @@
+*, *:before, *:after {
+    box-sizing: border-box;
+}
+
+b {
+    font-weight: bold;
+}
+
+p,
+heading,
+text-list,
+text-list item,
+file-path {
+    display: block;
+}
+
+heading {
+    font-weight: bold;
+    line-height: 1.3;
+}
+
+small,
+file-path,
+status-badge {
+    font-size: var(--font-size-sm);
+    font-weight: normal;
+    line-height: 1.4;
+    color: rgba(var(--color-text-rgb), 62%);
+}
+
+file-path {
+    word-break: break-all;
+}
+
+ui-row {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    gap: var(--space-sm);
+    min-width: 0;
+    focus: none;
+}
+
+ui-row > * {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+button,
+select-button {
+    cursor: pointer;
+    focus: auto;
+}
+
+button.danger {
+    color: var(--color-error);
+}
+
+icon {
+    width: 1em;
+    height: 1em;
+    font-family: var(--font-family-icons);
+    font-weight: normal;
+    line-height: 1;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+icon.warning {
+    decorator: text("&#xe002;" center center);
+}
+
+icon.error {
+    decorator: text("&#xe000;" center center);
+}
+
+icon.verifying {
+    decorator: text("&#xe8b5;" center center);
+}
+
+icon.download {
+    decorator: text("&#xe2c4;" center center);
+}
+
+icon.celebration {
+    decorator: text("&#xea65;" center center);
+}
+
+icon.question-mark {
+    decorator: text("&#xeb8b;" center center);
+}
+
+icon.arrow-forward {
+    decorator: text("&#xe5c8;" center center);
+}
+
+icon.trophy {
+    decorator: text("&#xe71a;" center center);
+}
+
+icon.controller {
+    decorator: text("&#xf135;" center center);
+}
+
+icon.download-done {
+    decorator: text("&#xf091;" center center);
+}
+
+mod-icon {
+    display: block;
+    flex: 0 0 auto;
+    width: 56dp;
+    height: 56dp;
+    border-radius: var(--radius-panel);
+    font-family: var(--font-family-icons);
+    font-size: 36dp;
+    background-color: rgba(var(--color-control-rgb), 20%);
+    color: rgba(var(--color-text-rgb), 45%);
+    decorator: text("&#xe87b;" center center);
+    overflow: hidden;
+}
+
+mod-icon img,
+mod-icon-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-panel);
+}
+
+status-badge.success {
+    color: var(--color-success);
+}
+
+status-badge.error {
+    color: var(--color-error);
+}
+
+status-badge.warning {
+    color: var(--color-warning);
+}
+
+status-badge.info {
+    color: var(--color-info);
+}
+
+progress {
+    display: block;
+    width: 100%;
+    height: 6dp;
+    border-radius: 3dp;
+    background-color: rgba(var(--color-white-rgb), 10%);
+}
+
+progress fill {
+    background-color: rgba(var(--color-accent-rgb), 80%);
+    border-radius: 3dp;
+}
+
+progress.success fill,
+progress.installed fill {
+    background-color: var(--color-success);
+}
+
+progress.info fill,
+progress.installing fill {
+    background-color: rgba(var(--color-info-rgb), 80%);
+}
+
+progress.failed fill {
+    background-color: var(--color-error);
+}
+
+progress.paused fill {
+    background-color: rgba(var(--color-text-rgb), 35%);
+}
+
+progress.retrying fill {
+    background-color: rgba(var(--color-warning-rgb), 55%);
+}
+
+scrollbarvertical {
+    width: 8dp;
+    margin: var(--space-xs) var(--space-xs) var(--space-xs) 0;
+}
+
+scrollbarvertical sliderarrowdec,
+scrollbarvertical sliderarrowinc {
+    width: 0;
+    height: 0;
+}
+
+scrollbarvertical slidertrack {
+    width: 8dp;
+}
+
+scrollbarvertical sliderbar {
+    width: 8dp;
+    min-height: 24dp;
+    background-color: rgba(var(--color-text-rgb), 45%);
+    border-radius: 2dp;
+    transition: background-color 0.2s cubic-in-out;
+}
+
+scrollbarvertical sliderbar:hover,
+scrollbarvertical sliderbar:active {
+    background-color: rgba(var(--color-accent-rgb), 80%);
+}
+
+color-swatch {
+    display: block;
+    flex: 0 0 auto;
+    width: 20dp;
+    height: 20dp;
+    border-radius: var(--radius-control);
+    box-shadow: rgba(var(--color-white-rgb), 45%) 0 0 0 1dp;
+}
+
+color-swatch.empty {
+    background-color: rgba(var(--color-text-rgb), 12%);
+    decorator: linear-gradient(135deg, rgba(var(--color-text-rgb), 0) 45%, rgba(var(--color-accent-rgb), 70%) 48%, rgba(var(--color-accent-rgb), 70%) 52%, rgba(var(--color-text-rgb), 0) 55%);
+}
+
+ui-tooltip {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    max-width: 240dp;
+    font-family: var(--font-family-body);
+    font-weight: normal;
+    padding: 6dp 10dp;
+    border: 1dp var(--color-border);
+    border-radius: var(--radius-panel);
+    background-color: rgba(var(--color-surface-rgb), 96%);
+    color: var(--color-text);
+    font-size: var(--font-size-md);
+    word-break: break-word;
+    pointer-events: none;
+    focus: none;
+}
+
+ui-tooltip.visible {
+    display: block;
+}

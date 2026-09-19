@@ -8,6 +8,7 @@
 #include <borealis/log.hpp>
 #include "dusk/config.hpp"
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 #include "mods/svc/file.h"
 
 #include <algorithm>
@@ -184,8 +185,8 @@ ModResult begin_export(ModContext* context, const char* sourceLocation, const ch
     FilePickFn callback, void* userData) {
     auto* mod = mod_from_context(context);
     const std::string_view name = suggestedName != nullptr ? suggestedName : "";
-    if (mod == nullptr || sourceLocation == nullptr || callback == nullptr || name.empty() ||
-        name == "." || name == ".." || name.find_first_of("/\\") != std::string_view::npos)
+    if (mod == nullptr || sourceLocation == nullptr || callback == nullptr ||
+        !utils::is_safe_path_component(name))
     {
         return MOD_INVALID_ARGUMENT;
     }

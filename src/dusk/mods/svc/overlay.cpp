@@ -2,6 +2,7 @@
 #include "registry.hpp"
 
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 #include "mods/svc/overlay.h"
 
 #include "JSystem/JKernel/JKRArchive.h"
@@ -255,22 +256,14 @@ bool consume_overlays_dirty() {
 
 constexpr size_t kMaxOverlayFileSize = UINT32_MAX;
 
-bool is_valid_disc_path(const char* discPath) {
-    if (discPath == nullptr) {
-        return false;
-    }
-    const std::string_view path{discPath};
-    return path.starts_with('/') && is_safe_resource_path(path.substr(1));
-}
-
 ModResult overlay_add_file(
     ModContext* context, const char* discPath, const char* bundlePath, OverlayHandle* outHandle) {
     if (outHandle != nullptr) {
         *outHandle = 0;
     }
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !is_valid_disc_path(discPath) || bundlePath == nullptr ||
-        !is_safe_resource_path(bundlePath))
+    if (mod == nullptr || discPath == nullptr || !utils::is_valid_disc_path(discPath) ||
+        bundlePath == nullptr || !utils::is_safe_resource_path(bundlePath))
     {
         return MOD_INVALID_ARGUMENT;
     }
@@ -301,8 +294,8 @@ ModResult overlay_add_buffer(ModContext* context, const char* discPath, const vo
         *outHandle = 0;
     }
     auto* mod = mod_from_context(context);
-    if (mod == nullptr || !is_valid_disc_path(discPath) || (data == nullptr && size != 0) ||
-        size > kMaxOverlayFileSize)
+    if (mod == nullptr || discPath == nullptr || !utils::is_valid_disc_path(discPath) ||
+        (data == nullptr && size != 0) || size > kMaxOverlayFileSize)
     {
         return MOD_INVALID_ARGUMENT;
     }

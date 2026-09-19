@@ -68,11 +68,14 @@ window > close {
     font-weight: normal;
     font-size: var(--font-size-4xl);
     color: rgba(var(--color-text-rgb), 70%);
-    backdrop-filter: blur(2dp);
     border-radius: 6dp;
     decorator: text("&#xe5cd;" center center);
     transition: color background-color 0.12s linear-in-out;
     cursor: pointer;
+}
+
+window.image-header > close {
+    backdrop-filter: blur(2dp);
 }
 
 tab-bar[closable] close:hover,

@@ -6,6 +6,7 @@
 #include <borealis/log.hpp>
 #include "dusk/config.hpp"
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 #include "mods/svc/config.h"
 
 #include <fmt/format.h>
@@ -112,20 +113,6 @@ ConfigVarValue translate_current(
     return value;
 }
 
-bool valid_var_fragment(const char* name) {
-    if (name == nullptr) {
-        return false;
-    }
-    const std::string_view fragment{name};
-    if (fragment.empty() || fragment.size() > 64) {
-        return false;
-    }
-    return std::ranges::all_of(fragment, [](char ch) {
-        return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') ||
-               ch == '_' || ch == '-';
-    });
-}
-
 config::ConfigVarBase* find_var(LoadedMod& mod, const uint64_t handle, uint32_t expectedType) {
     const auto* entry = s_slots.find_owned(handle, mod);
     if (entry == nullptr || entry->value.kind != ConfigSlotKind::Var ||
@@ -167,7 +154,7 @@ ModResult config_register_var(
     }
     auto* mod = mod_from_context(context);
     if (mod == nullptr || desc == nullptr || desc->struct_size < sizeof(ConfigVarDesc) ||
-        !valid_var_fragment(desc->name))
+        desc->name == nullptr || !utils::is_valid_config_name(desc->name))
     {
         return MOD_INVALID_ARGUMENT;
     }

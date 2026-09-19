@@ -119,7 +119,7 @@ public:
     void _move();
     void _draw();
 #if TARGET_PC
-    void presentAnims();
+    void presentAnims(u8 process);
     void presentZoomView(u8 process, f32 zoomLevel, f32 zoomBlend);
     void captureRenderState();
     void captureZoomEnd(u8 process);

@@ -22,6 +22,8 @@ const char* material_icon(std::string_view name) {
         {"refresh", "\uE5D5"},
         {"file_download", "\uE2C4"},
         {"download", "\uF090"},
+        {"sim_card_download", "\uF068"},
+        {"indeterminate_question_box", "\uF56D"},
         {"schedule", "\uE8B5"},
         {"warning", "\uE002"},
         {"check_circle", "\uE86C"},

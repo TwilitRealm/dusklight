@@ -1,0 +1,208 @@
+button,
+select-button {
+    color: var(--button-color);
+    background-color: var(--button-background);
+    opacity: 0.9;
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--radius-window);
+    box-shadow: rgba(var(--color-border-rgb), 25%) 0 0 0 1dp;
+    transition: background-color 0.1s linear-in-out, opacity 0.1s linear-in-out;
+}
+
+button {
+    text-align: center;
+    font-size: var(--font-size-2xl);
+}
+
+button:not(:disabled):hover,
+button:not(:disabled):focus-visible,
+select-button:not(:disabled):hover,
+select-button:not(:disabled):focus-visible {
+    background-color: var(--button-background-hover);
+    box-shadow: var(--color-accent) 0 0 0 2dp;
+}
+
+button:not(:disabled):selected,
+select-button:not(:disabled):selected {
+    opacity: 1;
+    background-color: var(--button-background-selected);
+}
+
+button:not(:disabled):active,
+select-button:not(:disabled):active {
+    opacity: 1;
+    background-color: var(--button-background-active);
+    box-shadow: var(--color-accent) 0 0 0 2dp;
+}
+
+button:disabled,
+select-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+select-button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+select-button key,
+select-button value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+select-button key {
+    font-family: var(--font-family-heading);
+    font-weight: bold;
+    font-size: var(--font-size-xl);
+    text-transform: uppercase;
+    flex: 0 1 auto;
+}
+
+select-button value {
+    flex: 1 0 20%;
+    text-align: right;
+    font-size: var(--font-size-2xl);
+}
+
+select-button value.modified {
+    font-weight: bold;
+}
+
+select-button input {
+    text-align: right;
+    font-size: var(--font-size-2xl);
+}
+
+select-button icon {
+    display: none;
+    flex: 0 0 auto;
+}
+
+select-button.has-icon icon,
+select-button.group-button icon {
+    display: inline-block;
+}
+
+select-button.group-button > icon {
+    flex: 0 0 24dp;
+    margin-left: auto;
+    width: 24dp;
+    height: 24dp;
+    font-size: var(--font-size-4xl);
+    color: var(--button-color);
+    decorator: text("&#xe5cc;" center center);
+}
+
+select-button.group-button value {
+    display: none;
+}
+
+select-button.dropdown-button icon {
+    display: none;
+}
+
+select-button.dropdown-button dropdown-indicator {
+    display: block;
+    flex: 0 0 16dp;
+    width: 16dp;
+    height: 16dp;
+    font-family: var(--font-family-icons);
+    font-size: 16dp;
+    font-weight: normal;
+    line-height: 1;
+    transition: transform 0.1s linear-in-out;
+}
+
+select-button.dropdown-button.expanded dropdown-indicator {
+    transform: rotate(180deg);
+}
+
+select-button.color-input value {
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-base);
+}
+
+select-button.color-input color-swatch {
+    display: block;
+    flex: 0 0 48dp;
+    width: 48dp;
+    height: 24dp;
+}
+
+button.compact,
+select-button.compact {
+    padding: 6dp var(--space-md);
+    font-size: var(--font-size-sm);
+}
+
+select-button.compact key {
+    font-size: var(--font-size-xs);
+}
+
+select-button.compact value,
+select-button.compact input {
+    font-size: var(--font-size-sm);
+}
+
+button.with-icon {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+button.with-icon icon {
+    flex-shrink: 0;
+    font-size: 1.25em;
+    line-height: 1;
+}
+
+button.primary {
+    --button-background: rgba(var(--color-interactive-rgb), 18%);
+    --button-background-hover: rgba(var(--color-interactive-rgb), 42%);
+    --button-background-selected: rgba(var(--color-interactive-rgb), 42%);
+    --button-background-active: rgba(var(--color-interactive-rgb), 65%);
+    box-shadow: rgba(var(--color-accent-rgb), 65%) 0 0 0 1dp;
+}
+
+button.overlay {
+    --button-background: rgba(var(--color-surface-rgb), 80%);
+    --button-background-hover: rgba(var(--color-control-rgb), 90%);
+    --button-background-selected: rgba(var(--color-control-rgb), 90%);
+    --button-background-active: rgba(var(--color-surface-rgb), 90%);
+    box-shadow: rgba(var(--color-border-rgb), 60%) 0 0 0 1dp;
+}
+
+button.danger {
+    box-shadow: rgba(var(--color-error-rgb), 55%) 0 0 0 1dp;
+}
+
+button.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44dp;
+    height: 44dp;
+    padding: var(--space-sm);
+    box-sizing: border-box;
+    flex-shrink: 0;
+    font-size: var(--font-size-5xl);
+}
+
+button.icon-button icon {
+    display: block;
+    flex-shrink: 0;
+    line-height: 1;
+    pointer-events: none;
+}
+
+button.icon-button.compact {
+    width: 30dp;
+    height: 28dp;
+    padding: 0;
+    font-size: var(--font-size-md);
+}

@@ -41,20 +41,6 @@ catalog-filters h2 {
     opacity: 0.42;
 }
 
-catalog-filters select-button {
-    padding: var(--space-sm) 10dp;
-    border-radius: var(--radius-panel);
-}
-
-catalog-filters select-button key {
-    font-size: var(--font-size-xs);
-}
-
-catalog-filters select-button value,
-catalog-filters select-button input {
-    font-size: var(--font-size-sm);
-}
-
 catalog-results {
     display: flex;
     flex-flow: column;
@@ -75,7 +61,6 @@ catalog-results > header small {
     display: block;
     margin-top: var(--space-2xs);
     font-size: var(--font-size-xs);
-    opacity: 0.5;
 }
 
 catalog-viewport {
@@ -121,7 +106,7 @@ catalog-card-art-image {
     bottom: 0;
     left: 0;
     pointer-events: none;
-    mask-image: linear-gradient(180deg, #fff 45%, transparent);
+    image-fade-start: 0.45;
 }
 
 catalog-card-body {
@@ -161,27 +146,16 @@ catalog-card-body > small {
     font-size: var(--font-size-sm);
     font-weight: normal;
     text-transform: none;
-    opacity: 0.45;
 }
 
 .catalog-card mod-icon {
-    display: block;
     position: absolute;
     left: 14dp;
     bottom: -18dp;
     z-index: 1;
     width: 56dp;
     height: 56dp;
-    border-radius: var(--radius-panel);
-    overflow: hidden;
     box-shadow: rgba(var(--color-black-rgb), 60%) 0 6dp 16dp;
-}
-
-mod-icon-image {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: var(--radius-panel);
 }
 
 catalog-card-body > section {
@@ -203,7 +177,6 @@ catalog-card-body > section h2 {
 catalog-card-body > section small {
     display: block;
     font-size: var(--font-size-3xs);
-    opacity: 0.55;
 }
 
 catalog-card-body > p {
@@ -267,11 +240,6 @@ catalog-pagination-label {
     text-align: center;
     font-size: var(--font-size-xs);
     opacity: 0.5;
-}
-
-catalog-pagination button {
-    font-size: var(--font-size-sm);
-    padding: 6dp var(--space-md);
 }
 
 catalog-results-status,
@@ -339,7 +307,7 @@ catalog-detail-hero-image {
     bottom: 0;
     left: 0;
     pointer-events: none;
-    mask-image: linear-gradient(180deg, #fff 40%, transparent);
+    image-fade-start: 0.4;
 }
 
 catalog-detail-actions {
@@ -348,28 +316,6 @@ catalog-detail-actions {
     z-index: 1;
     flex-flow: row;
     gap: var(--space-sm);
-}
-
-catalog-detail-actions button,
-catalog-source-actions button {
-    font-size: var(--font-size-sm);
-    padding: 7dp var(--space-md);
-    --button-background: rgba(var(--color-control-rgb), 75%);
-    --button-background-hover: rgba(var(--color-control-rgb), 90%);
-    --button-background-selected: rgba(var(--color-control-rgb), 90%);
-    --button-background-active: rgba(var(--color-surface-rgb), 90%);
-}
-
-.catalog-icon-action {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.catalog-icon-action icon {
-    flex: 0 0 18dp;
-    font-size: var(--font-size-xl);
-    line-height: 1;
 }
 
 .catalog-install-action {
@@ -401,14 +347,6 @@ catalog-source-actions button {
     white-space: nowrap;
 }
 
-.catalog-install-action.idle {
-    --button-background: rgba(var(--color-interactive-rgb), 18%);
-    --button-background-hover: rgba(var(--color-interactive-rgb), 42%);
-    --button-background-selected: rgba(var(--color-interactive-rgb), 42%);
-    --button-background-active: rgba(var(--color-interactive-rgb), 65%);
-    box-shadow: rgba(var(--color-accent-rgb), 65%) 0 0 0 1dp;
-}
-
 .catalog-install-action.paused {
     box-shadow: rgba(var(--color-border-rgb), 25%) 0 0 0 1dp;
 }
@@ -433,20 +371,11 @@ catalog-source-actions button {
 
 .catalog-install-action progress fill {
     border-radius: 0;
-    background-color: rgba(var(--color-accent-rgb), 80%);
-}
-
-.catalog-install-action.paused progress fill {
-    background-color: rgba(var(--color-text-rgb), 35%);
 }
 
 .catalog-install-action.retrying {
     color: var(--color-warning);
     box-shadow: rgba(var(--color-warning-rgb), 60%) 0 0 0 2dp;
-}
-
-.catalog-install-action.retrying progress fill {
-    background-color: rgba(var(--color-warning-rgb), 60%);
 }
 
 .catalog-install-action.failed {
@@ -458,17 +387,9 @@ catalog-source-actions button {
     box-shadow: var(--color-error) 0 0 0 2dp;
 }
 
-.catalog-install-action.failed progress fill {
-    background-color: rgba(var(--color-error-rgb), 70%);
-}
-
 .catalog-install-action.installed {
     color: var(--color-success);
     box-shadow: rgba(var(--color-success-rgb), 50%) 0 0 0 2dp;
-}
-
-.catalog-install-action.installing progress fill {
-    background-color: rgba(var(--color-info-rgb), 80%);
 }
 
 catalog-install-control {
@@ -479,7 +400,7 @@ catalog-install-control {
     gap: var(--space-xs);
 }
 
-catalog-install-caption {
+catalog-install-control small {
     display: block;
     max-width: 240dp;
     overflow: hidden;
@@ -490,8 +411,12 @@ catalog-install-caption {
     white-space: nowrap;
 }
 
-catalog-install-caption.failed {
+catalog-install-control small.failed {
     color: var(--color-error);
+}
+
+catalog-install-control small.requires-bundling {
+    white-space: normal;
 }
 
 catalog-detail-identity {
@@ -503,12 +428,9 @@ catalog-detail-identity {
 }
 
 catalog-detail-identity mod-icon {
-    display: block;
     flex: 0 0 70dp;
     width: 70dp;
     height: 70dp;
-    border-radius: var(--radius-panel);
-    overflow: hidden;
     box-shadow: rgba(var(--color-black-rgb), 65%) 0 8dp 20dp;
 }
 
@@ -541,7 +463,6 @@ catalog-detail-identity h1 small {
     font-family: var(--font-family-body);
     font-size: var(--font-size-xs);
     font-weight: normal;
-    opacity: 0.55;
 }
 
 catalog-detail-identity p {
@@ -616,7 +537,6 @@ catalog-detail-body h2 small {
     font-family: var(--font-family-body);
     font-size: var(--font-size-3xs);
     font-weight: normal;
-    opacity: 0.5;
 }
 
 catalog-fragment {
@@ -805,11 +725,6 @@ catalog-screenshot-actions {
     gap: var(--space-sm);
 }
 
-catalog-screenshot-actions button {
-    font-size: var(--font-size-sm);
-    padding: 7dp 13dp;
-}
-
 @media (max-height: 640dp) {
     catalog-filters {
         flex-basis: 232dp;
@@ -902,7 +817,7 @@ catalog-screenshot-actions button {
         gap: 3dp;
     }
 
-    catalog-install-caption {
+    catalog-install-control small {
         max-width: 190dp;
         font-size: var(--font-size-3xs);
     }

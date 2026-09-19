@@ -60,7 +60,6 @@ LoadedMod* mod_from_context(ModContext* context);
 const LoadedMod* mod_from_context(const ModContext* context);
 const char* mod_id_from_context(ModContext* context);
 void fail_mod(LoadedMod& mod, ModResult code, std::string_view message);
-bool is_safe_resource_path(std::string_view path);
 std::string escape_mod_id_for_config(std::string_view id);
 
 }  // namespace dusk::mods

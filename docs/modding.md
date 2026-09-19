@@ -719,8 +719,8 @@ Writes that store the same value are silent. Values applied from `config.json` o
 
 ### SaveService ([`mods/svc/save.h`](../sdk/include/mods/svc/save.h))
 
-Stores named binary blobs for each save slot. Blob names are scoped to the calling mod, and each mod may store up to
-`SAVE_BLOB_BUDGET_BYTES` per slot. The service copies data passed to `set_blob`.
+Allows reading and writing binary blobs associated with save slots. Blobs are scoped to your mod and the active game
+mode's save file. A mod may store up to `SAVE_BLOB_BUDGET_BYTES` per slot.
 
 ```cpp
 IMPORT_SERVICE(SaveService, svc_save);
@@ -743,8 +743,8 @@ if (svc_save->get_blob(mod_ctx, "state", &loaded, &loadedSize) == MOD_OK &&
 
 `set_blob`, `get_blob`, and `delete_blob` operate on the current slot, which is available after creating or loading a
 save and unavailable at file select. Blob changes are written with the next game save. File-select copy and erase
-operations update the blob data as well. Use `peek_blob` to read the calling mod's data from any slot; it uses the same
-buffer contract as `get_blob`. Pass a `NULL` buffer to either read function to query the blob size.
+operations update the blob data as well. Use `peek_blob` to read the calling mod's data from any slot in the active save
+file. Pass a `NULL` buffer to either read function to query the blob size.
 
 `observe_saves` registers callbacks for new, loaded, and written saves. New-save callbacks run after the slot's blobs
 are cleared. Observers are removed automatically when the mod is detached, so the output handle is only needed for
@@ -1058,6 +1058,13 @@ Inside a stage callback, record work with `push_draw`, stream per-frame data wit
 for temporary offscreen passes. Draw callbacks run later on the render worker thread with the live
 `WGPURenderPassEncoder`; they may use only their `GfxDrawContext` handles and raw `wgpu*` calls. Compute callbacks
 registered with `register_compute_type` follow the same worker-thread rule and run on the frame command encoder.
+
+**GfxService 1.3**: set `GfxResolveDesc.normal` to request a view-space normal snapshot. The first request enables the
+normal attachment for the next frame, then stays enabled until quit. Normal snapshots are unavailable in WebGPU
+compatibility mode or offscreen passes.
+
+Scene attachment changes alter `GfxDrawContext.layout.key`. Create scene pipelines from the draw callback's layout
+and rebuild lazily when its key changes. See the included demo gfx mods for examples.
 
 All WGPU handles from the service are borrowed. Resolved target views are valid for the current frame only. GPU objects
 created by a mod are owned by that mod and should be released in `mod_shutdown`.

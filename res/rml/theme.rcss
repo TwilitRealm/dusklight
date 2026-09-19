@@ -1,7 +1,3 @@
-*, *:before, *:after {
-    box-sizing: border-box;
-}
-
 body {
     --font-family-body: Fira Sans;
     --font-family-heading: Fira Sans Condensed;
@@ -64,8 +60,6 @@ body {
     --color-error-rgb: 204, 68, 68;
     --color-error: rgb(var(--color-error-rgb));
 
-    --color-progress-done: #44AA22;
-    --color-progress-ongoing: #2255BB;
     --color-danger-border: #852221;
     --color-danger-heading: #B3261E;
 

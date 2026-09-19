@@ -5,6 +5,7 @@
 #include "aurora/lib/logging.hpp"
 #include "dusk/audio/DuskAudioSystem.h"
 #include "dusk/mods/loader/loader.hpp"
+#include "dusk/utilities.hpp"
 #include "helpers/cast.hpp"
 
 namespace dusk::mods::svc::audio_res::wsys {
@@ -153,7 +154,7 @@ ModResult insert_replace_wave_core(ModContext* ctx, AudioWaveBank bank, u16 wave
     }
 
     auto mod = mod_from_context(ctx);
-    if (mod == nullptr || file_name == nullptr || !is_safe_resource_path(file_name)) {
+    if (mod == nullptr || file_name == nullptr || !utils::is_safe_resource_path(file_name)) {
         return MOD_INVALID_ARGUMENT;
     }
 
