@@ -151,7 +151,7 @@ pipeline-progress[open] {
     filter: opacity(1);
 }
 
-pipeline-status {
+pipeline-progress status {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
@@ -160,13 +160,13 @@ pipeline-status {
     white-space: nowrap;
 }
 
-icon.pipeline-spinner {
+pipeline-progress icon {
+    flex: 0 0 auto;
     width: 1.2em;
     height: 1.2em;
-    line-height: 1.2em;
     font-size: 1.2em;
     color: var(--color-accent);
-    text-align: center;
+    decorator: text("&#xe9d0;" center center);
     transform-origin: center;
     animation: 1s linear infinite pipeline-spinner-spin;
 }

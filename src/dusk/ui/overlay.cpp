@@ -39,10 +39,10 @@ const Rml::String kDocumentSource = R"RML(
 <body>
     <fps id="fps" />
     <pipeline-progress id="pipeline-progress">
-        <pipeline-status>
-            <icon class="pipeline-spinner">&#xe9d0;</icon>
-            <span id="pipeline-progress-label" />
-        </pipeline-status>
+        <status>
+            <icon />
+            <status-label id="pipeline-progress-label" />
+        </status>
         <progress id="pipeline-progress-bar" />
     </pipeline-progress>
     <speedrun-timer id="speedrun-timer">
@@ -481,13 +481,15 @@ void Overlay::update_pipeline_progress() {
 
     if (queuedPipelines != mLastQueuedPipelines) {
         mLastQueuedPipelines = queuedPipelines;
-        const auto noun = queuedPipelines == 1 ? "pipeline" : "pipelines";
+        const auto noun = queuedPipelines == 1 ? "shader" : "shaders";
         set_text_content(
-            mPipelineProgressLabel, fmt::format("Building {} {}", queuedPipelines, noun));
+            mPipelineProgressLabel, fmt::format("Compiling {} {}", queuedPipelines, noun));
     }
     mPipelineProgressBar->SetAttribute("value", progress);
 
-    if (clock::now() >= mPipelineProgressStartTime + kPipelineProgressOpenDelay) {
+    if (getSettings().backend.showPipelineCompilation.getValue() &&
+        clock::now() >= mPipelineProgressStartTime + kPipelineProgressOpenDelay)
+    {
         mPipelineProgress->SetAttribute("open", "");
     } else {
         mPipelineProgress->RemoveAttribute("open");

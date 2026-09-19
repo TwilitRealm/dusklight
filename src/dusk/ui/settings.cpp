@@ -1576,6 +1576,11 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                     "game if a disc image is available.<br/><br/>Note: If any mods register game "
                     "modes, this option will be ignored.",
             });
+        config_bool_select(leftPane, rightPane, getSettings().backend.showPipelineCompilation,
+            {
+                .key = "Show Shader Compilation",
+                .helpText = "Show an overlay when shaders are being compiled for your hardware.",
+            });
         config_bool_select(leftPane, rightPane, getSettings().backend.checkForUpdates,
             {
                 .key = "Check for Dusklight Updates",
