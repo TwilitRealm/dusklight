@@ -517,6 +517,7 @@ void JASDsp::TChannel::init() {
     mIsActive = 0;
     mAutoMixerBeenSet = 0;
     mSamplePosition = 0;
+    IF_DUSK(mAramBaseAddress = nullptr);
     initFilter();
 }
 
