@@ -237,7 +237,12 @@ void mDoMemCd_Ctrl_c::restore() {
         if (ret2 == CARD_RESULT_READY) {
             mCardState = CARD_STATE_READ_e;
         } else {
+#if TARGET_PC
+            mCardState = CARD_STATE_FATAL_ERROR_e;
+            setCardState(ret2 == CARD_RESULT_NOFILE ? CARD_RESULT_IOERROR : ret2);
+#else
             setCardState(ret);
+#endif
         }
         CARDClose(&file);
     } else {
@@ -261,7 +266,9 @@ s32 mDoMemCd_Ctrl_c::LoadSync(void* i_buffer, u32 i_size, u32 i_position) {
             mCardState = CARD_STATE_READY_e;
             ret = 1;
         } else {
+#if !TARGET_PC
             mCardState = CARD_STATE_NO_FILE_e;
+#endif
             ret = 2;
         }
         OSUnlockMutex(&mMutex);
@@ -286,6 +293,13 @@ void mDoMemCd_Ctrl_c::store() {
     s32 ret;
     field_0x1fc8 = 0;
 
+#if TARGET_PC
+    if (mCardState != CARD_STATE_READY_e && mCardState != CARD_STATE_NO_FILE_e) {
+        field_0x1fc8 = 1;
+        return;
+    }
+#endif
+
 #ifdef TARGET_PC
     const char* fileName = getFileName();
 #else
@@ -298,11 +312,20 @@ void mDoMemCd_Ctrl_c::store() {
 #else
         ret = CARDCreate(mChannel, "zeldaTp.dat", CARD_FILE_SIZE, &file);
 #endif
+#if TARGET_PC
+        // EXIST can mean a save appeared after probing. Don't init over it.
+        if (ret == CARD_RESULT_READY) {
+            mCardState = CARD_STATE_READY_e;
+        } else {
+            setCardState(ret == CARD_RESULT_EXIST ? CARD_RESULT_IOERROR : ret);
+        }
+#else
         if (ret == CARD_RESULT_READY || ret == CARD_RESULT_EXIST) {
             mCardState = CARD_STATE_READY_e;
         } else {
             setCardState(ret);
         }
+#endif
     }
 
     if (mCardState == CARD_STATE_READY_e) {

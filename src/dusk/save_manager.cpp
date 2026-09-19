@@ -162,7 +162,8 @@ std::string utc_timestamp(bool filename) {
 
 std::filesystem::path gci_path(const Storage& storage, const SaveIdentity& identity) {
     return storage.path /
-           (card_file_stem(identity.maker, identity.game, identity.saveName) + ".gci");
+           borealis::io::fs_path_from_utf8(
+               card_file_stem(identity.maker, identity.game, identity.saveName) + ".gci");
 }
 
 std::filesystem::path backup_directory(const Storage& storage) {
@@ -425,7 +426,10 @@ ValueResult<std::vector<SaveIdentity>> list_card_saves(
                 auto read = read_location(
                     borealis::io::fs_path_to_string(entry.path()), kMaxRawSize + kGciHeaderSize);
                 auto parsed = read ? parse_gci(read.value) : ValueResult<GciHeader>{};
-                if (parsed && parsed.value.game == game && parsed.value.maker == maker) {
+                if (parsed && parsed.value.game == game && parsed.value.maker == maker &&
+                    borealis::io::fs_path_to_string(entry.path().filename()) ==
+                        card_file_stem(maker, game, parsed.value.saveName) + ".gci")
+                {
                     names.insert(parsed.value.saveName);
                 }
             }
@@ -507,30 +511,33 @@ ValueResult<std::vector<uint8_t>> read_current_gci(
     }
     try {
         const auto canonical = gci_path(storage, identity);
-        std::vector<std::filesystem::path> candidates;
-        if (std::filesystem::is_regular_file(canonical)) {
-            candidates.push_back(canonical);
-        }
         for (const auto& entry : std::filesystem::directory_iterator{storage.path}) {
-            if (!entry.is_regular_file() || entry.path().extension() != ".gci" ||
-                entry.path() == canonical)
-            {
+            if (entry.path().filename() != canonical.filename()) {
                 continue;
             }
-            candidates.push_back(entry.path());
-        }
-        for (const auto& path : candidates) {
-            auto read =
-                read_location(borealis::io::fs_path_to_string(path), kMaxRawSize + kGciHeaderSize);
+            if (!entry.is_regular_file()) {
+                return {failure("The expected save path is not a regular file."), {}};
+            }
+            auto read = read_location(
+                borealis::io::fs_path_to_string(entry.path()), kMaxRawSize + kGciHeaderSize);
             if (!read) {
-                continue;
-            }
-            auto parsed = parse_gci(read.value);
-            if (parsed && parsed.value.game == identity.game &&
-                parsed.value.maker == identity.maker && parsed.value.saveName == identity.saveName)
-            {
                 return read;
             }
+            auto parsed = parse_gci(read.value);
+            if (!parsed) {
+                return {parsed.result, {}};
+            }
+            if (parsed.value.game != identity.game || parsed.value.maker != identity.maker ||
+                parsed.value.saveName != identity.saveName)
+            {
+                return {failure("The save filename does not match the save data it contains."), {}};
+            }
+            return read;
+        }
+        if (std::filesystem::exists(std::filesystem::symlink_status(canonical))) {
+            return {
+                failure("The expected save path is occupied. Check its filename and letter case."),
+                {}};
         }
     } catch (const std::exception& exception) {
         return {
@@ -629,35 +636,7 @@ Result write_gci(
         }
         return success();
     }
-
-    const auto destination = gci_path(storage, identity);
-    if (const auto written = write_file_atomic(destination, gci); !written) {
-        return written;
-    }
-    // Keep alternate filenames until the replacement is safely on disk.
-    try {
-        for (const auto& entry : std::filesystem::directory_iterator{storage.path}) {
-            if (!entry.is_regular_file() || entry.path().extension() != ".gci" ||
-                entry.path() == destination)
-            {
-                continue;
-            }
-            auto read = read_location(
-                borealis::io::fs_path_to_string(entry.path()), kMaxRawSize + kGciHeaderSize);
-            auto parsed = read ? parse_gci(read.value) : ValueResult<GciHeader>{};
-            if (parsed && parsed.value.game == identity.game &&
-                parsed.value.maker == identity.maker && parsed.value.saveName == identity.saveName)
-            {
-                std::filesystem::remove(entry.path());
-            }
-        }
-    } catch (const std::exception& exception) {
-        finish_write(storage, identity);
-        return failure(
-            fmt::format("The save was replaced, but duplicate files could not be removed: {}",
-                exception.what()));
-    }
-    return success();
+    return write_file_atomic(gci_path(storage, identity), gci);
 }
 
 ValueResult<std::filesystem::path> backup_existing_save(
@@ -778,7 +757,14 @@ std::optional<SaveIdentity> identity_for_disc(const iso::DiscInfo& info, std::st
 
 std::string card_file_stem(
     std::string_view maker, std::string_view game, std::string_view saveName) {
-    return fmt::format("{}-{}-{}", maker, game, saveName);
+    std::array<char, 64> filename{};
+    const size_t required =
+        aurora_card_gci_filename(std::string{game}.c_str(), std::string{maker}.c_str(),
+            std::string{saveName}.c_str(), filename.data(), filename.size());
+    if (required == 0 || required > filename.size()) {
+        return {};
+    }
+    return {filename.data(), required - 5};
 }
 
 std::filesystem::path save_sidecar_directory(const std::filesystem::path& backingPath,
@@ -895,14 +881,16 @@ ValueResult<GciHeader> parse_gci(const std::vector<uint8_t>& bytes) {
         return {failure("The selected file has an invalid GCI header."), {}};
     }
     const std::string saveName = fixed_string(bytes.data() + 8, 32);
-    if (saveName.empty()) {
+    const std::string game = fixed_string(bytes.data(), 4);
+    const std::string maker = fixed_string(bytes.data() + 4, 2);
+    if (saveName.empty() || game.size() != 4 || maker.size() != 2) {
         return {failure("The selected file has an invalid GCI filename."), {}};
     }
     return {
         success(),
         GciHeader{
-            .maker = fixed_string(bytes.data() + 4, 2),
-            .game = fixed_string(bytes.data(), 4),
+            .maker = maker,
+            .game = game,
             .saveName = saveName,
             .modifiedTime = read_bits<uint32_t>(bytes.data() + 0x28),
             .blockCount = blockCount,
@@ -1143,19 +1131,8 @@ Result delete_save(const Storage& storage, const SaveIdentity& identity) {
         }
     } else {
         try {
-            for (const auto& entry : std::filesystem::directory_iterator{storage.path}) {
-                if (!entry.is_regular_file() || entry.path().extension() != ".gci") {
-                    continue;
-                }
-                auto read = read_location(
-                    borealis::io::fs_path_to_string(entry.path()), kMaxRawSize + kGciHeaderSize);
-                auto parsed = read ? parse_gci(read.value) : ValueResult<GciHeader>{};
-                if (parsed && parsed.value.game == identity.game &&
-                    parsed.value.maker == identity.maker &&
-                    parsed.value.saveName == identity.saveName)
-                {
-                    std::filesystem::remove(entry.path());
-                }
+            if (!std::filesystem::remove(gci_path(storage, identity))) {
+                return failure("The save file could not be deleted.");
             }
         } catch (const std::exception& exception) {
             return failure(fmt::format("The save could not be deleted: {}", exception.what()));
