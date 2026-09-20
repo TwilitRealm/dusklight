@@ -905,22 +905,19 @@ ValueResult<GciHeader> parse_gci(const std::vector<uint8_t>& bytes) {
 
 DiscCompatibility disc_compatibility(const GciHeader& header, const SaveIdentity& identity) {
     if (header.game.size() != 4 || identity.game.size() != 4 || header.maker.size() != 2 ||
-        header.maker != identity.maker)
-    {
+        header.maker != identity.maker) {
         return DiscCompatibility::Incompatible;
     }
     if (header.game == identity.game) {
         return DiscCompatibility::Exact;
     }
-    if (std::string_view{header.game}.substr(0, 3) == std::string_view{identity.game}.substr(0, 3))
-    {
+    if (std::string_view{header.game}.substr(0, 3) == std::string_view{identity.game}.substr(0, 3)) {
         return DiscCompatibility::RegionChange;
     }
     if ((std::string_view{header.game}.substr(0, 3) == "RZD" &&
          std::string_view{identity.game}.substr(0, 3) == "GZ2") ||
          std::string_view{header.game}.substr(0, 3) == "GZ2" &&
-         std::string_view{identity.game}.substr(0, 3) == "RZD")
-    {
+         std::string_view{identity.game}.substr(0, 3) == "RZD") {
         return DiscCompatibility::PlatformChange;
     }
 }
