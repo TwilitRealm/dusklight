@@ -290,7 +290,8 @@ void confirm_import(Artifact artifact) {
     const auto compatibility =
         raw ? save_manager::DiscCompatibility::Exact :
               save_manager::disc_compatibility(artifact.header, context.value.identity);
-    const bool changingRegion = compatibility == save_manager::DiscCompatibility::RegionChange;
+    const bool changingVersion = (compatibility == save_manager::DiscCompatibility::RegionChange ||
+                                 compatibility == save_manager::DiscCompatibility::PlatformChange);
     if (compatibility == save_manager::DiscCompatibility::Incompatible) {
         show_message("Import Failed", "This save does not match the configured disc.", true,
             &finish_import_flow);
@@ -344,7 +345,7 @@ void confirm_import(Artifact artifact) {
             {
                 {.label = "Cancel", .onPressed = cancel},
                 {
-                    .label = changingRegion ? "Import Anyway" : "Import",
+                    .label = changingVersion ? "Import Anyway" : "Import",
                     .onPressed =
                         [items, keepModData, hasBundledModData](Modal& modal) {
                             const auto action = hasBundledModData ? ModDataAction::Replace :
@@ -354,7 +355,7 @@ void confirm_import(Artifact artifact) {
                         },
                     .isDisabled =
                         [items] { return std::ranges::none_of(*items, &ImportItem::selected); },
-                    .icon = changingRegion ? "warning" : "",
+                    .icon = changingVersion ? "warning" : "",
                 },
             },
         .onDismiss = cancel,
@@ -374,9 +375,10 @@ void confirm_import(Artifact artifact) {
             });
         }
     } else {
-        const auto* regionMessage = changingRegion ?
-                                        " This save is from a different region than the "
-                                        "configured disc and may not work correctly." :
+        const auto* regionMessage = changingVersion ?
+                                        " This save is from a different region or "
+                                        "platform than the configured disc and may "
+                                        "not work correctly." :
                                         "";
         modal->set_body(
             fmt::format("{} the <b>{}</b> save?{}{}", replacingSave ? "Replace" : "Import",
