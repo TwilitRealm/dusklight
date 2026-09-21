@@ -353,7 +353,7 @@ void confirm_import(Artifact artifact) {
             {
                 {.label = i18n::tr_str("common.cancel"), .onPressed = cancel},
                 {
-                    .label = changingRegion ? i18n::tr_str("saves.import_anyway") :
+                    .label = changingVersion ? i18n::tr_str("saves.import_anyway") :
                                               i18n::tr_str("common.import"),
                     .onPressed =
                         [items, keepModData, hasBundledModData](Modal& modal) {
@@ -383,7 +383,7 @@ void confirm_import(Artifact artifact) {
         }
     } else {
         const Rml::String regionMessage =
-            changingRegion ? i18n::tr_str("saves.import_region_note") : Rml::String{};
+            changingVersion ? i18n::tr_str("saves.import_version_note") : Rml::String{};
         modal->set_body(fmt::format(fmt::runtime(i18n::tr_source("saves.import_body_one")),
             fmt::arg("action", replacingSave ? i18n::tr("saves.import_action_replace") :
                                                i18n::tr("common.import")),

@@ -292,7 +292,7 @@
     "import_body_multi": "Choose the saves to import. Existing saves will be backed up first.",
     "import_body_one": "{action} the <b>{label}</b> save?{region}{backup}",
     "import_action_replace": "Replace",
-    "import_region_note": " This save is from a different region than the configured disc and may not work correctly.",
+    "import_version_note": " This save is from a different region or platform than the configured disc and may not work correctly.",
     "import_backup_note": " A backup will be made first.",
     "import_anyway": "Import Anyway",
     "no_registered_mode": "No registered game mode uses these saves.",

@@ -292,7 +292,7 @@
     "import_body_multi": "Elige las partidas a importar. Las partidas existentes se respaldarán primero.",
     "import_body_one": "¿{action} la partida <b>{label}</b>?{region}{backup}",
     "import_action_replace": "Reemplazar",
-    "import_region_note": " Esta partida es de una región distinta a la del disco configurado y podría no funcionar correctamente.",
+    "import_version_note": "Esta partida guardada proviene de una región o plataforma distinta a la del disco configurado y es posible que no funcione correctamente.",
     "import_backup_note": " Se hará una copia de seguridad primero.",
     "import_anyway": "Importar de todos modos",
     "no_registered_mode": "Ningún modo de juego registrado usa estas partidas.",
