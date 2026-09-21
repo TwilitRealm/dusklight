@@ -18,6 +18,7 @@
 #include "dusk/logging.h"
 #include "dusk/main.h"
 #include "dusk/speedrun.h"
+#include "dusk/ui/i18n.hpp"
 #include "dusk/ui/ui.hpp"
 #include "f_op/f_op_actor_mng.h"
 #include "f_pc/f_pc_name.h"
@@ -1291,8 +1292,8 @@ void AchievementSystem::processEntry(Entry& e) {
         if (getSettings().game.enableAchievementToasts) {
             ui::push_toast({
                 .type = "achievement",
-                .title = "Achievement Unlocked!",
-                .content = e.achievement.name,
+                .title = ui::i18n::tr_str("achievements.unlocked_toast"),
+                .content = ui::i18n::tr_str(std::string("achievements.name_") + e.achievement.key),
                 .duration = std::chrono::seconds(5),
             });
         }

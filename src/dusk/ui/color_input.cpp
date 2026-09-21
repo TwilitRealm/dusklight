@@ -1,6 +1,7 @@
 #include "color_input.hpp"
 
 #include "button.hpp"
+#include "i18n.hpp"
 #include "input.hpp"
 #include "nav_group.hpp"
 
@@ -17,6 +18,7 @@
 
 namespace dusk::ui {
 namespace {
+using i18n::tr_str;
 
 // These dimensions must match the controls in res/rml/popover.rcss.
 constexpr float kSvWidthDp = 240.0f;
@@ -337,13 +339,13 @@ bool ColorInput::disabled() const {
 Rml::String ColorInput::format_value() {
     const Rml::String value = mProps.getValue ? mProps.getValue() : "";
     if (value == "rainbow") {
-        return "Rainbow";
+        return tr_str("color_input.rainbow");
     }
     const auto color = parse_color(value, mProps.alpha);
     if (color.has_value()) {
         return format_color(*color, mHexFormat, mProps.alpha);
     }
-    return value.empty() ? "Default" : value;
+    return value.empty() ? tr_str("color_input.default") : value;
 }
 
 bool ColorInput::handle_nav_command(NavCommand cmd) {
@@ -454,17 +456,18 @@ void ColorInput::build_picker() {
         refresh_picker();
     });
 
-    footerNavigation.add_item<Button>("Default").on_pressed([this] { commit_value(""); });
+    footerNavigation.add_item<Button>(tr_str("color_input.default"))
+        .on_pressed([this] { commit_value(""); });
 
     auto& valueButton = footerNavigation.add_item<Button>("", "color-value");
     mPickerValue = valueButton.root();
-    mPickerValue->SetAttribute("title", "Copy color");
+    mPickerValue->SetAttribute("title", tr_str("color_input.copy_color"));
     valueButton.on_pressed([this] {
         SDL_SetClipboardText(format_color(current_color(), mHexFormat, mProps.alpha).c_str());
         push_toast({
             .type = "info",
-            .title = "Color",
-            .content = "Copied to clipboard",
+            .title = tr_str("color_input.color"),
+            .content = tr_str("color_input.copied"),
             .duration = std::chrono::seconds{2},
         });
     });
@@ -549,7 +552,7 @@ void ColorInput::add_swatch_button(NavGroup& navigation, const Rml::String& valu
     ui::clear_children(button.root());
     auto* chip = append(button.root(), "color-swatch");
     apply_swatch(chip, value, mProps.alpha);
-    Rml::String title = value == "rainbow" ? "Rainbow" : value;
+    Rml::String title = value == "rainbow" ? tr_str("color_input.rainbow") : value;
     if (const auto color = parse_color(value, mProps.alpha)) {
         title = format_color(*color, true, mProps.alpha);
     }

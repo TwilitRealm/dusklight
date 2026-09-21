@@ -147,6 +147,21 @@ void Window::update() {
     Document::update();
 }
 
+void Window::rebuild() {
+    // Re-resolve tab titles so translated strings are picked up.
+    if (mTabBar) {
+        const auto count = std::min(mTabTitleProviders.size(),
+            static_cast<size_t>(mTabBar->tab_count()));
+        for (size_t i = 0; i < count; ++i) {
+            if (mTabTitleProviders[i]) {
+                mTabBar->set_tab_title(static_cast<int>(i), mTabTitleProviders[i]());
+            }
+        }
+    }
+    // Re-run the active tab builder so translated strings are picked up.
+    refresh_active_tab();
+}
+
 void Window::update_safe_area() noexcept {
     if (mDocument == nullptr) {
         return;
@@ -200,15 +215,21 @@ void Window::refresh_active_tab() {
 }
 
 void Window::add_tab(const Rml::String& title, TabBuilder builder) {
+    add_tab([title] { return title; }, std::move(builder));
+}
+
+void Window::add_tab(TabTitleProvider titleProvider, TabBuilder builder) {
     if (!mTabBar) {
         return;
     }
-    mTabBar->add_tab(title, [this, builder = std::move(builder)] {
-        clear_content();
-        if (builder) {
-            builder(mContentRoot);
-        }
-    });
+    mTabBar->add_tab(titleProvider ? titleProvider() : Rml::String{},
+        [this, builder = std::move(builder)] {
+            clear_content();
+            if (builder) {
+                builder(mContentRoot);
+            }
+        });
+    mTabTitleProviders.push_back(std::move(titleProvider));
 }
 
 void Window::set_content(TabBuilder builder) {

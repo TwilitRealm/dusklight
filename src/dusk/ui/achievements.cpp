@@ -1,5 +1,6 @@
 #include "achievements.hpp"
 
+#include "dusk/ui/i18n.hpp"
 #include "nav_types.hpp"
 #include "pane.hpp"
 
@@ -10,6 +11,10 @@
 #include <fmt/format.h>
 
 namespace dusk::ui {
+
+using i18n::tr;
+using i18n::tr_str;
+
 namespace {
 
 struct CategoryInfo {
@@ -17,26 +22,43 @@ struct CategoryInfo {
     const char* label;
 };
 
-constexpr CategoryInfo kCategories[] = {
-    {AchievementCategory::Challenge, "Challenge"},
-    {AchievementCategory::Collection, "Collection"},
-    {AchievementCategory::Minigame, "Minigame"},
-    {AchievementCategory::Misc, "Misc"},
-    {AchievementCategory::Glitched, "Glitched"},
+constexpr AchievementCategory kCategories[] = {
+    AchievementCategory::Challenge,
+    AchievementCategory::Collection,
+    AchievementCategory::Minigame,
+    AchievementCategory::Misc,
+    AchievementCategory::Glitched,
 };
+
+Rml::String category_label(AchievementCategory cat) {
+    switch (cat) {
+    case AchievementCategory::Challenge:
+        return tr_str("achievements.category_challenge");
+    case AchievementCategory::Collection:
+        return tr_str("achievements.category_collection");
+    case AchievementCategory::Minigame:
+        return tr_str("achievements.category_minigame");
+    case AchievementCategory::Misc:
+        return tr_str("achievements.category_misc");
+    case AchievementCategory::Glitched:
+        return tr_str("achievements.category_glitched");
+    default:
+        return "?";
+    }
+}
 
 void append_achievement_info(Rml::Element* parent, const Achievement& a) {
     auto* header = append(parent, "achievement-header");
     auto* name = append(header, "achievement-name");
     name->SetClass("unlocked", a.unlocked);
-    append_text(name, a.name);
+    append_text(name, tr_str("achievements.name_" + std::string(a.key)));
     auto* badge = append(header, "status-badge");
     badge->SetClass(a.unlocked ? "success" : "error", true);
-    append_text(badge, a.unlocked ? "Unlocked" : "Locked");
+    append_text(badge, a.unlocked ? tr_str("achievements.unlocked") : tr_str("achievements.locked"));
 
     auto* description = append(parent, "p");
     description->SetClass("achievement-desc", true);
-    append_text(description, a.description);
+    append_text(description, tr_str("achievements.desc_" + std::string(a.key)));
     if (a.isCounter) {
         const float fraction = a.goal > 0 ? float(a.progress) / float(a.goal) : 1.0f;
         auto* progress = append(parent, "progress");
@@ -63,7 +85,7 @@ public:
                     resetConfirm();
                 } else {
                     mConfirming = true;
-                    mClearButton->set_text("Clear?");
+                    mClearButton->set_text(tr_str("achievements.clear_question"));
                 }
                 return true;
             }
@@ -109,10 +131,10 @@ AchievementsWindow::AchievementsWindow() {
         updateTotal();
     }
 
-    for (const auto& catInfo : kCategories) {
+    for (const auto catInfo : kCategories) {
         int catTotal = 0;
         for (const auto& a : all) {
-            if (a.category == catInfo.cat) {
+            if (a.category == catInfo) {
                 ++catTotal;
             }
         }
@@ -120,7 +142,8 @@ AchievementsWindow::AchievementsWindow() {
             continue;
         }
 
-        add_tab(catInfo.label, [this, cat = catInfo.cat](Rml::Element* content) {
+        add_tab([cat = catInfo] { return category_label(cat); },
+            [this, cat = catInfo](Rml::Element* content) {
             const auto achievements = AchievementSystem::get().getAchievements();
 
             int total = 0, unlocked = 0;
@@ -135,7 +158,8 @@ AchievementsWindow::AchievementsWindow() {
 
             auto& pane = add_child<Pane>(content, Pane::Type::Controlled);
 
-            pane.add_section(fmt::format("{} / {} unlocked", unlocked, total));
+            pane.add_section(fmt::format(fmt::runtime(tr_str("achievements.section_progress")),
+                fmt::arg("unlocked", unlocked), fmt::arg("total", total)));
 
             for (const auto& a : achievements) {
                 if (a.category != cat) {
@@ -144,9 +168,9 @@ AchievementsWindow::AchievementsWindow() {
                 pane.add_child<AchievementRow>(a);
             }
 
-            pane.add_section("Actions");
+            pane.add_section(tr_str("common.actions"));
 
-            auto& clearAllBtn = pane.add_button("Clear All Achievements");
+            auto& clearAllBtn = pane.add_button(tr_str("achievements.clear_all"));
             clearAllBtn.root()->SetClass("danger", true);
             auto* clearAllPtr = &clearAllBtn;
             auto confirmingAll = std::make_shared<bool>(false);
@@ -157,23 +181,23 @@ AchievementsWindow::AchievementsWindow() {
                         mDoAud_seStartMenu(kSoundClick);
                         AchievementSystem::get().clearAll();
                         *confirmingAll = false;
-                        clearAllPtr->set_text("Clear All Achievements");
+                        clearAllPtr->set_text(tr_str("achievements.clear_all"));
                     } else {
                         *confirmingAll = true;
-                        clearAllPtr->set_text("Are you sure?");
+                        clearAllPtr->set_text(tr_str("achievements.are_you_sure"));
                     }
                     return true;
                 }
                 if (cmd == NavCommand::Cancel && *confirmingAll) {
                     *confirmingAll = false;
-                    clearAllPtr->set_text("Clear All Achievements");
+                    clearAllPtr->set_text(tr_str("achievements.clear_all"));
                     return true;
                 }
                 return false;
             });
             clearAllBtn.listen(Rml::EventId::Blur, [clearAllPtr, confirmingAll](Rml::Event&) {
                 *confirmingAll = false;
-                clearAllPtr->set_text("Clear All Achievements");
+                clearAllPtr->set_text(tr_str("achievements.clear_all"));
             });
         });
     }

@@ -15,6 +15,7 @@
 #include "dusk/settings.h"
 #include "dusk/utilities.hpp"
 #include "format.hpp"
+#include "i18n.hpp"
 #include "icon_button.hpp"
 #include "modal.hpp"
 #include "pane.hpp"
@@ -105,11 +106,11 @@ save_manager::ValueResult<Context> context_for_save(const std::string& saveName)
     if (data::is_data_path_restart_pending() ||
         (!state.activeDiscPath.empty() && state.configuredDiscPath != state.activeDiscPath))
     {
-        return {{.message = "Restart required before managing saves."}, {}};
+        return {{.message = i18n::tr_str("saves.restart_required")}, {}};
     }
     auto identity = save_manager::identity_for_disc(state.configuredDiscInfo, saveName);
     if (!state.configuredDiscCanLaunch || !identity) {
-        return {{.message = "A disc must be configured before managing saves."}, {}};
+        return {{.message = i18n::tr_str("saves.disc_required")}, {}};
     }
     const auto preferredKind = getSettings().backend.cardFileType.getValue() == 0 ?
                                    save_manager::StorageKind::RawImage :
@@ -156,7 +157,7 @@ void show_message(
     host->push(std::make_unique<Modal>(Modal::Props{
         .title = std::move(title),
         .bodyText = std::move(body),
-        .actions = {{.label = "OK", .onPressed = close}},
+        .actions = {{.label = i18n::tr_str("common.ok"), .onPressed = close}},
         .onDismiss = close,
         .icon = error ? "warning" : "",
     }));
@@ -189,8 +190,8 @@ void export_artifact(save_manager::ExportArtifact artifact, std::string pattern)
             if (result.status != borealis::file_select::Status::Selected &&
                 result.status != borealis::file_select::Status::Canceled)
             {
-                show_message("Export Failed",
-                    result.message.empty() ? "The save file could not be exported." :
+                show_message(i18n::tr_str("saves.export_failed"),
+                    result.message.empty() ? i18n::tr_str("saves.export_failed_msg") :
                                              result.message,
                     true);
             }
@@ -200,13 +201,13 @@ void export_artifact(save_manager::ExportArtifact artifact, std::string pattern)
 void begin_export(const std::string& saveName, bool includeModData) {
     auto context = context_for_save(saveName);
     if (!context) {
-        show_message("Export Failed", context.result.message, true);
+        show_message(i18n::tr_str("saves.export_failed"), context.result.message, true);
         return;
     }
     auto artifact =
         save_manager::build_export(context.value.storage, context.value.identity, includeModData);
     if (!artifact) {
-        show_message("Export Failed", artifact.result.message, true);
+        show_message(i18n::tr_str("saves.export_failed"), artifact.result.message, true);
         return;
     }
     export_artifact(std::move(artifact.value), includeModData ? "dusksave" : "gci");
@@ -215,12 +216,12 @@ void begin_export(const std::string& saveName, bool includeModData) {
 void begin_raw_export(const std::string& saveName) {
     auto context = context_for_save(saveName);
     if (!context) {
-        show_message("Export Failed", context.result.message, true);
+        show_message(i18n::tr_str("saves.export_failed"), context.result.message, true);
         return;
     }
     auto artifact = save_manager::raw_card_export(context.value.storage);
     if (!artifact) {
-        show_message("Export Failed", artifact.result.message, true);
+        show_message(i18n::tr_str("saves.export_failed"), artifact.result.message, true);
         return;
     }
     export_artifact(std::move(artifact.value), "raw");
@@ -261,30 +262,37 @@ void perform_import(
     ++s_refreshGeneration;
     std::string message;
     if (result) {
-        message = replacingRawImage  ? "The memory card image was imported." :
-                  importedCount == 1 ? fmt::format("The {} save was imported.", importedLabel) :
-                                       fmt::format("{} saves were imported.", importedCount);
+        message = replacingRawImage ? i18n::tr_str("saves.card_imported") :
+                  importedCount == 1
+                      ? fmt::format(fmt::runtime(i18n::tr_source("saves.imported_one")),
+                          fmt::arg("label", importedLabel))
+                      : fmt::format(fmt::runtime(i18n::tr_source("saves.imported_many")),
+                          fmt::arg("count", importedCount));
     } else if (importedCount != 0) {
-        message = fmt::format("{} save{} imported before the operation stopped: {}", importedCount,
-            importedCount == 1 ? " was" : "s were", result.message);
+        message = fmt::format(fmt::runtime(i18n::tr_source("saves.imported_partial")),
+            fmt::arg("count", importedCount),
+            fmt::arg("plural", importedCount == 1 ? i18n::tr("saves.imported_was") :
+                                                     i18n::tr("saves.imported_were")),
+            fmt::arg("message", result.message));
     } else {
         message = result.message;
     }
-    show_message("Save Files", std::move(message), !result, &finish_import_flow);
+    show_message(i18n::tr_str("saves.save_files"), std::move(message), !result, &finish_import_flow);
 }
 
 void confirm_import(Artifact artifact) {
     const bool raw = artifact.kind == save_manager::ArtifactKind::Raw;
     const bool hasBundledModData = artifact.kind == save_manager::ArtifactKind::DuskSave;
     if (!raw && !utils::is_valid_save_name(artifact.header.saveName)) {
-        show_message("Import Failed", "The save contains an unsupported filename.", true,
-            &finish_import_flow);
+        show_message(i18n::tr_str("saves.import_failed"),
+            i18n::tr_str("saves.unsupported_name"), true, &finish_import_flow);
         return;
     }
     auto context =
         context_for_save(raw ? gamemode::kDefaultGameModeSaveName : artifact.header.saveName);
     if (!context) {
-        show_message("Import Failed", context.result.message, true, &finish_import_flow);
+        show_message(
+            i18n::tr_str("saves.import_failed"), context.result.message, true, &finish_import_flow);
         return;
     }
     const auto compatibility =
@@ -292,8 +300,8 @@ void confirm_import(Artifact artifact) {
               save_manager::disc_compatibility(artifact.header, context.value.identity);
     const bool changingRegion = compatibility == save_manager::DiscCompatibility::RegionChange;
     if (compatibility == save_manager::DiscCompatibility::Incompatible) {
-        show_message("Import Failed", "This save does not match the configured disc.", true,
-            &finish_import_flow);
+        show_message(i18n::tr_str("saves.import_failed"), i18n::tr_str("saves.disc_mismatch"),
+            true, &finish_import_flow);
         return;
     }
 
@@ -302,13 +310,13 @@ void confirm_import(Artifact artifact) {
         auto extracted = save_manager::extract_raw_saves(
             artifact, context.value.identity.game, context.value.identity.maker);
         if (!extracted) {
-            show_message("Import Failed", extracted.result.message, true, &finish_import_flow);
+            show_message(i18n::tr_str("saves.import_failed"), extracted.result.message, true,
+                &finish_import_flow);
             return;
         }
         if (extracted.value.empty()) {
-            show_message("Import Failed",
-                "The card image does not contain saves for the configured disc.", true,
-                &finish_import_flow);
+            show_message(i18n::tr_str("saves.import_failed"),
+                i18n::tr_str("saves.card_no_saves"), true, &finish_import_flow);
             return;
         }
         for (auto& save : extracted.value) {
@@ -327,7 +335,8 @@ void confirm_import(Artifact artifact) {
         const auto& target = items->front().context;
         auto info = save_manager::inspect_save(target.storage, target.identity);
         if (!info) {
-            show_message("Import Failed", info.result.message, true, &finish_import_flow);
+            show_message(
+                i18n::tr_str("saves.import_failed"), info.result.message, true, &finish_import_flow);
             return;
         }
         replacingSave = info.value.present;
@@ -339,12 +348,13 @@ void confirm_import(Artifact artifact) {
     };
     auto keepModData = std::make_shared<bool>(false);
     auto modal = std::make_unique<Modal>(Modal::Props{
-        .title = "Import Save",
+        .title = i18n::tr_str("saves.import_save"),
         .actions =
             {
-                {.label = "Cancel", .onPressed = cancel},
+                {.label = i18n::tr_str("common.cancel"), .onPressed = cancel},
                 {
-                    .label = changingRegion ? "Import Anyway" : "Import",
+                    .label = changingRegion ? i18n::tr_str("saves.import_anyway") :
+                                              i18n::tr_str("common.import"),
                     .onPressed =
                         [items, keepModData, hasBundledModData](Modal& modal) {
                             const auto action = hasBundledModData ? ModDataAction::Replace :
@@ -361,11 +371,9 @@ void confirm_import(Artifact artifact) {
         .icon = "warning",
     });
     if (replacingRawImage) {
-        modal->set_body_text(
-            "Replace the entire memory card image? All saves on the current card will be "
-            "replaced. Existing saves for the configured disc will be backed up first.");
+        modal->set_body_text(i18n::tr_str("saves.import_body_replace_card"));
     } else if (multiple) {
-        modal->set_body_text("Choose the saves to import. Existing saves will be backed up first.");
+        modal->set_body_text(i18n::tr_str("saves.import_body_multi"));
         for (size_t i = 0; i < items->size(); ++i) {
             modal->content_pane().add_child<BoolButton>(BoolButton::Props{
                 .key = mode_label((*items)[i].context.identity.saveName),
@@ -374,14 +382,14 @@ void confirm_import(Artifact artifact) {
             });
         }
     } else {
-        const auto* regionMessage = changingRegion ?
-                                        " This save is from a different region than the "
-                                        "configured disc and may not work correctly." :
-                                        "";
-        modal->set_body(
-            fmt::format("{} the <b>{}</b> save?{}{}", replacingSave ? "Replace" : "Import",
-                escape(mode_label(items->front().context.identity.saveName)), regionMessage,
-                replacingSave ? " A backup will be made first." : ""));
+        const Rml::String regionMessage =
+            changingRegion ? i18n::tr_str("saves.import_region_note") : Rml::String{};
+        modal->set_body(fmt::format(fmt::runtime(i18n::tr_source("saves.import_body_one")),
+            fmt::arg("action", replacingSave ? i18n::tr("saves.import_action_replace") :
+                                               i18n::tr("common.import")),
+            fmt::arg("label", escape(mode_label(items->front().context.identity.saveName))),
+            fmt::arg("region", regionMessage),
+            fmt::arg("backup", replacingSave ? i18n::tr("saves.import_backup_note") : "")));
     }
     if (!replacingRawImage) {
         Rml::Element* unregistered = nullptr;
@@ -389,8 +397,8 @@ void confirm_import(Artifact artifact) {
             if (!is_registered_save(item.context.identity.saveName)) {
                 if (unregistered == nullptr) {
                     unregistered = append(modal->content_pane().root(), "text-list");
-                    append_text_element(
-                        unregistered, "small", "No registered game mode uses these saves.");
+                    append_text_element(unregistered, "small",
+                        i18n::tr_str("saves.no_registered_mode"));
                 }
                 append_text_element(unregistered, "item", item.context.identity.saveName);
             }
@@ -398,7 +406,7 @@ void confirm_import(Artifact artifact) {
     }
     if (!items->front().artifact.declaredMods.empty()) {
         auto* modData = append(modal->content_pane().root(), "text-list");
-        append_text_element(modData, "heading", "Included mod data:");
+        append_text_element(modData, "heading", i18n::tr_str("saves.included_mod_data"));
         for (const auto& mod : items->front().artifact.declaredMods) {
             append_text_element(modData, "item", fmt::format("{} {}", mod.id, mod.version));
         }
@@ -406,7 +414,7 @@ void confirm_import(Artifact artifact) {
     if (!hasBundledModData) {
         auto& pane = modal->content_pane();
         pane.add_child<BoolButton>(BoolButton::Props{
-            .key = "Keep existing mod data",
+            .key = i18n::tr_str("saves.keep_mod_data"),
             .getValue = [keepModData] { return *keepModData; },
             .setValue = [keepModData](bool value) { *keepModData = value; },
         });
@@ -423,8 +431,8 @@ void import_dialog_callback(borealis::file_select::Result result) {
         return;
     }
     if (result.status != borealis::file_select::Status::Selected || result.locations.empty()) {
-        show_message("Import Failed",
-            result.message.empty() ? "The save file picker could not be opened." : result.message,
+        show_message(i18n::tr_str("saves.import_failed"),
+            result.message.empty() ? i18n::tr_str("saves.picker_failed") : result.message,
             true);
         return;
     }
@@ -440,7 +448,8 @@ void process_next_import() {
     s_pendingImports.pop_front();
     auto artifact = save_manager::read_artifact(location);
     if (!artifact) {
-        show_message("Import Failed", artifact.result.message, true, &finish_import_flow);
+        show_message(i18n::tr_str("saves.import_failed"), artifact.result.message, true,
+            &finish_import_flow);
         return;
     }
     confirm_import(std::move(artifact.value));
@@ -458,11 +467,11 @@ void begin_import() {
 class SaveListHeader final : public Component {
 public:
     SaveListHeader(Rml::Element* parent, bool available) : Component{append(parent, "header")} {
-        append_text_element(mRoot, "section-heading", "Save Files");
+        append_text_element(mRoot, "section-heading", i18n::tr_str("saves.save_files"));
         add_child<IconButton>(
             IconButton::Props{
                 .icon = "sim_card_download",
-                .label = "Import Save",
+                .label = i18n::tr_str("saves.import_save"),
                 .isDisabled = [available] { return !available || borealis::file_select::busy(); },
             })
             .on_pressed(&begin_import);
@@ -472,23 +481,22 @@ public:
 void begin_delete(const std::string& saveName) {
     auto context = context_for_save(saveName);
     if (!context) {
-        show_message("Delete Failed", context.result.message, true);
+        show_message(i18n::tr_str("saves.delete_failed"), context.result.message, true);
         return;
     }
     if (auto* host = top_document()) {
         host->push(std::make_unique<Modal>(Modal::Props{
-            .title = "Delete Save",
-            .bodyRml =
-                fmt::format("Delete the <b>{}</b> save and mod data? A backup will be made first.",
-                    escape(mode_label(saveName))),
+            .title = i18n::tr_str("saves.delete_save"),
+            .bodyRml = fmt::format(fmt::runtime(i18n::tr_source("saves.delete_save_body")),
+                fmt::arg("label", escape(mode_label(saveName)))),
             .actions =
                 {
                     {
-                        .label = "Cancel",
+                        .label = i18n::tr_str("common.cancel"),
                         .onPressed = &dismiss_modal,
                     },
                     {
-                        .label = "Delete",
+                        .label = i18n::tr_str("common.delete"),
                         .onPressed =
                             [context = context.value](Modal& modal) {
                                 modal.pop();
@@ -498,7 +506,7 @@ void begin_delete(const std::string& saveName) {
                                 {
                                     ++s_refreshGeneration;
                                 } else {
-                                    show_message("Delete Save", result.message, true);
+                                    show_message(i18n::tr_str("saves.delete_save"), result.message, true);
                                 }
                             },
                     },
@@ -547,7 +555,7 @@ private:
         listPane.root()->SetClass("list", true);
         auto& detailPane = add_child<Pane>(content, Pane::Type::Uncontrolled);
         detailPane.root()->SetClass("detail", true);
-        listPane.add_section("Backups");
+        listPane.add_section(i18n::tr_str("saves.backups"));
 
         auto context = context_for_save(mSaveName);
         if (!context) {
@@ -561,7 +569,7 @@ private:
         }
 
         if (backups.value.empty()) {
-            detailPane.add_section("No backups yet");
+            detailPane.add_section(i18n::tr_str("saves.no_backups"));
             return;
         }
         if (std::ranges::none_of(backups.value,
@@ -594,19 +602,20 @@ private:
         Pane& pane, Context context, save_manager::BackupInfo backup, const std::string& label) {
         append_save_header(pane.root(), mode_label(context.identity.saveName), label);
         append_text_element(pane.root(), "file-path", backup.name);
-        pane.add_button("Restore This Backup...").on_pressed([this, context, path = backup.path] {
+        pane.add_button(i18n::tr_str("saves.restore_this_backup"))
+            .on_pressed([this, context, path = backup.path] {
             if (auto* host = top_document()) {
                 host->push(std::make_unique<Modal>(Modal::Props{
-                    .title = "Restore Backup",
-                    .bodyText = "Replace the current save and mod data with this backup?",
+                    .title = i18n::tr_str("saves.restore_backup"),
+                    .bodyText = i18n::tr_str("saves.restore_backup_body"),
                     .actions =
                         {
                             {
-                                .label = "Cancel",
+                                .label = i18n::tr_str("common.cancel"),
                                 .onPressed = &dismiss_modal,
                             },
                             {
-                                .label = "Restore",
+                                .label = i18n::tr_str("common.restore"),
                                 .onPressed =
                                     [this, context, path](Modal& modal) {
                                         modal.pop();
@@ -616,8 +625,9 @@ private:
                                             ++s_refreshGeneration;
                                             rebuild_content();
                                         }
-                                        show_message("Restore Backup",
-                                            result ? "The backup was restored." : result.message,
+                                        show_message(i18n::tr_str("saves.restore_backup"),
+                                            result ? i18n::tr_str("saves.backup_restored") :
+                                                     result.message,
                                             !result);
                                     },
                             },
@@ -627,22 +637,23 @@ private:
                 }));
             }
         });
-        auto& deleteButton = pane.add_button("Delete This Backup...");
+        auto& deleteButton = pane.add_button(i18n::tr_str("saves.delete_this_backup"));
         deleteButton.root()->SetClass("danger", true);
         deleteButton.on_pressed(
             [this, storage = context.storage, path = backup.path, name = backup.name] {
                 if (auto* host = top_document()) {
                     host->push(std::make_unique<Modal>(Modal::Props{
-                        .title = "Delete Backup",
-                        .bodyRml = fmt::format("Delete <b>{}</b>?", escape(name)),
+                        .title = i18n::tr_str("saves.delete_backup"),
+                        .bodyRml = fmt::format(fmt::runtime(i18n::tr_source("saves.delete_backup_body")),
+                            fmt::arg("name", escape(name))),
                         .actions =
                             {
                                 {
-                                    .label = "Cancel",
+                                    .label = i18n::tr_str("common.cancel"),
                                     .onPressed = &dismiss_modal,
                                 },
                                 {
-                                    .label = "Delete",
+                                    .label = i18n::tr_str("common.delete"),
                                     .onPressed =
                                         [this, storage, path](Modal& modal) {
                                             modal.pop();
@@ -653,7 +664,8 @@ private:
                                                 mSelectedPath.clear();
                                                 rebuild_content();
                                             } else {
-                                                show_message("Delete Backup", result.message, true);
+                                                show_message(
+                                                    i18n::tr_str("saves.delete_backup"), result.message, true);
                                             }
                                         },
                                 },
@@ -678,47 +690,47 @@ void open_backups(std::string saveName) {
 void create_backup(const std::string& saveName) {
     auto context = context_for_save(saveName);
     if (!context) {
-        show_message("Create Backup", context.result.message, true);
+        show_message(i18n::tr_str("saves.create_backup_failed"), context.result.message, true);
         return;
     }
-    show_result("Create Backup", "Backup successfully created.",
+    show_result(i18n::tr_str("saves.create_backup"), i18n::tr_str("saves.backup_created"),
         save_manager::create_backup(context.value.storage, context.value.identity));
 }
 
 void open_save_folder(const std::string& saveName) {
     auto context = context_for_save(saveName);
     if (!context) {
-        show_message("Open Save Folder", context.result.message, true);
+        show_message(i18n::tr_str("saves.open_save_folder"), context.result.message, true);
         return;
     }
     const auto folder = context.value.storage.kind == save_manager::StorageKind::GciDirectory ?
                             context.value.storage.path :
                             context.value.storage.path.parent_path();
     if (!data::manager().open_folder(folder)) {
-        show_message(
-            "Open Save Folder", "The save folder could not be opened in the file browser.", true);
+        show_message(i18n::tr_str("saves.open_save_folder"),
+            i18n::tr_str("saves.open_save_folder_failed"), true);
     }
 }
 
 void confirm_delete_mod_data(Context context, std::string id) {
     if (auto* host = top_document()) {
         host->push(std::make_unique<Modal>(Modal::Props{
-            .title = "Delete Mod Data",
-            .bodyRml = fmt::format("Delete saved data for <b>{}</b>? If a game save exists, a "
-                                   "backup will be made first.",
-                escape(id)),
+            .title = i18n::tr_str("saves.delete_mod_data"),
+            .bodyRml = fmt::format(fmt::runtime(i18n::tr_source("saves.delete_mod_data_body")),
+                fmt::arg("id", escape(id))),
             .actions =
                 {
                     {
-                        .label = "Cancel",
+                        .label = i18n::tr_str("common.cancel"),
                         .onPressed = &dismiss_modal,
                     },
                     {
-                        .label = "Delete",
+                        .label = i18n::tr_str("common.delete"),
                         .onPressed =
                             [context = std::move(context), id = std::move(id)](Modal& modal) {
                                 modal.pop();
-                                show_result("Delete Mod Data", "The mod data was deleted.",
+                                show_result(i18n::tr_str("saves.delete_mod_data"),
+                                    i18n::tr_str("saves.mod_data_deleted"),
                                     save_manager::delete_mod_data(
                                         context.storage, context.identity, id));
                             },
@@ -738,10 +750,12 @@ public:
         append_text_element(info, "heading", mod.id);
         append_text_element(info, "small",
             fmt::format("{} · {}", format_bytes(mod.size),
-                installed_mod(mod.id) ? "Installed" : "Not installed"));
+                installed_mod(mod.id) ? i18n::tr_str("saves.installed") :
+                                        i18n::tr_str("saves.not_installed")));
         mDelete = &add_child<IconButton>(IconButton::Props{
             .icon = "delete",
-            .label = fmt::format("Delete {} data", mod.id),
+            .label = fmt::format(fmt::runtime(i18n::tr_source("saves.delete_mod_data_icon")),
+                fmt::arg("id", mod.id)),
             .isDisabled = [] { return borealis::file_select::busy(); },
         });
         mDelete->root()->SetClass("danger", true);
@@ -758,22 +772,25 @@ void build_save_detail(Pane& pane, const std::string& saveName) {
     const std::string modeLabel = mode_label(saveName);
     auto context = context_for_save(saveName);
     if (!context) {
-        append_save_header(pane.root(), modeLabel, "Unavailable");
+        append_save_header(pane.root(), modeLabel, i18n::tr_str("saves.unavailable"));
         append_text_element(pane.root(), "small", context.result.message);
         return;
     }
 
     const auto& storage = context.value.storage;
     const std::string storageLabel =
-        storage.kind == save_manager::StorageKind::GciDirectory ? "GCI folder" : "Raw memory card";
-    append_save_header(pane.root(), modeLabel, fmt::format("{} · Card A", storageLabel));
+        storage.kind == save_manager::StorageKind::GciDirectory ? i18n::tr_str("saves.gci_folder") :
+                                                                 i18n::tr_str("saves.raw_card");
+    append_save_header(pane.root(), modeLabel,
+        fmt::format(fmt::runtime(i18n::tr_source("saves.card_a")),
+            fmt::arg("storage", storageLabel)));
     const bool registered = is_registered_save(saveName);
     if (!registered) {
         auto* association = append(pane.root(), "p");
         auto* icon =
             append_text_element(association, "icon", material_icon("indeterminate_question_box"));
         icon->SetAttribute("aria-hidden", "true");
-        append_text(association, " No registered game mode uses this save.");
+        append_text(association, " " + i18n::tr_str("saves.no_registered_mode_single"));
     }
 
     auto info = save_manager::inspect_save(storage, context.value.identity);
@@ -782,34 +799,36 @@ void build_save_detail(Pane& pane, const std::string& saveName) {
     } else {
         auto* overview = append(pane.root(), "save-overview");
         overview->SetClass(info.value.present ? "present" : "empty", true);
-        append_text_element(
-            overview, "heading", info.value.present ? "Save present" : "No save file");
+        append_text_element(overview, "heading", info.value.present ?
+                                                            i18n::tr_str("saves.save_present") :
+                                                            i18n::tr_str("saves.no_save_file"));
         const auto detail = info.value.present ?
-                                fmt::format("{} · Modified {}", format_bytes(info.value.size),
-                                    save_manager::format_gc_time(info.value.modifiedTime)) :
-                            registered ? "Import a save or start this mode to create one." :
-                                         "Restore a backup or import this save to use it again.";
+                                fmt::format(fmt::runtime(i18n::tr_source("saves.save_detail_present")),
+                                    fmt::arg("size", format_bytes(info.value.size)),
+                                    fmt::arg("time",
+                                        save_manager::format_gc_time(info.value.modifiedTime))) :
+                            registered ? i18n::tr_str("saves.save_detail_empty_mode") :
+                                         i18n::tr_str("saves.save_detail_empty_unregistered");
         append_text_element(overview, "small", detail);
     }
 
     const bool savePresent = info && info.value.present;
-    pane.add_section("Transfer");
-    append_text_element(pane.root(), "small",
-        "Export a portable Dusklight archive with mod data, or a standard GCI for other tools.");
+    pane.add_section(i18n::tr_str("saves.transfer"));
+    append_text_element(pane.root(), "small", i18n::tr_str("saves.transfer_help"));
     auto& exportButton = pane.add_button(ControlledButton::Props{
-        .text = "Export Save...",
+        .text = i18n::tr_str("saves.export_save"),
         .isDisabled = [savePresent] { return !savePresent || borealis::file_select::busy(); },
     });
     exportButton.on_pressed([anchor = exportButton.root(), saveName] {
         push_document(std::make_unique<ContextMenu>(
             anchor, std::vector<ContextMenu::Item>{
                         {
-                            .text = "Save + mod data (.dusksave)",
+                            .text = i18n::tr_str("saves.export_with_mods"),
                             .icon = "folder_open",
                             .onPressed = [saveName] { begin_export(saveName, true); },
                         },
                         {
-                            .text = "Save only (.gci)",
+                            .text = i18n::tr_str("saves.export_save_only"),
                             .icon = "description",
                             .onPressed = [saveName] { begin_export(saveName, false); },
                         },
@@ -817,25 +836,27 @@ void build_save_detail(Pane& pane, const std::string& saveName) {
     });
 
     if (info && !info.value.mods.empty()) {
-        pane.add_section(fmt::format("Mod Data ({})", info.value.mods.size()));
+        pane.add_section(fmt::format(fmt::runtime(i18n::tr_source("saves.mod_data_count")),
+            fmt::arg("count", info.value.mods.size())));
         for (const auto& mod : info.value.mods) {
             pane.add_child<ModDataRow>(context.value, mod);
         }
     }
 
-    pane.add_section("Storage and Recovery");
+    pane.add_section(i18n::tr_str("saves.storage_recovery"));
     append_text_element(pane.root(), "small",
-        fmt::format(
-            "The {} most recent backups are preserved.", save_manager::kDefaultBackupRetention));
+        fmt::format(fmt::runtime(i18n::tr_source("saves.backup_retention")),
+            fmt::arg("count", save_manager::kDefaultBackupRetention)));
     auto& backupButton = pane.add_button(ControlledButton::Props{
-        .text = "Create Backup",
+        .text = i18n::tr_str("saves.create_backup"),
         .isDisabled = [savePresent] { return !savePresent || borealis::file_select::busy(); },
     });
     backupButton.on_pressed([saveName] { create_backup(saveName); });
-    pane.add_button("View Backups").on_pressed([saveName] { open_backups(saveName); });
+    pane.add_button(i18n::tr_str("saves.view_backups"))
+        .on_pressed([saveName] { open_backups(saveName); });
     if (storage.kind == save_manager::StorageKind::RawImage) {
         pane.add_button(ControlledButton::Props{
-                            .text = "Export Full Card Image (.raw)",
+                            .text = i18n::tr_str("saves.export_full_card"),
                             .isDisabled =
                                 [path = storage.path] {
                                     std::error_code ec;
@@ -846,14 +867,15 @@ void build_save_detail(Pane& pane, const std::string& saveName) {
             .on_pressed([saveName] { begin_raw_export(saveName); });
     }
     if (data::manager().capabilities().canOpenFolder) {
-        pane.add_button("Open Save Folder").on_pressed([saveName] { open_save_folder(saveName); });
+        pane.add_button(i18n::tr_str("saves.open_save_folder"))
+            .on_pressed([saveName] { open_save_folder(saveName); });
     }
     append_text_element(pane.root(), "file-path", data::abbreviated_path_string(storage.path));
 
     if (savePresent) {
-        pane.add_section("Danger Zone");
+        pane.add_section(i18n::tr_str("saves.danger_zone"));
         auto& deleteButton = pane.add_button(ControlledButton::Props{
-            .text = "Delete Save...",
+            .text = i18n::tr_str("saves.delete_save_ellipsis"),
             .isDisabled = [] { return borealis::file_select::busy(); },
         });
         deleteButton.root()->SetClass("danger", true);
@@ -937,7 +959,7 @@ void SavesWindow::update() {
 
 void add_save_files_control(Pane& leftPane, Pane& rightPane) {
     auto& button = leftPane.add_button(ControlledButton::Props{
-        .text = "Open Save Manager",
+        .text = i18n::tr_str("saves.open_manager"),
         .isDisabled =
             [] {
                 const auto& state = prelaunch_state();
@@ -952,7 +974,7 @@ void add_save_files_control(Pane& leftPane, Pane& rightPane) {
         }
     }),
         rightPane, [](Pane& pane) {
-            pane.add_text("Import, export, back up, and remove saves for the configured disc.");
+            pane.add_text(i18n::tr_str("saves.open_manager_help"));
         });
 }
 
@@ -960,8 +982,8 @@ void import_save_location(std::string location) {
     if (!is_prelaunch_open()) {
         push_toast({
             .type = "warning",
-            .title = "Save Import",
-            .content = "Reset to the main menu before importing saves.",
+            .title = i18n::tr_str("saves.import_toast_title"),
+            .content = i18n::tr_str("saves.import_toast_body"),
             .duration = std::chrono::seconds{4},
         });
         return;

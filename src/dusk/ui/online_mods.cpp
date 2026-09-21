@@ -6,6 +6,7 @@
 #include "dusk/mods/queue.hpp"
 #include "dusk/settings.h"
 #include "format.hpp"
+#include "i18n.hpp"
 #include "icon_button.hpp"
 #include "mod_browser.hpp"
 #include "mod_texture_provider.hpp"
@@ -21,6 +22,7 @@
 
 namespace dusk::ui {
 namespace {
+using i18n::tr_str;
 using mods::queue::is_completed;
 using mods::queue::is_failed;
 using mods::queue::State;
@@ -33,7 +35,7 @@ public:
         auto& row = add_child<PackageRow>();
         mRow = &row;
         auto& pause = add_existing_item<IconButton>(
-            row.actions_root(), IconButton::Props{.icon = "pause", .label = "Pause"});
+            row.actions_root(), IconButton::Props{.icon = "pause", .label = tr_str("mods.queue.pause")});
         mPause = &pause;
         pause.root()->SetClass("compact", true);
         // The update action keeps focus when its package becomes a download.
@@ -50,7 +52,7 @@ public:
             }
         });
         auto& cancel = add_existing_item<IconButton>(
-            row.actions_root(), IconButton::Props{.icon = "close", .label = "Cancel"});
+            row.actions_root(), IconButton::Props{.icon = "close", .label = tr_str("mods.queue.cancel")});
         mCancel = &cancel;
         cancel.root()->SetClass("compact", true);
         cancel.root()->SetAttribute("focus-key", "queue-clear-" + item.modId);
@@ -90,7 +92,8 @@ public:
         auto status = state_label(*item);
         if (item->state == State::Installed) {
             status.clear();
-            detail = "Installed · " + format_bytes(item->total);
+            detail = fmt::format(fmt::runtime(tr_str("mods.queue.installed_status")),
+                fmt::arg("size", format_bytes(item->total)));
         }
         const auto version = item->previousVersion.empty() ?
                                  item->version :
@@ -116,10 +119,14 @@ public:
         mPause->set_icon(failed                       ? "refresh" :
                          item->state == State::Paused ? "play_arrow" :
                                                         "pause");
-        mPause->set_label(failed ? "Retry" : item->state == State::Paused ? "Resume" : "Pause");
+        mPause->set_label(failed ? tr_str("mods.queue.retry") :
+                item->state == State::Paused ? tr_str("mods.queue.resume") :
+                                               tr_str("mods.queue.pause"));
         set_display(mCancel->root(),
             item->state == State::Handoff ? Rml::Style::Display::None : Rml::Style::Display::Flex);
-        mCancel->set_label(failed ? "Dismiss" : is_completed(item->state) ? "Clear" : "Cancel");
+        mCancel->set_label(failed ? tr_str("mods.queue.dismiss") :
+                          is_completed(item->state) ? tr_str("mods.queue.clear") :
+                                                      tr_str("mods.queue.cancel"));
         Component::update();
     }
 
@@ -134,8 +141,8 @@ class DownloadsHeader final : public NavGroup {
 public:
     explicit DownloadsHeader(Rml::Element* parent)
         : NavGroup{append(parent, "online-section-heading"), {.layout = Layout::Horizontal}} {
-        append_text(append(mRoot, "h2"), "Downloads & installs");
-        auto& pause = add_item<Button>("Pause all");
+        append_text(append(mRoot, "h2"), tr_str("mods.queue.downloads_heading"));
+        auto& pause = add_item<Button>(tr_str("mods.queue.pause_all"));
         mPause = &pause;
         pause.root()->SetAttribute("focus-key", "downloads-pause-all");
         pause.on_pressed([this] {
@@ -162,7 +169,7 @@ public:
             canResume |= item.state == State::Paused;
         }
         mResume = !canPause && canResume;
-        mPause->set_text(mResume ? "Resume all" : "Pause all");
+        mPause->set_text(mResume ? tr_str("mods.queue.resume_all") : tr_str("mods.queue.pause_all"));
         set_display(mPause->root(),
             canPause || canResume ? Rml::Style::Display::Block : Rml::Style::Display::None);
         Component::update();
@@ -178,8 +185,8 @@ public:
     explicit CompletedHeader(Rml::Element* parent)
         : NavGroup{append(parent, "online-section-heading"), {.layout = Layout::Horizontal}} {
         mRoot->SetClass("completed", true);
-        append_text(append(mRoot, "h2"), "Completed");
-        auto& clear = add_item<Button>("Clear");
+        append_text(append(mRoot, "h2"), tr_str("mods.queue.completed_heading"));
+        auto& clear = add_item<Button>(tr_str("mods.queue.clear"));
         clear.root()->SetAttribute("focus-key", "completed-clear");
         clear.on_pressed([] {
             for (const auto& item : mods::queue::items()) {
@@ -198,9 +205,8 @@ void build_online_mods(
     browse.root()->SetClass("browse-mods-action", true);
     browse.root()->SetAttribute("focus-key", "online-browse");
     auto* copy = append(browse.root(), "browse-copy");
-    append_text(append(copy, "h2"), "Browse online mods");
-    append_text(append(copy, "p"),
-        "Discover texture packs, gameplay mods, custom models, and more from the community.");
+    append_text(append(copy, "h2"), tr_str("mods.queue.browse_heading"));
+    append_text(append(copy, "p"), tr_str("mods.queue.browse_desc"));
     append_text(append(browse.root(), "icon"), material_icon("arrow_forward"));
     browse.set_disabled(!borealis::http::available());
     browse.on_pressed([&document] { document.push(std::make_unique<ModBrowser>()); });
@@ -226,7 +232,7 @@ void build_online_mods(
         }
     }
     auto& automatic = pane.add_child<BoolButton>(BoolButton::Props{
-        .key = "Check for updates",
+        .key = tr_str("mods.updates.auto_check"),
         .getValue = [] { return getSettings().backend.checkForModUpdates.getValue(); },
         .setValue =
             [](bool value) {

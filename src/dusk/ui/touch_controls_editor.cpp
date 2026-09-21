@@ -3,6 +3,7 @@
 #include "modal.hpp"
 
 #include "Z2AudioLib/Z2SeMgr.h"
+#include "dusk/ui/i18n.hpp"
 #include "dusk/config.hpp"
 #include "dusk/settings.h"
 #include "m_Do/m_Do_audio.h"
@@ -15,6 +16,10 @@
 #include <string>
 
 namespace dusk::ui {
+
+using i18n::tr;
+using i18n::tr_str;
+
 namespace {
 
 constexpr float kDragThresholdDp = 6.f;
@@ -594,13 +599,12 @@ void TouchControlsEditor::save_layout() {
 void TouchControlsEditor::request_reset() {
     auto dismiss = [](Modal& modal) { modal.pop(); };
     push(std::make_unique<Modal>(Modal::Props{
-        .title = "Reset Touch Layout?",
-        .bodyText =
-            "Reset controls to their default layout. This will not be saved until you press Save.",
+        .title = tr_str("touch_controls_editor.reset_title"),
+        .bodyText = std::string{tr("touch_controls_editor.reset_body")},
         .actions =
             {
                 ModalAction{
-                    .label = "Reset",
+                    .label = tr_str("touch_controls_editor.reset"),
                     .onPressed =
                         [this, dismiss](Modal& modal) {
                             reset_working_layout();
@@ -609,7 +613,7 @@ void TouchControlsEditor::request_reset() {
                         },
                 },
                 ModalAction{
-                    .label = "Cancel",
+                    .label = tr_str("common.cancel"),
                     .onPressed = dismiss,
                 },
             },

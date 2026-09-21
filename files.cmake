@@ -1602,6 +1602,8 @@ set(DUSK_FILES
         src/dusk/ui/icon_provider.hpp
         src/dusk/ui/input.cpp
         src/dusk/ui/input.hpp
+        src/dusk/ui/i18n.cpp
+        src/dusk/ui/i18n.hpp
         src/dusk/ui/logs_window.cpp
         src/dusk/ui/logs_window.hpp
         src/dusk/ui/list.cpp

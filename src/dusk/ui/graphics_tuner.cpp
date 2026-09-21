@@ -1,6 +1,7 @@
 #include "graphics_tuner.hpp"
 
 #include "button.hpp"
+#include "i18n.hpp"
 
 #include "dusk/config.hpp"
 #include "dusk/logging.h"
@@ -15,6 +16,8 @@
 #include <type_traits>
 
 namespace dusk::ui {
+
+using i18n::tr_str;
 namespace {
 
 const Rml::String kDocumentSource = R"RML(
@@ -261,11 +264,13 @@ GraphicsTuner::GraphicsTuner(GraphicsTunerProps props)
     }
 
     if (auto* footer = mDocument->GetElementById("footer")) {
-        auto& returnButton = add_component<Button>(footer, "\xE2\x86\x90 Return", "footer-button")
+        auto& returnButton = add_component<Button>(
+            footer, tr_str("misc.return"), "footer-button")
                                  .on_pressed([this] { pop(); });
         returnButton.root()->SetClass("return", true);
         auto& resetButton =
-            add_component<Button>(footer, "Reset to default", "footer-button").on_pressed([this] {
+            add_component<Button>(footer, tr_str("misc.reset_to_default"), "footer-button")
+                .on_pressed([this] {
                 mDoAud_seStartMenu(kSoundItemChange);
                 reset_default();
             });

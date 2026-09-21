@@ -3,65 +3,63 @@
 #include "reporting.hpp"
 
 #include "button.hpp"
+#include "i18n.hpp"
 #include "ui.hpp"
 
 #include <borealis/sentry.hpp>
 #include <dolphin/gx/GXAurora.h>
 
 namespace dusk::ui {
+namespace {
+using i18n::tr_str;
+}  // namespace
 
 CrashReportWindow::CrashReportWindow() : WindowSmall("modal") {
     auto* header = append(mDialog, "modal-header");
 
     auto* title = append(header, "modal-title");
-    append_text(title, "Send Crash Reports");
+    append_text(title, tr_str("reporting.title"));
 
     auto* headIcon = append(header, "icon");
     headIcon->SetClass("question-mark", true);
 
     auto* intro = append(mDialog, "modal-body");
-    append_text(intro,
-        "Dusklight can automatically send crash reports to the developers. Crash reports contain "
-        "the following:");
+    append_text(intro, tr_str("reporting.intro"));
     for (const char* item :
         {
-            "• Operating system version",
-            "• CPU architecture",
-            "• GPU model & driver version",
-            "• File paths (may include account username)",
-            "• Stack trace",
+            "reporting.item_os",
+            "reporting.item_cpu",
+            "reporting.item_gpu",
+            "reporting.item_paths",
+            "reporting.item_stack",
         })
     {
         append(intro, "br");
-        append_text(intro, item);
+        append_text(intro, tr_str(item));
     }
     append(intro, "br");
     append(intro, "br");
-    append_text(intro, "This can be changed in the Settings menu at any time.");
+    append_text(intro, tr_str("reporting.change_anytime"));
 
     auto* grid = append(mDialog, "preset-grid");
 
     struct OptionInfo {
-        const char* name;
-        const char* desc;
+        const char* nameKey;
+        const char* descKey;
         void (*apply)();
     };
 
     static constexpr OptionInfo kOptions[] = {
-        {"Enable",
-            "Send crash reports to Dusklight developers. Reports will include the information "
-            "described above.",
+        {"reporting.enable", "reporting.enable_desc",
             [] { borealis::sentry::set_consent(true); }},
-        {"Disable",
-            "Do not send crash reports. This may make it more difficult to resolve issues you "
-            "encounter.",
+        {"reporting.disable", "reporting.disable_desc",
             [] { borealis::sentry::set_consent(false); }},
     };
 
     for (const auto& option : kOptions) {
         auto* col = append(grid, "preset-option");
 
-        auto btn = std::make_unique<Button>(col, Rml::String(option.name));
+        auto btn = std::make_unique<Button>(col, tr_str(option.nameKey));
         btn->on_nav_command([this, apply = option.apply](Rml::Event&, NavCommand cmd) {
             if (cmd == NavCommand::Confirm) {
                 apply();
@@ -74,7 +72,7 @@ CrashReportWindow::CrashReportWindow() : WindowSmall("modal") {
         mButtons.push_back(std::move(btn));
 
         auto* desc = append(col, "preset-description");
-        append_text(desc, option.desc);
+        append_text(desc, tr_str(option.descKey));
     }
 }
 

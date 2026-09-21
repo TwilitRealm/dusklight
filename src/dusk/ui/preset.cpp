@@ -2,6 +2,7 @@
 
 #include "button.hpp"
 #include "dusk/config.hpp"
+#include "i18n.hpp"
 #include "dusk/settings.h"
 #include "ui.hpp"
 
@@ -9,6 +10,7 @@
 
 namespace dusk::ui {
 namespace {
+using i18n::tr_str;
 
 void applyPresetClassic() {
     auto& s = getSettings();
@@ -63,34 +65,31 @@ PresetWindow::PresetWindow() : WindowSmall("modal") {
     auto* header = append(mDialog, "modal-header");
 
     auto* title = append(header, "modal-title");
-    append_text(title, "Welcome to Dusklight");
+    append_text(title, tr_str("preset.title"));
 
     auto* headIcon = append(header, "icon");
     headIcon->SetClass("celebration", true);
 
     auto* intro = append(mDialog, "modal-body");
-    append_text(intro,
-        "Choose a preset to get started. You can change any setting later from the Settings menu.");
+    append_text(intro, tr_str("preset.intro"));
 
     auto* grid = append(mDialog, "preset-grid");
 
     struct PresetInfo {
-        const char* name;
-        const char* desc;
+        const char* nameKey;
+        const char* descKey;
         void (*apply)();
     };
 
     static constexpr PresetInfo kPresets[] = {
         {
-            "Classic",
-            "Enhancements disabled to match the GameCube version. "
-            "Good for speedrunning or simple nostalgia!",
+            "preset.classic",
+            "preset.classic_desc",
             applyPresetClassic,
         },
         {
-            "Dusklight",
-            "Graphics & quality of life tweaks, including some from the Wii U version. "
-            "Our recommended way to play!",
+            "preset.dusklight",
+            "preset.dusklight_desc",
             applyPresetDusk,
         },
     };
@@ -98,7 +97,7 @@ PresetWindow::PresetWindow() : WindowSmall("modal") {
     for (const auto& preset : kPresets) {
         auto* col = append(grid, "preset-option");
 
-        auto btn = std::make_unique<Button>(col, Rml::String(preset.name));
+        auto btn = std::make_unique<Button>(col, tr_str(preset.nameKey));
         btn->on_nav_command([this, apply = preset.apply](Rml::Event&, NavCommand cmd) {
             if (cmd == NavCommand::Confirm) {
                 apply();
@@ -113,7 +112,7 @@ PresetWindow::PresetWindow() : WindowSmall("modal") {
         mButtons.push_back(std::move(btn));
 
         auto* desc = append(col, "preset-description");
-        append_text(desc, preset.desc);
+        append_text(desc, tr_str(preset.descKey));
     }
 }
 

@@ -11,6 +11,7 @@
 #include "dusk/mods/updates.hpp"
 #include "fmt/format.h"
 #include "format.hpp"
+#include "i18n.hpp"
 #include "icon_button.hpp"
 #include "mod_updates.hpp"
 #include "mods_window.hpp"
@@ -34,26 +35,27 @@
 
 namespace dusk::ui {
 namespace {
+using i18n::tr_str;
 
 constexpr bool kEnableEndorsements = false;
 
 struct SortOption {
     mods::catalog::Sort value;
-    std::string_view label;
+    const char* key;
 };
 
 constexpr std::array sortOptions{
-    SortOption{mods::catalog::Sort::Featured, "Featured"},
-    SortOption{mods::catalog::Sort::Updated, "Recently updated"},
-    SortOption{mods::catalog::Sort::Downloads, "Most downloaded"},
+    SortOption{mods::catalog::Sort::Featured, "browser.sort_featured"},
+    SortOption{mods::catalog::Sort::Updated, "browser.sort_updated"},
+    SortOption{mods::catalog::Sort::Downloads, "browser.sort_downloads"},
     // SortOption{mods::catalog::Sort::Endorsements, "Most endorsed"},
-    SortOption{mods::catalog::Sort::Newest, "Newest"},
-    SortOption{mods::catalog::Sort::Name, "Name"},
+    SortOption{mods::catalog::Sort::Newest, "browser.sort_newest"},
+    SortOption{mods::catalog::Sort::Name, "browser.sort_name"},
 };
 
-std::string_view sort_label(mods::catalog::Sort sort) noexcept {
+std::string sort_label(mods::catalog::Sort sort) noexcept {
     const auto iter = std::ranges::find(sortOptions, sort, &SortOption::value);
-    return iter != sortOptions.end() ? iter->label : sortOptions.front().label;
+    return tr_str(iter != sortOptions.end() ? iter->key : sortOptions.front().key);
 }
 
 void add_list_markers(Rml::Element* fragment) {
@@ -126,7 +128,8 @@ std::string_view activation_failure(const mods::LoadedMod& mod) {
     if (!mod.failureReason.empty()) {
         return mod.failureReason;
     }
-    return mod.suspendedByProvider ? "A required provider is unavailable" : "Activation failed";
+    return mod.suspendedByProvider ? tr_str("browser.provider_unavailable") :
+                                     tr_str("browser.activation_failed");
 }
 
 void open_web_url(const std::string& url) {
@@ -170,7 +173,7 @@ public:
           mNativeCodeBlocked{mod.containsNativeCode && !mods::catalog::supports_native_installs()} {
         mRoot->SetClass("catalog-card", true);
         mRoot->SetAttribute("mod-id", mod.id);
-        const auto category = mod.category ? mod.category->name : "Uncategorized";
+        const auto category = mod.category ? mod.category->name : tr_str("browser.uncategorized");
 
         auto* art = append(mRoot, "catalog-card-art");
         auto* artImage = append(art, "catalog-card-art-image");
@@ -212,10 +215,11 @@ public:
         const bool installed = mods::ModLoader::instance().find_mod(mId) != nullptr;
         const auto* update = mods::updates::find(mId);
         const bool hasUpdate = installed && update && update->actionable;
-        const auto label = hasUpdate          ? "Update available" :
-                           installed          ? "Installed" :
-                           mNativeCodeBlocked ? "Requires bundling" :
-                                                mPackageSize;
+        const auto label =
+            hasUpdate          ? tr_str("browser.update_available") :
+            installed          ? tr_str("browser.installed") :
+            mNativeCodeBlocked ? tr_str("browser.requires_bundling") :
+                                 mPackageSize;
         if (mLabel != label) {
             set_text_content(mStatus, label);
             mStatus->SetClass("installed", installed && !hasUpdate);
@@ -267,12 +271,12 @@ private:
                                                  .horizontalBoundary = NavGroup::Boundary::Stop,
                                                  .verticalBoundary = NavGroup::Boundary::Stop,
                                              });
-        auto& back = actions.add_item<Button>("Back");
+        auto& back = actions.add_item<Button>(tr_str("browser.back"));
         back.root()->SetClass("compact", true);
-        set_icon_button_content(back, "arrow_back", "Back");
+        set_icon_button_content(back, "arrow_back", tr_str("browser.back"));
         back.on_pressed([this] { pop(); });
         auto& previous = actions.add_item<ControlledButton>(ControlledButton::Props{
-            .text = "Previous",
+            .text = tr_str("browser.previous"),
             .isDisabled = [this] { return mIndex == 0; },
         });
         previous.on_pressed([this] {
@@ -287,7 +291,7 @@ private:
             .isDisabled = [] { return true; },
         });
         auto& next = actions.add_item<ControlledButton>(ControlledButton::Props{
-            .text = "Next",
+            .text = tr_str("browser.next"),
             .isDisabled = [this] { return mIndex + 1 >= mScreenshots.size(); },
         });
         next.on_pressed([this] {
@@ -350,14 +354,15 @@ public:
                         mDetail = std::move(result->detail);
                         mError.clear();
                     } else {
-                        mError = result->error.empty() ? "The mod request failed." :
+                        mError = result->error.empty() ? tr_str("browser.request_failed") :
                                                          std::move(result->error);
                     }
                 }
             } catch (const std::exception& exception) {
-                mError = fmt::format("The mod request failed: {}", exception.what());
+                mError = fmt::format(
+                    fmt::runtime(tr_str("browser.request_failed_error")), fmt::arg("error", exception.what()));
             } catch (...) {
-                mError = "The mod request failed.";
+                mError = tr_str("browser.request_failed");
             }
             mFetch = {};
             mRebuildRequested = true;
@@ -395,14 +400,17 @@ private:
 
         auto* status = append(content, "catalog-detail-status");
         if (mError.empty()) {
-            append_status(status, fmt::format("Loading {}", mSummary.name),
-                "Fetching mod details and images...");
+            append_status(status,
+                fmt::format(fmt::runtime(tr_str("browser.loading")), fmt::arg("name", mSummary.name)),
+                tr_str("browser.fetching"));
             return;
         }
-        append_status(status, fmt::format("Could not load {}", mSummary.name), mError);
+        append_status(status,
+            fmt::format(fmt::runtime(tr_str("browser.could_not_load")), fmt::arg("name", mSummary.name)),
+            mError);
         auto* retryRoot = append(status, "catalog-retry-actions");
         auto& retry = add_child<NavGroup>(retryRoot, NavGroup::Props{});
-        retry.add_item<Button>("Retry").on_pressed([this] { begin_fetch(); });
+        retry.add_item<Button>(tr_str("browser.retry")).on_pressed([this] { begin_fetch(); });
     }
 
     mods::catalog::Mod mSummary;
@@ -461,38 +469,41 @@ public:
             switch (queued->state) {
             case Queued:
                 icon = "schedule";
-                label = "Queued";
+                label = tr_str("browser.queued");
                 if (const auto ahead = mods::queue::active_items_ahead(mRequest.id); ahead != 0) {
-                    caption = fmt::format("{} ahead · view downloads", ahead);
+                    caption = fmt::format(fmt::runtime(tr_str("browser.ahead_view")),
+                        fmt::arg("count", ahead));
                 } else {
-                    caption = "Next · view downloads";
+                    caption = tr_str("browser.next_view_downloads");
                 }
                 break;
             case Downloading:
                 label = fmt::format(
                     "{} / {}", format_bytes(queued->completed), format_bytes(queued->total));
-                caption = "View downloads & installs";
+                caption = tr_str("browser.view_downloads");
                 break;
             case Paused:
                 mAction = Action::Resume;
                 icon = "play_arrow";
-                label = "Resume";
-                caption = fmt::format("{} kept on disk", format_bytes(queued->completed));
+                label = tr_str("browser.resume");
+                caption = fmt::format(fmt::runtime(tr_str("browser.kept_on_disk")),
+                    fmt::arg("size", format_bytes(queued->completed)));
                 break;
             case Retrying:
                 icon = "warning";
-                label = fmt::format("Retrying in {}s", queued->retrySeconds);
-                caption = "Network error · keeps retrying itself";
+                label = fmt::format(
+                    fmt::runtime(tr_str("browser.retrying_in")), fmt::arg("seconds", queued->retrySeconds));
+                caption = tr_str("browser.network_error_retry");
                 break;
             case Verifying:
                 icon = "schedule";
-                label = "Verifying…";
-                caption = "Checking package integrity";
+                label = tr_str("browser.verifying");
+                caption = tr_str("browser.checking_integrity");
                 break;
             case Handoff:
                 icon = "schedule";
-                label = "Installing…";
-                caption = "Applying package";
+                label = tr_str("browser.installing");
+                caption = tr_str("browser.applying_package");
                 progress = 1.0f;
                 disabled = true;
                 break;
@@ -502,8 +513,9 @@ public:
             case Failed:
                 mAction = Action::RetryDownload;
                 icon = "refresh";
-                label = queued->local ? "Retry package" : "Retry download";
-                caption = queued->message.empty() ? "Package preparation failed" : queued->message;
+                label = queued->local ? tr_str("browser.retry_package") : tr_str("browser.retry_download");
+                caption =
+                    queued->message.empty() ? tr_str("browser.prep_failed") : queued->message;
                 progress = 1.0f;
                 break;
             case Canceled:
@@ -522,52 +534,56 @@ public:
                                     mods::ModLoader::instance().can_update(*local);
             if (activationPending) {
                 icon = "schedule";
-                label = "Activating…";
-                caption = "Retrying mod activation";
+                label = tr_str("browser.activating");
+                caption = tr_str("browser.retry_activation");
                 state = "installing";
                 progress = 1.0f;
                 disabled = true;
             } else if (current && local->activation_failed()) {
                 mAction = Action::RetryActivation;
                 icon = "refresh";
-                label = "Retry activation";
+                label = tr_str("browser.retry_activation_short");
                 caption = activation_failure(*local);
                 state = "failed";
                 progress = 1.0f;
             } else if (current || (local != nullptr && !updateable)) {
                 mAction = Action::OpenManager;
                 icon = "check_circle";
-                label = "Installed";
-                caption = fmt::format("Installed · {} · {}", format_bytes(package_size()),
-                    local != nullptr && local->active ? "enabled" : "disabled");
+                label = tr_str("browser.installed_status");
+                caption = fmt::format(fmt::runtime(tr_str("browser.installed_detail")),
+                    fmt::arg("size", format_bytes(package_size())),
+                    fmt::arg("info", local != nullptr && local->active ?
+                                     tr_str("browser.enabled_state") :
+                                     tr_str("browser.disabled_state")));
                 state = "installed";
                 progress = 1.0f;
             } else {
-                label = "Install";
+                label = tr_str("browser.install");
                 if (updateable) {
                     const auto* update = mods::updates::find(mRequest.id);
                     if (!borealis::update::parse_version(local->metadata.version)) {
-                        label = "Unavailable";
-                        caption = "The installed version cannot be compared.";
+                        label = tr_str("browser.unavailable");
+                        caption = tr_str("browser.cannot_compare");
                         disabled = true;
                     } else if (update && !update->queueKey.empty()) {
-                        label = "View download";
+                        label = tr_str("browser.view_download");
                         mAction = Action::OpenQueue;
                         mQueueId = update->queueKey;
                     } else if (update && update->result.target && update->actionable) {
                         const bool sameVersion = update->result.target->version == mRequest.version;
-                        label = sameVersion ? "Update" : "View compatible update";
+                        label = sameVersion ? tr_str("browser.update") :
+                                              tr_str("browser.view_compatible_update");
                         mAction = sameVersion ? Action::Update : Action::OpenUpdates;
                     } else if (update && !update->reason.empty() &&
                                mods::updates::state() == mods::updates::State::Ready)
                     {
-                        label = "Unavailable";
+                        label = tr_str("browser.unavailable");
                         caption = update->reason;
                         disabled = true;
                     } else {
                         const bool checking =
                             mods::updates::state() == mods::updates::State::Checking;
-                        label = checking ? "Checking…" : "Check for updates";
+                        label = checking ? tr_str("browser.checking") : tr_str("browser.check_updates");
                         mAction = Action::CheckUpdates;
                         disabled = checking;
                     }
@@ -580,8 +596,8 @@ public:
                 mAction == Action::RetryDownload || mAction == Action::CheckUpdates);
         if (requiresBundling) {
             icon = "block";
-            label = "Requires bundling";
-            caption = "Contains native code; requires bundling.";
+            label = tr_str("browser.requires_bundling");
+            caption = tr_str("browser.requires_bundling_caption");
             state = "idle";
             progress = 0.0f;
             disabled = true;
@@ -678,8 +694,8 @@ private:
         if (!mods::queue::enqueue(mRequest)) {
             push_toast({
                 .type = "warning",
-                .title = "Could not start download",
-                .content = "The catalog download descriptor is invalid.",
+                .title = tr_str("browser.could_not_start_download"),
+                .content = tr_str("browser.invalid_descriptor"),
                 .duration = std::chrono::seconds{5},
             });
         }
@@ -721,14 +737,14 @@ DetailContent::DetailContent(
                                                      .horizontalBoundary = Boundary::Bubble,
                                                      .verticalBoundary = Boundary::Bubble,
                                                  });
-    auto& back = actions.add_item<Button>("Back");
+    auto& back = actions.add_item<Button>(tr_str("browser.back"));
     back.root()->SetClass("compact", true);
-    set_icon_button_content(back, "arrow_back", "Back");
+    set_icon_button_content(back, "arrow_back", tr_str("browser.back"));
     back.root()->SetClass("overlay", true);
     back.on_pressed([&window] { window.pop(); });
-    auto& open = actions.add_item<Button>("Open in browser");
+    auto& open = actions.add_item<Button>(tr_str("browser.open_in_browser"));
     open.root()->SetClass("compact", true);
-    set_icon_button_content(open, "open_in_new", "Open in browser");
+    set_icon_button_content(open, "open_in_new", tr_str("browser.open_in_browser"));
     open.root()->SetClass("overlay", true);
     open.on_pressed([url = detail.siteUrl] { open_web_url(url); });
 
@@ -736,15 +752,16 @@ DetailContent::DetailContent(
     auto* detailIcon = append(identity, "mod-icon");
     auto* detailIconImage = append(detailIcon, "mod-icon-image");
     auto* detailHeading = append(identity, "header");
-    append_text_element(
-        detailHeading, "b", detail.mod.category ? detail.mod.category->name : "Uncategorized");
+    append_text_element(detailHeading, "b",
+        detail.mod.category ? detail.mod.category->name : tr_str("browser.uncategorized"));
     auto* title = append(detailHeading, "h1");
     append_text(title, detail.mod.name);
     append_text_element(title, "small", fmt::format("v{}", detail.mod.version));
     auto* author = append(detailHeading, "p");
-    append_text(author, fmt::format("by {} ", detail.mod.author.name));
+    append_text(author, fmt::format(fmt::runtime(tr_str("mods.by")), fmt::arg("author", detail.mod.author.name)));
+    append_text(author, " ");
     if (detail.mod.author.official) {
-        append_text_element(author, "catalog-official-badge", "Official");
+        append_text_element(author, "catalog-official-badge", tr_str("browser.official"));
     }
     if (detail.mod.icon) {
         set_image(detailIconImage, *detail.mod.icon, 256);
@@ -759,9 +776,10 @@ DetailContent::DetailContent(
     installControl.add_item<CatalogInstallButton>(window, detail);
 
     auto* stats = append(mRoot, "catalog-detail-stats");
-    append_stat(stats, "download", format_count(detail.mod.downloads), " downloads");
+    append_stat(stats, "download", format_count(detail.mod.downloads), tr_str("browser.downloads_suffix"));
     if constexpr (kEnableEndorsements) {
-        append_stat(stats, "favorite", format_count(detail.mod.endorsements), " endorsements");
+        append_stat(stats, "favorite", format_count(detail.mod.endorsements),
+            tr_str("browser.endorsements_suffix"));
     }
 
     auto* body = append(mRoot, "catalog-detail-body");
@@ -773,7 +791,7 @@ DetailContent::DetailContent(
     add_existing_item<ScrollAnchor>(description);
     auto* descriptionFragment = append(description, "catalog-fragment");
     if (detail.descriptionHtml.empty()) {
-        append_text_element(descriptionFragment, "p", "No description provided.");
+        append_text_element(descriptionFragment, "p", tr_str("browser.no_description"));
     } else {
         descriptionFragment->SetInnerRML(detail.descriptionHtml);
         add_list_markers(descriptionFragment);
@@ -781,7 +799,7 @@ DetailContent::DetailContent(
 
     if (!detail.screenshots.empty()) {
         auto* section = append(main, "section");
-        append_text(append(section, "h2"), "Screenshots");
+        append_text(append(section, "h2"), tr_str("browser.screenshots"));
         auto* galleryRoot = append(section, "catalog-gallery");
         auto& gallery =
             add_existing_item<NavGroup>(galleryRoot, Props{
@@ -811,7 +829,7 @@ DetailContent::DetailContent(
         auto* dependencies = append(main, "section");
         dependencies->SetClass("catalog-scroll-anchor", true);
         add_existing_item<ScrollAnchor>(dependencies);
-        append_text(append(dependencies, "h2"), "Dependencies");
+        append_text(append(dependencies, "h2"), tr_str("browser.dependencies"));
         auto* dependencyList = append(dependencies, "catalog-dependencies");
         size_t requiredDusklight = 0;
         std::vector<std::string> dusklightProblems;
@@ -833,16 +851,18 @@ DetailContent::DetailContent(
             append_text_element(row, "catalog-dependency-name", import.id);
             append_text_element(row, "catalog-dependency-status",
                 fmt::format("v{}.{}+ · {}", import.major, import.minMinor,
-                    available ? "Available" : "Not available"));
+                    available ? tr_str("browser.available") : tr_str("browser.not_available")));
             row->SetClass("missing", !available);
         }
         if (requiredDusklight != 0) {
             auto* row = append(dependencyList, "catalog-dependency");
-            append_text_element(row, "catalog-dependency-name", "Dusklight services");
+            append_text_element(row, "catalog-dependency-name", tr_str("browser.dusklight_services"));
             append_text_element(row, "catalog-dependency-status",
                 dusklightProblems.empty() ?
-                    fmt::format("{} required · Available", requiredDusklight) :
-                    fmt::format("{} required", requiredDusklight));
+                    fmt::format(
+                        fmt::runtime(tr_str("browser.required_available")), fmt::arg("count", requiredDusklight)) :
+                    fmt::format(
+                        fmt::runtime(tr_str("browser.required_count")), fmt::arg("count", requiredDusklight)));
             for (const auto& problem : dusklightProblems) {
                 append_text_element(row, "catalog-dependency-status", problem);
             }
@@ -854,24 +874,25 @@ DetailContent::DetailContent(
     changelog->SetClass("catalog-scroll-anchor", true);
     add_existing_item<ScrollAnchor>(changelog);
     auto* changelogTitle = append(changelog, "h2");
-    append_text(changelogTitle, "Changelog ");
+    append_text(changelogTitle, tr_str("browser.changelog"));
     append_text_element(changelogTitle, "small",
         fmt::format("v{} · {}", detail.mod.version, display_date(detail.mod.updatedAt)));
     auto* changelogFragment = append(changelog, "catalog-fragment");
     if (detail.changelogHtml.empty()) {
-        append_text_element(changelogFragment, "p", "No changelog was provided.");
+        append_text_element(changelogFragment, "p", tr_str("browser.no_changelog"));
     } else {
         changelogFragment->SetInnerRML(detail.changelogHtml);
         add_list_markers(changelogFragment);
     }
 
     auto* detailList = append(sidebar, "dl");
-    append_detail_field(detailList, "Version", detail.mod.version);
-    append_detail_field(detailList, "Last updated", display_date(detail.mod.updatedAt));
+    append_detail_field(detailList, tr_str("browser.version_field"), detail.mod.version);
     append_detail_field(
-        detailList, "Category", detail.mod.category ? detail.mod.category->name : "Uncategorized");
+        detailList, tr_str("browser.last_updated"), display_date(detail.mod.updatedAt));
+    append_detail_field(detailList, tr_str("browser.category_field"),
+        detail.mod.category ? detail.mod.category->name : tr_str("browser.uncategorized"));
     if (detail.license && !detail.license->empty()) {
-        append_detail_field(detailList, "License", *detail.license);
+        append_detail_field(detailList, tr_str("browser.license"), *detail.license);
     }
 }
 
@@ -897,9 +918,9 @@ void ModBrowser::build_content(Rml::Element* content) {
                                              .horizontalBoundary = NavGroup::Boundary::Bubble,
                                              .verticalBoundary = NavGroup::Boundary::Stop,
                                          });
-    append_text(append(filtersRoot, "h1"), "Browse Mods");
+    append_text(append(filtersRoot, "h1"), tr_str("browser.browse_mods"));
     auto& search = filters.add_item<StringButton>(StringButton::Props{
-        .key = "Search",
+        .key = tr_str("browser.search"),
         .getValue = [this] { return mQuery.search; },
         .setValue =
             [this](Rml::String value) {
@@ -911,14 +932,14 @@ void ModBrowser::build_content(Rml::Element* content) {
             },
         .maxLength = 100,
     });
-    std::vector<DropdownButton::Option> categoryOptions{{"All"}};
+    std::vector<DropdownButton::Option> categoryOptions{{tr_str("browser.all")}};
     if (mPage) {
         for (const auto& category : mPage->categories) {
             categoryOptions.push_back({category.name});
         }
     }
     auto& category = filters.add_item<DropdownButton>(DropdownButton::Props{
-        .key = "Category",
+        .key = tr_str("browser.category"),
         .options = std::move(categoryOptions),
         .getValue =
             [this] {
@@ -941,10 +962,10 @@ void ModBrowser::build_content(Rml::Element* content) {
     });
     std::vector<DropdownButton::Option> sortLabels;
     for (const auto& option : sortOptions) {
-        sortLabels.push_back({Rml::String{option.label}});
+        sortLabels.push_back({Rml::String{tr_str(option.key)}});
     }
     auto& sort = filters.add_item<DropdownButton>(DropdownButton::Props{
-        .key = "Sort by",
+        .key = tr_str("browser.sort_by"),
         .options = std::move(sortLabels),
         .getValue =
             [this] {
@@ -959,7 +980,7 @@ void ModBrowser::build_content(Rml::Element* content) {
             },
     });
     auto& device = filters.add_item<BoolButton>(BoolButton::Props{
-        .key = "Compatible only",
+        .key = tr_str("browser.compatible_only"),
         .getValue = [this] { return mQuery.thisDevice; },
         .setValue =
             [this](bool value) {
@@ -985,16 +1006,17 @@ void ModBrowser::build_content(Rml::Element* content) {
     auto* heading = append(resultsRoot, "header");
     const std::string categoryName = [&] {
         if (mQuery.category.empty() || !mPage) {
-            return std::string{"All mods"};
+            return tr_str("browser.all_mods");
         }
         const auto iter =
             std::ranges::find(mPage->categories, mQuery.category, &mods::catalog::Category::slug);
-        return iter == mPage->categories.end() ? std::string{"All mods"} : iter->name;
+        return iter == mPage->categories.end() ? tr_str("browser.all_mods") : iter->name;
     }();
     const uint64_t total = mPage ? mPage->pagination.total : 0;
     append_text_element(heading, "h1", categoryName);
-    append_text_element(
-        heading, "small", fmt::format("{} mods · sorted by {}", total, sort_label(mQuery.sort)));
+    append_text_element(heading, "small",
+        fmt::format(fmt::runtime(tr_str("browser.mods_count") + " · " + tr_str("browser.sort_label_suffix")),
+            fmt::arg("count", total), fmt::arg("sort", sort_label(mQuery.sort))));
 
     Component* resultFocus = nullptr;
     Component* retryFocus = nullptr;
@@ -1027,7 +1049,7 @@ void ModBrowser::build_content(Rml::Element* content) {
                                 });
             pagination
                 .add_item<ControlledButton>(ControlledButton::Props{
-                    .text = "Previous",
+                    .text = tr_str("browser.previous"),
                     .isDisabled = [this] { return mQuery.page <= 1; },
                 })
                 .on_pressed([this] {
@@ -1038,10 +1060,12 @@ void ModBrowser::build_content(Rml::Element* content) {
                 });
             auto* label = append(paginationRoot, "catalog-pagination-label");
             append_text(label,
-                fmt::format("Page {} of {}", mPage->pagination.page, mPage->pagination.pageCount));
+                fmt::format(fmt::runtime(tr_str("browser.page_of")),
+                    fmt::arg("page", mPage->pagination.page),
+                    fmt::arg("total", mPage->pagination.pageCount)));
             pagination
                 .add_item<ControlledButton>(ControlledButton::Props{
-                    .text = "Next",
+                    .text = tr_str("browser.next"),
                     .isDisabled =
                         [this] { return !mPage || mQuery.page >= mPage->pagination.pageCount; },
                 })
@@ -1062,22 +1086,25 @@ void ModBrowser::build_content(Rml::Element* content) {
         switch (mState) {
         case State::Loading:
             // TODO better loading state
-            append_status(status, "Loading catalog", "Fetching published mods...");
+            append_status(
+                status, tr_str("browser.loading_catalog"), tr_str("browser.fetching_published"));
             break;
         case State::Unavailable:
-            append_status(status, "Catalog unavailable", "This build has no HTTP backend.");
+            append_status(
+                status, tr_str("browser.catalog_unavailable"), tr_str("browser.no_http"));
             break;
         case State::Error: {
-            append_status(status, "Could not load mods", mError);
+            append_status(status, tr_str("browser.could_not_load_mods"), mError);
             auto* retryRoot = append(status, "catalog-retry-actions");
             auto& retryGroup = results.add_existing_item<NavGroup>(retryRoot, NavGroup::Props{});
-            auto& retry = retryGroup.add_item<Button>("Retry");
+            auto& retry = retryGroup.add_item<Button>(tr_str("browser.retry"));
             retry.on_pressed([this] { begin_fetch(FocusTarget::Retry); });
             retryFocus = &retry;
             break;
         }
         case State::Ready:
-            append_status(status, "No mods found", "Try changing the search or category.");
+            append_status(
+                status, tr_str("browser.no_mods_found"), tr_str("browser.try_search_category"));
             break;
         }
     }
@@ -1137,7 +1164,8 @@ void ModBrowser::finish_fetch(mods::catalog::FetchResult result) {
         }
     } else {
         mState = State::Error;
-        mError = result.error.empty() ? "The catalog request failed." : std::move(result.error);
+        mError =
+            result.error.empty() ? tr_str("browser.catalog_request_failed") : std::move(result.error);
     }
     if (mFocusTarget == FocusTarget::Default) {
         mFocusTarget = FocusTarget::Search;
@@ -1158,10 +1186,11 @@ void ModBrowser::update() {
                 finish_fetch(std::move(*result));
             }
         } catch (const std::exception& exception) {
-            finish_fetch(
-                {.error = fmt::format("The catalog request failed: {}", exception.what())});
+            finish_fetch({.error = fmt::format(
+                fmt::runtime(tr_str("browser.catalog_request_failed_error")),
+                fmt::arg("error", exception.what()))});
         } catch (...) {
-            finish_fetch({.error = "The catalog request failed."});
+            finish_fetch({.error = tr_str("browser.catalog_request_failed")});
         }
         mFetch = {};
     }

@@ -1,6 +1,7 @@
 #include "warp.hpp"
 
 #include "editor.hpp"
+#include "i18n.hpp"
 #include "pane.hpp"
 
 #include "dusk/map_loader_definitions.h"
@@ -119,7 +120,7 @@ void populate_map_picker(Pane& pane, WarpSelectionState& state) {
     }
 
     pane.add_button({
-                    .text = "Show Internal Names",
+                    .text = i18n::tr_str("warp.show_internal_names"),
                     .isSelected = [&state] { return state.showInternalNames; },
                 })
         .on_pressed([&pane, &state] {
@@ -128,7 +129,7 @@ void populate_map_picker(Pane& pane, WarpSelectionState& state) {
             populate_map_picker(pane, state);
         });
 
-    pane.add_section("Maps");
+    pane.add_section(i18n::tr_str("warp.maps"));
     const auto& region = gameRegions[state.regionIdx];
     for (int i = 0; i < static_cast<int>(region.maps.size()); ++i) {
         pane.add_button({
@@ -148,21 +149,21 @@ void populate_map_picker(Pane& pane, WarpSelectionState& state) {
 }  // namespace
 
 WarpWindow::WarpWindow() {
-    add_tab("Warp", [this](Rml::Element* content) {
+    add_tab([] { return i18n::tr_str("warp.title"); }, [this](Rml::Element* content) {
         auto& leftPane = add_child<Pane>(content, Pane::Type::Controlled);
         auto& rightPane = add_child<Pane>(content, Pane::Type::Uncontrolled);
         auto& state = selection_state();
         clamp_indices(state);
 
-        leftPane.add_section("Destination");
+        leftPane.add_section(i18n::tr_str("warp.destination"));
         leftPane.register_control(
             leftPane.add_select_button({
-                .key = "Region",
+                .key = i18n::tr_str("warp.region"),
                 .getValue =
                     [&state] {
                         clamp_indices(state);
                         const auto* region = selected_region(state);
-                        return region == nullptr ? Rml::String{"None"} :
+                        return region == nullptr ? i18n::tr_str("common.none") :
                                                    Rml::String{region->regionName};
                     },
             }),
@@ -186,12 +187,12 @@ WarpWindow::WarpWindow() {
 
         leftPane.register_control(
             leftPane.add_select_button({
-                .key = "Map",
+                .key = i18n::tr_str("warp.map"),
                 .getValue =
                     [&state] {
                         clamp_indices(state);
                         const auto* map = selected_map(state);
-                        return map == nullptr ? Rml::String{"None"} :
+                        return map == nullptr ? i18n::tr_str("common.none") :
                                                 stage_option_label(*map, state.showInternalNames);
                     },
             }),
@@ -199,11 +200,11 @@ WarpWindow::WarpWindow() {
 
         leftPane.register_control(
             leftPane.add_select_button({
-                .key = "Room",
+                .key = i18n::tr_str("warp.room"),
                 .getValue = [&state] {
                         clamp_indices(state);
                         const auto* room = selected_room(state);
-                        return room == nullptr ? Rml::String{"None"} :
+                        return room == nullptr ? i18n::tr_str("common.none") :
                                                  fmt::format("{}", room->roomNo);
                     },
                 .isDisabled = [&state] {
@@ -241,11 +242,12 @@ WarpWindow::WarpWindow() {
 
         leftPane.register_control(
             leftPane.add_select_button({
-                .key = "Point",
+                .key = i18n::tr_str("warp.point"),
                 .getValue = [&state] {
                         clamp_indices(state);
                         const auto* point = selected_point(state);
-                        return point == nullptr ? Rml::String{"None"} : fmt::format("{}", *point);
+                        return point == nullptr ? i18n::tr_str("common.none") :
+                                                  fmt::format("{}", *point);
                     },
                 .isDisabled = [&state] {
                         clamp_indices(state);
@@ -285,7 +287,7 @@ WarpWindow::WarpWindow() {
 
         leftPane.register_control(
             leftPane.add_select_button({
-                .key = "Layer",
+                .key = i18n::tr_str("warp.layer"),
                 .getValue = [&state] { return fmt::format("{}", state.layer); },
             }),
             rightPane, [&state](Pane& pane) {
@@ -304,10 +306,10 @@ WarpWindow::WarpWindow() {
                 }
             });
 
-        leftPane.add_section("Action");
+        leftPane.add_section(i18n::tr_str("warp.action"));
         leftPane.register_control(
             leftPane.add_button({
-                        .text = "Warp",
+                        .text = i18n::tr_str("warp.warp_button"),
                         .isDisabled = [&state] {
                             clamp_indices(state);
                             return !can_warp(state);
@@ -327,7 +329,7 @@ WarpWindow::WarpWindow() {
                 }),
             rightPane, [](Pane& pane) {
                 pane.clear();
-                pane.add_text("Warp to the selected destination.");
+                pane.add_text(i18n::tr_str("warp.warp_help"));
             });
     });
 }

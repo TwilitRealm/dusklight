@@ -19,6 +19,8 @@ public:
     virtual void show();
     virtual void hide(bool close);
     virtual void update();
+    /* Rebuild dynamic content (e.g. after a menu language change). */
+    virtual void rebuild() {}
     virtual bool focus();
     bool has_focus() const;
     virtual bool visible() const;

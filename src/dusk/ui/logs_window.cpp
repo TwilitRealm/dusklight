@@ -7,22 +7,24 @@
 #include <fmt/format.h>
 
 #include "pane.hpp"
+#include "dusk/ui/i18n.hpp"
 
 namespace dusk::ui {
 namespace {
+using i18n::tr_str;
 
 const char* level_name(LogLevel level) {
     switch (level) {
     case LOG_LEVEL_TRACE:
-        return "Trace";
+        return "logs.trace";
     case LOG_LEVEL_DEBUG:
-        return "Debug";
+        return "logs.debug";
     case LOG_LEVEL_INFO:
-        return "Info";
+        return "logs.info";
     case LOG_LEVEL_WARN:
-        return "Warn";
+        return "logs.warn";
     case LOG_LEVEL_ERROR:
-        return "Error";
+        return "logs.error";
     }
     return "?";
 }
@@ -91,10 +93,10 @@ void LogsWindow::build_content(Rml::Element* content) {
     auto* toolbar = append(content, "log-toolbar");
 
     auto* title = append(toolbar, "log-title");
-    append_text(title, "Logs");
+    append_text(title, tr_str("logs.title"));
 
     auto* modLabel = append(toolbar, "log-title-mod");
-    append_text(modLabel, mModFilter.empty() ? "All mods" : mModFilter);
+    append_text(modLabel, mModFilter.empty() ? tr_str("logs.all_mods") : mModFilter);
 
     append(toolbar, "log-toolbar-spacer");
 
@@ -103,7 +105,7 @@ void LogsWindow::build_content(Rml::Element* content) {
     {
         add_child<ControlledButton>(toolbar,
             ControlledButton::Props{
-                .text = level_name(level),
+                .text = tr_str(level_name(level)),
                 .isSelected = [this, level] { return mMinLevel <= level; },
             })
             .on_pressed([this, level] {
@@ -114,8 +116,8 @@ void LogsWindow::build_content(Rml::Element* content) {
 
     append(toolbar, "log-toolbar-spacer");
 
-    add_child<Button>(toolbar, "Copy").on_pressed([this] { copy_to_clipboard(); });
-    add_child<Button>(toolbar, "Clear").on_pressed([this] {
+    add_child<Button>(toolbar, tr_str("logs.copy")).on_pressed([this] { copy_to_clipboard(); });
+    add_child<Button>(toolbar, tr_str("logs.clear")).on_pressed([this] {
         mods::log::clear();
         rebuild_lines();
     });
@@ -289,7 +291,7 @@ void LogsWindow::copy_to_clipboard() {
             level_logger_name(line.level), modId, line.message);
     }
     Rml::GetSystemInterface()->SetClipboardText(text);
-    push_toast({.content = "Copied to clipboard", .duration = std::chrono::seconds(2)});
+    push_toast({.content = tr_str("logs.copied"), .duration = std::chrono::seconds(2)});
 }
 
 }  // namespace dusk::ui

@@ -4,6 +4,7 @@
 #include "dusk/mods/updates.hpp"
 #include "format.hpp"
 #include "icon_button.hpp"
+#include "i18n.hpp"
 #include "logs_window.hpp"
 #include "mod_texture_provider.hpp"
 #include "mod_updates.hpp"
@@ -40,23 +41,24 @@
 
 namespace dusk::ui {
 namespace {
+using i18n::tr_str;
 
 struct ModStatus {
     const char* badgeClass = "";
-    const char* text = "";
+    std::string text;
 };
 
 ModStatus mod_status(const mods::LoadedMod& mod) {
     if (mod.loadFailed) {
-        return {"error", "Failed"};
+        return {"error", tr_str("mods.failed")};
     }
     if (mod.active) {
-        return {"success", "Active"};
+        return {"success", tr_str("mods.active")};
     }
     if (mod.suspendedByProvider) {
-        return {"suspended", "Suspended"};
+        return {"suspended", tr_str("mods.suspended")};
     }
-    return {"", "Disabled"};
+    return {"", tr_str("mods.disabled")};
 }
 
 bool mod_uses_network(const mods::LoadedMod& mod) {
@@ -86,27 +88,27 @@ struct ModActionInfo {
 std::vector<ModActionInfo> available_mod_actions(const mods::LoadedMod& mod) {
     std::vector<ModActionInfo> actions;
     if (const auto* update = mods::updates::find(mod.metadata.id); update && update->actionable) {
-        actions.push_back({ModAction::Update, "Update", "download"});
+        actions.push_back({ModAction::Update, tr_str("mods.update").c_str(), "download"});
     }
     if (mod.activation_failed()) {
-        actions.push_back({ModAction::Retry, "Retry", "replay"});
-        actions.push_back({ModAction::Disable, "Disable", "pause"});
+        actions.push_back({ModAction::Retry, tr_str("mods.retry").c_str(), "replay"});
+        actions.push_back({ModAction::Disable, tr_str("mods.disable").c_str(), "pause"});
     } else if (mod.is_enabled()) {
         if (!mod.nativeInPlace) {
-            actions.push_back({ModAction::Reload, "Reload", "refresh"});
+            actions.push_back({ModAction::Reload, tr_str("mods.reload").c_str(), "refresh"});
         }
-        actions.push_back({ModAction::Disable, "Disable", "pause"});
+        actions.push_back({ModAction::Disable, tr_str("mods.disable").c_str(), "pause"});
     } else {
-        actions.push_back({ModAction::Enable, "Enable", "play_arrow"});
+        actions.push_back({ModAction::Enable, tr_str("mods.enable").c_str(), "play_arrow"});
     }
-    actions.push_back({ModAction::Logs, "Logs", "notes"});
+    actions.push_back({ModAction::Logs, tr_str("mods.logs").c_str(), "notes"});
     if (data::manager().capabilities().canOpenFolder) {
-        actions.push_back({ModAction::OpenFolder, "Open folder", "folder_open"});
+        actions.push_back({ModAction::OpenFolder, tr_str("mods.open_folder").c_str(), "folder_open"});
     }
     if (mods::ModLoader::instance().can_uninstall(mod)) {
         actions.push_back({
             ModAction::Uninstall,
-            mod.hasBundledCopy ? "Remove update" : "Uninstall",
+            (mod.hasBundledCopy ? tr_str("mods.remove_update") : tr_str("mods.uninstall")).c_str(),
             "delete",
         });
     }
@@ -133,10 +135,10 @@ public:
         append_text(append(heading, "b"), mod.metadata.name);
         if (const auto* update = mods::updates::find(mod.metadata.id); update && update->actionable)
         {
-            append_text(append(heading, "update-badge"), "Update");
+            append_text(append(heading, "update-badge"), tr_str("mods.update"));
         }
         if (mod_uses_network(mod)) {
-            append_text(append(heading, "mod-network"), "Network");
+            append_text(append(heading, "mod-network"), tr_str("mods.network_badge"));
         }
         auto* sub = append(info, "mod-meta");
         append_text(append(sub, "mod-author"), mod.metadata.author);
@@ -194,9 +196,9 @@ public:
         append(mRoot, "mod-icon");
         auto* info = append(mRoot, "mod-info");
         auto* heading = append(info, "header");
-        append_text(append(heading, "b"), "Online mods");
+        append_text(append(heading, "b"), tr_str("mods.online_mods"));
         append(heading, "update-badge");
-        append_text(append(info, "small"), "Download community mods and check for updates.");
+        append_text(append(info, "small"), tr_str("mods.online_desc"));
         on_nav_command([this](Rml::Event&, NavCommand command) {
             if (command != NavCommand::Confirm) {
                 return false;
@@ -208,7 +210,7 @@ public:
     }
 
     void update() override {
-        set_mod_update_badge(*this, "Online mods");
+        set_mod_update_badge(*this, tr_str("mods.online_mods"));
         Component::update();
     }
 };
@@ -422,10 +424,11 @@ std::vector<ContextMenu::Item> ModsWindow::mod_actions(
                                                                      current->modPath.parent_path();
                         if (!data::manager().open_folder(folder)) {
                             push(std::make_unique<Modal>(Modal::Props{
-                                .title = "Could not open folder",
-                                .bodyText =
-                                    "The mod folder could not be opened in the file browser.",
-                                .actions = {{"OK", [](Modal& modal) { modal.pop(); }, {}}},
+                                .title = tr_str("mods.could_not_open_folder"),
+                                .bodyText = tr_str("mods.could_not_open_folder_body"),
+                                .actions = {{tr_str("common.ok"),
+                                                [](Modal& modal) { modal.pop(); },
+                                                {}}},
                             }));
                         }
                         break;
@@ -485,7 +488,7 @@ void ModsWindow::build_content(Rml::Element* content) {
         });
     }
     if (!hasInstalledMods) {
-        listPane.add_text("No mods installed.");
+        listPane.add_text(tr_str("mods.no_mods"));
         mSelection = Selection::Online;
     }
     if (selected_utility()) {
@@ -517,10 +520,12 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
         append_text(title, "\u00a0");
         auto* badge = append(title, "status-badge");
         badge->SetClass("info", true);
-        append_text(badge, "Network");
+        append_text(badge, tr_str("mods.network_badge"));
     }
     auto* author = append(pane.root(), "small");
-    append_text(author, fmt::format("by {}\u00a0·\u00a0", mod.metadata.author));
+    append_text(author,
+        fmt::format(fmt::runtime(tr_str("mods.by")), fmt::arg("author", mod.metadata.author)));
+    append_text(author, "\u00a0·\u00a0");
     const auto status = mod_status(mod);
     auto* badge = append(author, "status-badge");
     if (status.badgeClass[0] != '\0') {
@@ -532,7 +537,7 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
         auto* row = append(pane.root(), "mod-info-row");
         auto* label = append(row, "b");
         label->SetClass("error", true);
-        append_text(label, "Reason");
+        append_text(label, tr_str("mods.reason"));
         append_text(append(row, "span"), mod.failureReason);
     } else if (mod.suspendedByProvider) {
         std::vector<std::string_view> providers;
@@ -542,7 +547,7 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
             }
         }
         auto* row = append(pane.root(), "mod-info-row");
-        append_text(append(row, "b"), "Waiting on");
+        append_text(append(row, "b"), tr_str("mods.waiting_on"));
         append_text(append(row, "span"), fmt::format("{}", fmt::join(providers, ", ")));
     }
 
@@ -554,8 +559,8 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
     }
     if (mod.active && !activeDependents.empty()) {
         append_text(append(pane.root(), "mod-restart-note"),
-            fmt::format(
-                "Disabling or reloading also restarts: {}", fmt::join(activeDependents, ", ")));
+            fmt::format(fmt::runtime(tr_str("mods.also_restarts")),
+                fmt::arg("mods", fmt::join(activeDependents, ", "))));
     }
 
     if (!mod.metadata.description.empty()) {
@@ -569,11 +574,9 @@ void ModsWindow::build_detail(Pane& pane, mods::LoadedMod& mod) {
 }
 
 void ModsWindow::confirm_uninstall(const mods::LoadedMod& mod) {
-    const std::string action = mod.hasBundledCopy ? "Remove update" : "Uninstall";
-    std::string body = mod.hasBundledCopy ?
-                           "Installed mod will be reverted back to the bundled version. Settings "
-                           "and saved data are kept." :
-                           "Installed mod will be removed. Settings and saved data are kept.";
+    const std::string action =
+        mod.hasBundledCopy ? tr_str("mods.remove_update") : tr_str("mods.uninstall");
+    std::string body = mod.hasBundledCopy ? tr_str("mods.revert_body") : tr_str("mods.uninstall_body");
     std::vector<std::string_view> dependents;
     for (const auto& edge : mod.dependents) {
         if (!edge.required || edge.mod == nullptr) {
@@ -582,16 +585,21 @@ void ModsWindow::confirm_uninstall(const mods::LoadedMod& mod) {
         dependents.push_back(edge.mod->metadata.name);
     }
     if (!dependents.empty()) {
-        body = fmt::format("{} Required dependents: {}.", body, fmt::join(dependents, ", "));
+        body = fmt::format("{} {}", body,
+            fmt::format(fmt::runtime(tr_str("mods.required_dependents")),
+                fmt::arg("mods", fmt::join(dependents, ", "))));
     }
 
     push(std::make_unique<Modal>(Modal::Props{
-        .title = mod.hasBundledCopy ? fmt::format("Revert {}?", mod.metadata.name) :
-                                      fmt::format("Uninstall {}?", mod.metadata.name),
+        .title = mod.hasBundledCopy ?
+            fmt::format(fmt::runtime(tr_str("mods.revert_title")),
+                fmt::arg("name", mod.metadata.name)) :
+            fmt::format(fmt::runtime(tr_str("mods.uninstall_title")),
+                fmt::arg("name", mod.metadata.name)),
         .bodyText = std::move(body),
         .actions =
             {
-                ModalAction{"Cancel", [](Modal& modal) { modal.pop(); }, {}},
+                ModalAction{tr_str("common.cancel"), [](Modal& modal) { modal.pop(); }, {}},
                 ModalAction{action,
                     [id = mod.metadata.id](Modal& modal) {
                         mods::ModLoader::instance().request_uninstall(id);

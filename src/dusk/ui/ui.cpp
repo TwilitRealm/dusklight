@@ -2,6 +2,7 @@
 
 #include "command_console.hpp"
 #include "drop_install_modal.hpp"
+#include "i18n.hpp"
 #include "icon_provider.hpp"
 #include "input.hpp"
 #include "mod_texture_provider.hpp"
@@ -34,6 +35,8 @@
 #include <utility>
 
 namespace dusk::ui {
+
+using i18n::tr_str;
 namespace {
 
 void load_font(const char* filename, bool fallback = false) {
@@ -112,6 +115,8 @@ bool initialize() noexcept {
     load_font("MaterialSymbolsRounded-Regular.ttf");
     load_font("NotoMono-Regular.ttf");
 
+    i18n::initialize();
+
     register_icon_texture_provider();
     register_mod_texture_provider();
     register_remote_texture_provider();
@@ -124,6 +129,7 @@ bool initialize() noexcept {
 }
 
 void shutdown() noexcept {
+    i18n::shutdown();
     mods::updates::shutdown();
     mods::queue::shutdown();
     for (auto& drop : sPendingDrops) {
@@ -240,8 +246,9 @@ void handle_event(const SDL_Event& event) noexcept {
         if (SDL_GamepadConnected(gamepad)) {
             if (getSettings().game.enableControllerToasts) {
                 const char* name = SDL_GetGamepadName(gamepad);
-                Rml::String content = fmt::format("<span>{}</span>", name ? name : "[Unknown]");
-                Rml::String title = "Device Connected";
+                Rml::String content =
+                    fmt::format("<span>{}</span>", name ? name : tr_str("toasts.unknown_device"));
+                Rml::String title = tr_str("toasts.device_connected");
                 if (const char* icon =
                         connection_state_icon(SDL_GetGamepadConnectionState(gamepad)))
                 {
@@ -276,8 +283,8 @@ void handle_event(const SDL_Event& event) noexcept {
             const char* name = SDL_GetGamepadNameForID(event.gdevice.which);
             push_toast({
                 .type = "controller",
-                .title = "Device Disconnected",
-                .content = name ? name : "[Unknown]",
+                .title = tr_str("toasts.device_disconnected"),
+                .content = name ? name : tr_str("toasts.unknown_device"),
                 .duration = std::chrono::seconds(4),
             });
         }
@@ -490,7 +497,7 @@ void update() noexcept {
         } catch (const std::exception& exception) {
             push_toast({
                 .type = "warning",
-                .title = "Could not inspect packages",
+                .title = tr_str("toasts.could_not_inspect"),
                 .content = exception.what(),
                 .duration = std::chrono::seconds{5},
             });
@@ -498,6 +505,13 @@ void update() noexcept {
         sPendingDrops.erase(sPendingDrops.begin() + static_cast<std::ptrdiff_t>(index));
     }
     input::update_input();
+    if (i18n::consume_refresh_requested()) {
+        for (auto& doc : sDocumentStack) {
+            if (doc != nullptr && !doc->closed()) {
+                doc->rebuild();
+            }
+        }
+    }
     const auto update_documents = [](auto& documents) {
         const size_t count = documents.size();
         for (size_t i = 0; i < count && i < documents.size(); ++i) {

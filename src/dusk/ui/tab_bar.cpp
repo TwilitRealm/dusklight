@@ -188,6 +188,17 @@ void TabBar::refresh_active_tab() {
     }
 }
 
+void TabBar::set_tab_title(int index, const Rml::String& title) {
+    if (index < 0 || index >= static_cast<int>(mTabs.size())) {
+        return;
+    }
+    auto& tab = mTabs[index];
+    if (tab.title != title) {
+        tab.title = title;
+        tab.button->set_text(title);
+    }
+}
+
 Rml::String TabBar::focused_tab_title() const {
     if (mLastFocusedTabIndex < 0 || mLastFocusedTabIndex >= static_cast<int>(mTabs.size())) {
         return {};

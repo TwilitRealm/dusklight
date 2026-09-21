@@ -19,6 +19,7 @@ public:
     void show() override;
     void hide(bool close) override;
     void update() override;
+    void rebuild() override;
     bool focus() override;
     bool visible() const override;
     bool obscures_game() const override { return true; }

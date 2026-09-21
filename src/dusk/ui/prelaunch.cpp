@@ -11,6 +11,7 @@
 #include "dusk/settings.h"
 #include "dusk/ui/format.hpp"
 #include "dusk/ui/menu_bar.hpp"
+#include "i18n.hpp"
 #include "mod_updates.hpp"
 #include "modal.hpp"
 #include "mods_window.hpp"
@@ -57,7 +58,7 @@ const Rml::String kDocumentSource = R"RML(
     <content id="root" open>
         <menu>
             <hero class="intro-item delay-0">
-                <eyebrow><studio-name>Twilit Realm</studio-name> presents</eyebrow>
+                <eyebrow><studio-name>Twilit Realm</studio-name> <span id="presents-text">presents</span></eyebrow>
                 <img src="res/logo.png" />
             </hero>
             <menu-list id="menu-list" />
@@ -70,7 +71,7 @@ const Rml::String kDocumentSource = R"RML(
             <disc-version id="disc-version" />
         </disc-info>
         <version-info class="intro-item delay-6">
-            <version-label>Version <version-number id="version-text"></version-number></version-label>
+            <version-label><span id="version-label-text">Version</span> <version-number id="version-text"></version-number></version-label>
             <update-status id="update-status">
                 <update-message id="update-message"></update-message>
                 <button id="update-download">
@@ -243,23 +244,21 @@ void open_update_release() {
 std::string get_error_msg(iso::ValidationError error) {
     switch (error) {
     default:
-        return "The selected disc image could not be validated.";
+        return i18n::tr_str("prelaunch.errors.unknown");
     case iso::ValidationError::IOError:
-        return "Unable to read the selected file.";
+        return i18n::tr_str("prelaunch.errors.io_error");
     case iso::ValidationError::InvalidImage:
-        return "The selected file is not a valid disc image.";
+        return i18n::tr_str("prelaunch.errors.invalid_image");
     case iso::ValidationError::WrongGame:
-        return "The selected game is not supported by Dusklight.";
+        return i18n::tr_str("prelaunch.errors.wrong_game");
     case iso::ValidationError::WrongVersion:
-        return "Dusklight does not currently support the Wii's Korean version.";
+        return i18n::tr_str("prelaunch.errors.wrong_version");
     case iso::ValidationError::Canceled:
-        return "Disc verification was canceled. Dusklight cannot guarantee the selected disc "
-               "image is compatible.";
+        return i18n::tr_str("prelaunch.errors.canceled");
     case iso::ValidationError::HashMismatch:
-        return "The selected disc image did not pass hash verification. It may be corrupt or "
-               "modified.";
+        return i18n::tr_str("prelaunch.errors.hash_mismatch");
     case iso::ValidationError::Success:
-        return "The selected disc image is valid.";
+        return i18n::tr_str("prelaunch.errors.success");
     }
 }
 
@@ -344,7 +343,7 @@ public:
         auto* header = append(mDialog, "modal-header");
 
         auto* title = append(header, "modal-title");
-        append_text(title, "Verifying disc image");
+        append_text(title, i18n::tr_str("prelaunch.verifying_disc"));
 
         auto* icon = append(header, "icon");
         icon->SetClass("verifying", true);
@@ -362,7 +361,7 @@ public:
         mDetail = append(content, "small");
 
         auto* actions = append(mDialog, "modal-actions");
-        mCancelButton = std::make_unique<Button>(actions, "Cancel");
+        mCancelButton = std::make_unique<Button>(actions, i18n::tr_str("prelaunch.cancel"));
         mCancelButton->root()->SetClass("modal-btn", true);
         mCancelButton->on_pressed([this] { request_cancel(); });
 
@@ -411,7 +410,7 @@ private:
         mCancelRequested = true;
         sDiscVerificationTask->status.cancelRequested.store(true, std::memory_order_relaxed);
         if (mCancelButton != nullptr) {
-            mCancelButton->set_text("Cancelling...");
+            mCancelButton->set_text(i18n::tr_str("prelaunch.cancelling"));
             mCancelButton->set_disabled(true);
         }
     }
@@ -443,7 +442,7 @@ private:
                 mProgress->SetAttribute("value", 0.f);
             }
             if (mDetail != nullptr) {
-                set_text_content(mDetail, "Opening disc image...");
+                set_text_content(mDetail, i18n::tr_str("prelaunch.opening_disc"));
             }
             return;
         }
@@ -501,11 +500,11 @@ std::vector<const gamemode::GameMode*> carousel_game_modes() {
 
 std::string game_mode_button_text() {
     if (prelaunch_state().activeDiscPath.empty()) {
-        return "Select Disc Image";
+        return i18n::tr_str("prelaunch.select_disc_image");
     }
     const auto* currentGameMode = gamemode::getGameModeManager().getCurrentGameMode();
     if (currentGameMode == nullptr || currentGameMode->getId() == gamemode::kVanillaGameModeId) {
-        return "Play";
+        return i18n::tr_str("prelaunch.play");
     }
     return currentGameMode->getFullName();
 }
@@ -691,8 +690,8 @@ void try_push_verification_modal(Document& host) {
     };
 
     if (!state.pendingDiscPath.empty()) {
-        const Rml::String bodyRml =
-            escape(state.errorString) + "<br/><br/>You may proceed at your own risk.";
+        const Rml::String bodyRml = escape(state.errorString) + "<br/><br/>" +
+                                    i18n::tr_str("prelaunch.verify_modal.proceed_risk");
         auto acceptHashMismatch = [](Modal& modal) {
             auto& st = prelaunch_state();
             std::string path = std::move(st.pendingDiscPath);
@@ -707,16 +706,16 @@ void try_push_verification_modal(Document& host) {
             modal.pop();
         };
         host.push(std::make_unique<Modal>(Modal::Props{
-            .title = "Disc verification warning",
+            .title = i18n::tr_str("prelaunch.verify_modal.title"),
             .bodyRml = bodyRml,
             .actions =
                 {
                     ModalAction{
-                        .label = "Cancel",
+                        .label = i18n::tr_str("prelaunch.verify_modal.cancel"),
                         .onPressed = dismiss,
                     },
                     ModalAction{
-                        .label = "Continue anyway",
+                        .label = i18n::tr_str("prelaunch.verify_modal.continue_anyway"),
                         .onPressed = acceptHashMismatch,
                     },
                 },
@@ -728,12 +727,12 @@ void try_push_verification_modal(Document& host) {
     }
 
     host.push(std::make_unique<Modal>(Modal::Props{
-        .title = "Disc verification error",
+        .title = i18n::tr_str("prelaunch.verify_modal.error_title"),
         .bodyText = state.errorString,
         .actions =
             {
                 ModalAction{
-                    .label = "OK",
+                    .label = i18n::tr_str("prelaunch.verify_modal.ok"),
                     .onPressed = dismiss,
                 },
             },
@@ -751,19 +750,19 @@ void try_push_language_unavailable_modal(Document& host) {
     state.pendingLanguageUnavailableNotice = false;
 
     const Rml::String bodyRml = fmt::format(
-        "<b>{}</b> is not available on this disc. Language has been reset to <b>{}</b>.",
-        language::language_name(state.unavailableLanguage),
-        language::language_name(getSettings().game.language.getValue()));
+        fmt::runtime(i18n::tr_source("prelaunch.language_modal.body")),
+        fmt::arg("language", language::language_name(state.unavailableLanguage)),
+        fmt::arg("fallback", language::language_name(getSettings().game.language.getValue())));
 
     auto dismiss = [](Modal& modal) { modal.pop(); };
 
     host.push(std::make_unique<Modal>(Modal::Props{
-        .title = "Language unavailable",
+        .title = i18n::tr_str("prelaunch.language_modal.title"),
         .bodyRml = bodyRml,
         .actions =
             {
                 ModalAction{
-                    .label = "OK",
+                    .label = i18n::tr_str("prelaunch.language_modal.ok"),
                     .onPressed = dismiss,
                 },
             },
@@ -837,6 +836,21 @@ void try_apply_mirrored_layout(Rml::Element* body) {
     body->SetClass("mirrored", getSettings().game.enableMirrorMode.getValue());
 }
 
+void refresh_static_texts(Rml::ElementDocument* document) {
+    if (document == nullptr) {
+        return;
+    }
+    set_text_content(document->GetElementById("presents-text"), i18n::tr_str("prelaunch.presents"));
+    set_text_content(
+        document->GetElementById("version-label-text"), i18n::tr_str("prelaunch.version"));
+}
+
+void Prelaunch::rebuild() {
+    // Rebuild menu buttons so translated titles are picked up.
+    refresh_static_texts(mDocument);
+    refresh_menu_buttons();
+}
+
 void Prelaunch::refresh_menu_buttons() {
     auto* prelaunch = static_cast<Prelaunch*>(find_document(DocumentScope::Prelaunch));
     if (prelaunch == nullptr) {
@@ -879,6 +893,7 @@ Prelaunch::Prelaunch() : Document(kDocumentSource, false, DocumentScope::Prelaun
     }
 
     try_apply_mirrored_layout(mDocument);
+    refresh_static_texts(mDocument);
 
     listen(mDocument, Rml::EventId::Transitionend, [this](Rml::Event& event) {
         auto* target = event.GetTargetElement();
@@ -940,14 +955,14 @@ void Prelaunch::build_menu_buttons() {
         apply_intro_animation(playButton->root(), "delay-1");
         mMenuButtons.push_back(std::move(playButton));
 
-        mMenuButtons.push_back(std::make_unique<Button>(menuList, "Settings"));
+        mMenuButtons.push_back(std::make_unique<Button>(menuList, i18n::tr_str("menu.settings")));
         mMenuButtons.back()->on_pressed([this] {
             mRestartSuppressed = false;
             push(std::make_unique<SettingsWindow>(true));
         });
         apply_intro_animation(mMenuButtons.back()->root(), "delay-2");
 
-        mMenuButtons.push_back(std::make_unique<Button>(menuList, "Mods"));
+        mMenuButtons.push_back(std::make_unique<Button>(menuList, i18n::tr_str("menu.mods")));
         mModsButton = mMenuButtons.back().get();
         mModsButton->set_disabled(!mods::ModLoader::instance().initialized());
         mMenuButtons.back()->on_pressed([this] {
@@ -956,7 +971,7 @@ void Prelaunch::build_menu_buttons() {
         });
         apply_intro_animation(mMenuButtons.back()->root(), "delay-3");
 
-        mMenuButtons.push_back(std::make_unique<Button>(menuList, "Quit"));
+        mMenuButtons.push_back(std::make_unique<Button>(menuList, i18n::tr_str("menu.quit")));
         mMenuButtons.back()->on_pressed([] { IsRunning = false; });
         apply_intro_animation(mMenuButtons.back()->root(), "delay-4");
     }
@@ -975,27 +990,24 @@ void Prelaunch::show() {
         std::vector<ModalAction> actions;
         if constexpr (SupportsProcessRestart) {
             actions.push_back(ModalAction{
-                .label = "Restart later",
+                .label = i18n::tr_str("prelaunch.restart_later"),
                 .onPressed = dismiss,
             });
             actions.push_back(ModalAction{
-                .label = "Restart now",
+                .label = i18n::tr_str("prelaunch.restart_now"),
                 .onPressed = [](Modal&) { RequestRestart(); },
             });
         } else {
             actions.push_back(ModalAction{
-                .label = "OK",
+                .label = i18n::tr_str("common.ok"),
                 .onPressed = dismiss,
             });
         }
         push(std::make_unique<Modal>(Modal::Props{
-            .title = "Apply Options",
-            .bodyRml =
-                SupportsProcessRestart ?
-                    "A restart is required to apply selected options.<br/><br/>Restart now to "
-                    "apply them immediately?" :
-                    "A restart is required to apply selected options.<br/><br/>Close and reopen "
-                    "Dusklight to apply them.",
+            .title = i18n::tr_str("prelaunch.apply_options"),
+            .bodyRml = i18n::tr_str(SupportsProcessRestart ?
+                            "prelaunch.restart_required_process" :
+                            "prelaunch.restart_required_no_process"),
             .actions = std::move(actions),
             .onDismiss = dismiss,
         }));
@@ -1054,22 +1066,22 @@ void Prelaunch::update() {
     if (mDiscStatus != nullptr && discStatusLabel != nullptr) {
         if (!activeDiscLoaded) {
             mDiscStatus->RemoveAttribute("status");
-            set_text_content(discStatusLabel, "No disc image found.");
+            set_text_content(discStatusLabel, i18n::tr_str("prelaunch.disc_status.no_disc"));
         } else if (discRestartPending) {
             mDiscStatus->SetAttribute("status", "pending");
-            set_text_content(discStatusLabel, "Pending restart.");
+            set_text_content(discStatusLabel, i18n::tr_str("prelaunch.disc_status.pending_restart"));
         } else if (state.configuredDiscValidation == iso::ValidationError::Success) {
             mDiscStatus->SetAttribute("status", "good");
-            set_text_content(discStatusLabel, "Disc ready.");
+            set_text_content(discStatusLabel, i18n::tr_str("prelaunch.disc_status.ready"));
         } else if (state.configuredDiscValidation == iso::ValidationError::HashMismatch) {
             mDiscStatus->SetAttribute("status", "mismatch");
-            set_text_content(discStatusLabel, "Disc hash mismatch.");
+            set_text_content(discStatusLabel, i18n::tr_str("prelaunch.disc_status.hash_mismatch"));
         } else if (canLaunchConfiguredDisc) {
             mDiscStatus->SetAttribute("status", "unknown");
-            set_text_content(discStatusLabel, "Disc not verified.");
+            set_text_content(discStatusLabel, i18n::tr_str("prelaunch.disc_status.not_verified"));
         } else {
             mDiscStatus->SetAttribute("status", "bad");
-            set_text_content(discStatusLabel, "Disc unavailable.");
+            set_text_content(discStatusLabel, i18n::tr_str("prelaunch.disc_status.unavailable"));
         }
     }
     if (mDiscDetail != nullptr) {
@@ -1133,7 +1145,7 @@ void Prelaunch::update() {
 
         if (sUpdateCheck) {
             mUpdateStatus->SetAttribute("state", "checking");
-            set_text_content(mUpdateMessage, "Checking for updates...");
+            set_text_content(mUpdateMessage, i18n::tr_str("prelaunch.update.checking"));
         } else if (!sUpdateCheckResult.has_value() ||
                    sUpdateCheckResult->status == borealis::update::Status::UpToDate)
         {
@@ -1141,14 +1153,15 @@ void Prelaunch::update() {
             set_text_content(mUpdateMessage, "");
         } else if (sUpdateCheckResult->status == borealis::update::Status::UpdateAvailable) {
             mUpdateStatus->SetAttribute("state", "available");
-            set_text_content(mUpdateMessage, "Update available!");
+            set_text_content(mUpdateMessage, i18n::tr_str("prelaunch.update.available"));
             if (mUpdateDownloadLabel != nullptr) {
                 set_text_content(mUpdateDownloadLabel,
-                    fmt::format("Download {}", update_release_label(sUpdateCheckResult->latest)));
+                    fmt::format(fmt::runtime(i18n::tr_source("prelaunch.update.download")),
+                        fmt::arg("version", update_release_label(sUpdateCheckResult->latest))));
             }
         } else {
             mUpdateStatus->SetAttribute("state", "failed");
-            set_text_content(mUpdateMessage, "Failed to check for updates");
+            set_text_content(mUpdateMessage, i18n::tr_str("prelaunch.update.failed"));
         }
     }
 

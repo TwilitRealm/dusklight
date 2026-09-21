@@ -1,5 +1,7 @@
 #include "bool_button.hpp"
 
+#include "i18n.hpp"
+
 #include "Z2AudioLib/Z2SeMgr.h"
 #include "m_Do/m_Do_audio.h"
 
@@ -36,7 +38,7 @@ Rml::String BoolButton::format_value() {
         }
     }
 
-    return mGetValue() ? "On" : "Off";
+    return Rml::String{mGetValue() ? i18n::tr_str("common.on") : i18n::tr_str("common.off")};
 }
 
 bool BoolButton::handle_nav_command(NavCommand cmd) {

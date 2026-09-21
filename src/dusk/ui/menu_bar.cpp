@@ -2,6 +2,7 @@
 
 #include "achievements.hpp"
 #include "editor.hpp"
+#include "i18n.hpp"
 #include "mod_updates.hpp"
 #include "modal.hpp"
 #include "mods_window.hpp"
@@ -71,35 +72,37 @@ MenuBar::MenuBar()
 }
 
 void MenuBar::build_tabs() {
-    mTabBar->add_tab("Settings", [this] { push(std::make_unique<SettingsWindow>()); });
+    using i18n::tr;
+    using i18n::tr_str;
+    mTabBar->add_tab(tr_str("menu.settings"), [this] { push(std::make_unique<SettingsWindow>()); });
 
     if (getSettings().backend.enableAdvancedSettings) {
-        mTabBar->add_tab("Warp", [this] { push(std::make_unique<WarpWindow>()); });
-        mTabBar->add_tab("Editor", [this] { push(std::make_unique<EditorWindow>()); });
+        mTabBar->add_tab(tr_str("menu.warp"), [this] { push(std::make_unique<WarpWindow>()); });
+        mTabBar->add_tab(tr_str("menu.editor"), [this] { push(std::make_unique<EditorWindow>()); });
     }
 
     // Only allow us to access achievements if we are playing on a game mode that uses them
     if (gamemode::getGameModeManager().isCurrentGameMode(gamemode::kVanillaGameModeId) ||
         gamemode::getGameModeManager().isCurrentGameMode(speedrun::kSpeedrunGameModeId))
     {
-        mTabBar->add_tab("Achievements", [this] { push(std::make_unique<AchievementsWindow>()); });
+        mTabBar->add_tab(tr_str("menu.achievements"),
+            [this] { push(std::make_unique<AchievementsWindow>()); });
     }
-    mModsButton = &mTabBar->add_tab("Mods", [this] { push(std::make_unique<ModsWindow>()); });
+    mModsButton = &mTabBar->add_tab(tr_str("menu.mods"), [this] { push(std::make_unique<ModsWindow>()); });
     for (auto& tab : mods::svc::ui_mod_menu_tabs()) {
         mTabBar->add_tab(tab.label, std::move(tab.onSelected));
     }
 
-    mTabBar->add_tab("Reset", [this] {
+    mTabBar->add_tab(tr_str("menu.reset"), [this] {
         mTabBar->set_active_tab(-1);
         const auto dismiss = [](Modal& modal) { modal.pop(); };
         push(std::make_unique<Modal>(Modal::Props{
-            .title = "Reset Game",
-            .bodyRml = "Unsaved progress will be lost.<br/>"
-                       "<modal-tip>Tip: You can also reset by holding Start+X+B</modal-tip>",
+            .title = tr_str("modal.reset_game.title"),
+            .bodyRml = tr_str("modal.reset_game.body"),
             .actions =
                 {
                     ModalAction{
-                        .label = "Cancel",
+                        .label = tr_str("modal.reset_game.cancel"),
                         .onPressed =
                             [this, dismiss](Modal& modal) {
                                 mDoAud_seStartMenu(kSoundWindowClose);
@@ -107,7 +110,7 @@ void MenuBar::build_tabs() {
                             },
                     },
                     ModalAction{
-                        .label = "Reset",
+                        .label = tr_str("modal.reset_game.reset"),
                         .onPressed =
                             [this, dismiss](Modal& modal) {
                                 mDoAud_seStartMenu(kSoundClick);
@@ -130,16 +133,16 @@ void MenuBar::build_tabs() {
             .icon = "question-mark",
         }));
     });
-    mTabBar->add_tab("Quit", [this] {
+    mTabBar->add_tab(tr_str("menu.quit"), [this] {
         mTabBar->set_active_tab(-1);
         const auto dismiss = [](Modal& modal) { modal.pop(); };
         push(std::make_unique<Modal>(Modal::Props{
-            .title = "Quit Dusklight",
-            .bodyText = "Unsaved progress will be lost.",
+            .title = tr_str("modal.quit.title"),
+            .bodyText = tr_str("modal.quit.body"),
             .actions =
                 {
                     ModalAction{
-                        .label = "Cancel",
+                        .label = tr_str("modal.quit.cancel"),
                         .onPressed =
                             [dismiss](Modal& modal) {
                                 mDoAud_seStartMenu(kSoundWindowClose);
@@ -147,7 +150,7 @@ void MenuBar::build_tabs() {
                             },
                     },
                     ModalAction{
-                        .label = "Quit",
+                        .label = tr_str("modal.quit.quit"),
                         .onPressed =
                             [dismiss](Modal& modal) {
                                 mDoAud_seStartMenu(kSoundClick);
@@ -162,7 +165,7 @@ void MenuBar::build_tabs() {
     });
 
     if (speedrun::isActive()) {
-        mTabBar->add_tab("Reset Run", [this] {
+        mTabBar->add_tab(tr_str("menu.reset_run"), [this] {
             mTabBar->set_active_tab(-1);
             mDoAud_seStartMenu(kSoundClick);
             speedrun::g_speedrunInfo.reset();
@@ -196,6 +199,11 @@ void MenuBar::update() {
     }
     update_safe_area();
     Document::update();
+}
+
+void MenuBar::rebuild() {
+    // Rebuild tabs so translated titles are picked up.
+    refresh_tabs();
 }
 
 void MenuBar::update_safe_area() noexcept {

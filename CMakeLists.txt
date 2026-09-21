@@ -74,6 +74,21 @@ set(AURORA_ENABLE_DVD ON CACHE BOOL "Enable DVD API support" FORCE)
 set(AURORA_ENABLE_CARD ON CACHE BOOL "Enable CARD API support" FORCE)
 set(AURORA_ENABLE_THP ON CACHE BOOL "Enable THP decoder" FORCE)
 set(AURORA_ENABLE_RMLUI ON CACHE BOOL "Enable RmlUi UI support" FORCE)
+
+# Redeclare rmlui with a PATCH_COMMAND so FetchContent applies our UTF-8
+# text-transform fix (accented uppercase like "Muerte instantánea" -> "MUERTE
+# INSTANTÁNEA"). FetchContent honors the first declare() of a name, so this
+# must come before add_subdirectory(extern/aurora), which declares it without
+# the patch. The URL/hash stay in sync with extern/aurora/extern/CMakeLists.txt.
+include(FetchContent)
+FetchContent_Declare(rmlui
+    URL https://github.com/encounter/RmlUi/archive/215513c51ee1b3b75fc794518dda0576c462279f.tar.gz
+    URL_HASH SHA256=1df201ef7bade930cc825deeefc4361dc3681d0808806ff5cc746f1ffa272fcf
+    DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+    PATCH_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=<SOURCE_DIR> -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/PatchRmlUi.cmake
+    EXCLUDE_FROM_ALL
+)
+
 add_subdirectory(extern/aurora EXCLUDE_FROM_ALL)
 target_compile_definitions(aurora_mtx PRIVATE MTX_USE_PS=1)
 

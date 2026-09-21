@@ -9,6 +9,7 @@
 #include "dusk/livesplit.h"
 #include "dusk/settings.h"
 #include "dusk/speedrun.h"
+#include "dusk/ui/i18n.hpp"
 
 #include "m_Do/m_Do_main.h"
 
@@ -28,6 +29,10 @@
 
 namespace dusk::ui {
 namespace {
+
+using i18n::tr;
+using i18n::tr_source;
+using i18n::tr_str;
 constexpr borealis::Log Log{"dusk::ui::overlay"};
 
 const Rml::String kDocumentSource = R"RML(
@@ -124,15 +129,15 @@ Rml::Element* create_controller_warning(Rml::Element* parent) {
     elem->SetClass("controller-warning", true);
 
     auto* heading = append(elem, "heading");
-    append_text(append(heading, "toast-title"), "No Device Assigned");
+    append_text(append(heading, "toast-title"), tr_str("overlay.no_device_assigned"));
     auto* icon = append(heading, "icon");
     icon->SetClass("warning", true);
 
     auto* message = append(elem, "message");
     auto* content = append(message, "toast-message-text");
-    append_text(content, "Configure ");
-    append_text(append(content, "b"), "Port 1");
-    append_text(content, " in Settings.");
+    append_text(content, tr_str("overlay.configure_prefix"));
+    append_text(append(content, "b"), tr_str("overlay.port_1"));
+    append_text(content, tr_str("overlay.configure_suffix"));
 
     return elem;
 }
@@ -149,22 +154,22 @@ Rml::String back_button_name() {
     if (auto* gamepad = gamepad_for_port(PAD_CHAN0)) {
         switch (SDL_GetGamepadType(gamepad)) {
         case SDL_GAMEPAD_TYPE_PS3:
-            return "Select";
+            return tr_str("overlay.btn_select");
         case SDL_GAMEPAD_TYPE_PS4:
-            return "Share";
+            return tr_str("overlay.btn_share");
         case SDL_GAMEPAD_TYPE_PS5:
-            return "Create";
+            return tr_str("overlay.btn_create");
         case SDL_GAMEPAD_TYPE_XBOX360:
-            return "Back";
+            return tr_str("overlay.btn_back");
         case SDL_GAMEPAD_TYPE_XBOXONE:
-            return "View";
+            return tr_str("overlay.btn_view");
         case SDL_GAMEPAD_TYPE_GAMECUBE:
-            return "R + Start";
+            return tr_str("overlay.btn_gc");
         default:
             break;
         }
     }
-    return "Back";
+    return tr_str("overlay.btn_back");
 }
 
 Rml::Element* create_menu_notification(Rml::Element* parent) {
@@ -185,16 +190,16 @@ Rml::Element* create_menu_notification(Rml::Element* parent) {
     auto* row = append(message, "row");
     auto* prefix = append(row, "notification-prefix");
 #if defined(TARGET_ANDROID) || (defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST)
-    append_text(prefix, "3-finger tap or");
+    append_text(prefix, tr_str("overlay.three_finger_tap"));
 #else
-    append_text(prefix, "Press ");
+    append_text(prefix, tr_str("overlay.press_prefix"));
     append_text(append(prefix, "b"), "F1");
-    append_text(prefix, " or");
+    append_text(prefix, tr_str("overlay.or_suffix"));
 #endif
     auto* icon = append(row, "icon");
     icon->SetClass("controller", true);
     append_text(append(append(row, "notification-button"), "b"), padButton);
-    append_text(append(row, "notification-action"), "to open menu");
+    append_text(append(row, "notification-action"), tr_str("overlay.to_open_menu"));
 
     return elem;
 }
@@ -313,10 +318,10 @@ void Overlay::update() {
     if (dusk::speedrun::isActive() && getSettings().game.liveSplitEnabled) {
         dusk::speedrun::updateLiveSplit();
         if (dusk::speedrun::consumeConnectedEvent()) {
-            push_toast({.title = "LiveSplit connected", .duration = std::chrono::seconds(3)});
+            push_toast({.title = tr_str("overlay.livesplit_connected"), .duration = std::chrono::seconds(3)});
         }
         if (dusk::speedrun::consumeDisconnectedEvent()) {
-            push_toast({.title = "LiveSplit disconnected", .duration = std::chrono::seconds(3)});
+            push_toast({.title = tr_str("overlay.livesplit_disconnected"), .duration = std::chrono::seconds(3)});
         }
     }
 #endif
@@ -481,9 +486,10 @@ void Overlay::update_pipeline_progress() {
 
     if (queuedPipelines != mLastQueuedPipelines) {
         mLastQueuedPipelines = queuedPipelines;
-        const auto noun = queuedPipelines == 1 ? "shader" : "shaders";
-        set_text_content(
-            mPipelineProgressLabel, fmt::format("Compiling {} {}", queuedPipelines, noun));
+        const auto noun = queuedPipelines == 1 ? tr_str("overlay.noun_shader") : tr_str("overlay.noun_shaders");
+        set_text_content(mPipelineProgressLabel,
+            fmt::format(fmt::runtime(tr_str("overlay.compiling")), fmt::arg("count", queuedPipelines),
+                fmt::arg("noun", std::string_view{noun})));
     }
     mPipelineProgressBar->SetAttribute("value", progress);
 

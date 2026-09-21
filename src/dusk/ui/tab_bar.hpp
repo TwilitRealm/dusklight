@@ -30,6 +30,8 @@ public:
     void clear_tabs();
     bool set_active_tab(int index);
     void refresh_active_tab();
+    void set_tab_title(int index, const Rml::String& title);
+    int tab_count() const { return static_cast<int>(mTabs.size()); }
     bool focus_tab(int index);
     bool focus_tab(const Rml::String& title);
     Rml::String focused_tab_title() const;

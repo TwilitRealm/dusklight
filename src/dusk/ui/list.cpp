@@ -1,5 +1,6 @@
 #include "list.hpp"
 
+#include "i18n.hpp"
 #include "ui.hpp"
 
 #include "Z2AudioLib/Z2SeMgr.h"
@@ -11,6 +12,7 @@
 
 namespace dusk::ui {
 namespace {
+using i18n::tr_str;
 
 Rml::Element* create_root(Rml::Element* parent) {
     auto* document = parent->GetOwnerDocument();
@@ -30,7 +32,7 @@ List::List(Rml::Element* parent, Props props)
     mViewport = append_element(mRoot, "ui-list-viewport");
     mContent = append_element(mViewport, "ui-list-content");
     mEmpty = append_element(mRoot, "ui-list-empty");
-    append_text(mEmpty, "No items");
+    append_text(mEmpty, tr_str("misc.no_items"));
 
     Component::listen(mViewport, Rml::EventId::Scroll, [this](Rml::Event&) { mCullDirty = true; });
     listen(Rml::EventId::Keydown, [this](Rml::Event& event) { handle_keydown(event); });

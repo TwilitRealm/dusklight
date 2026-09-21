@@ -12,6 +12,8 @@ namespace dusk::ui {
 class Window : public Document {
 public:
     using TabBuilder = std::function<void(Rml::Element*)>;
+    // Resolved on each rebuild so tab titles pick up live language changes.
+    using TabTitleProvider = std::function<Rml::String()>;
     struct Tab {
         Rml::String title;
         std::unique_ptr<Button> button;
@@ -31,14 +33,16 @@ public:
     void show() override;
     void hide(bool close) override;
     void update() override;
+    void rebuild() override;
     bool focus() override;
     bool visible() const override;
     bool set_active_tab(int index);
 
 protected:
-    void request_close();
-    virtual bool consume_close_request();
     void add_tab(const Rml::String& title, TabBuilder builder);
+    void add_tab(TabTitleProvider titleProvider, TabBuilder builder);
+    virtual bool consume_close_request();
+    void request_close();
     // Tab-bar-less counterpart of add_tab: stores the builder and runs it immediately.
     void set_content(TabBuilder builder);
     void rebuild_content();
@@ -60,6 +64,8 @@ protected:
     Rml::Element* mRoot;
     Rml::Element* mContentRoot;
     std::unique_ptr<TabBar> mTabBar;
+    // Parallel to the tab bar's tabs; resolved on rebuild for translated titles.
+    std::vector<TabTitleProvider> mTabTitleProviders;
     // Only set for tab-bar-less windows.
     std::unique_ptr<Button> mCloseButton;
     TabBuilder mContentBuilder;
