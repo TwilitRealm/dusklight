@@ -298,7 +298,8 @@ void confirm_import(Artifact artifact) {
     const auto compatibility =
         raw ? save_manager::DiscCompatibility::Exact :
               save_manager::disc_compatibility(artifact.header, context.value.identity);
-    const bool changingRegion = compatibility == save_manager::DiscCompatibility::RegionChange;
+    const bool changingVersion = (compatibility == save_manager::DiscCompatibility::RegionChange ||
+                                 compatibility == save_manager::DiscCompatibility::PlatformChange);
     if (compatibility == save_manager::DiscCompatibility::Incompatible) {
         show_message(i18n::tr_str("saves.import_failed"), i18n::tr_str("saves.disc_mismatch"),
             true, &finish_import_flow);
@@ -364,7 +365,7 @@ void confirm_import(Artifact artifact) {
                         },
                     .isDisabled =
                         [items] { return std::ranges::none_of(*items, &ImportItem::selected); },
-                    .icon = changingRegion ? "warning" : "",
+                    .icon = changingVersion ? "warning" : "",
                 },
             },
         .onDismiss = cancel,

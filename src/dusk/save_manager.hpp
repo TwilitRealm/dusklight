@@ -35,6 +35,7 @@ enum class ModDataAction {
 enum class DiscCompatibility {
     Exact,
     RegionChange,
+    PlatformChange,
     Incompatible,
 };
 
