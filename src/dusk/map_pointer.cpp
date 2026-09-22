@@ -53,7 +53,6 @@ MapPointerInput pointer_drag_fmap(dMenu_Fmap2DBack_c* map) {
 
     // Drag the map
     if (isMouse && mapMouseDragging && pointer.down) {
-        DuskLog.debug("Dragging map: current=({}, {})", pointer.x, pointer.y);
         input.dragging = true;
 
         f32 previous_x = mapMousePreviousX;
@@ -91,7 +90,6 @@ MapPointerInput pointer_drag_fmap(dMenu_Fmap2DBack_c* map) {
     }
 
     if (inside) {
-        DuskLog.debug("Pointer inside field map bounds: ({}, {})", pointer.x, pointer.y);
 
         dusk::menu_pointer::set_hover_target(0);
         input.clicked = dusk::menu_pointer::consume_click();
@@ -105,7 +103,6 @@ MapPointerInput pointer_drag_fmap(dMenu_Fmap2DBack_c* map) {
 }
 
 void get_field_map_pointer_bounds(dMenu_Fmap2DBack_c* map) {
-
     if (map == nullptr) {
         fMapPointerBounds = {};
         return;
@@ -124,8 +121,6 @@ void get_field_map_pointer_bounds(dMenu_Fmap2DBack_c* map) {
 }
 
 void get_dungeon_map_pointer_bounds(dMenu_DmapBg_c* background) {
-    static dusk::map_pointer::DMapPointerBounds dMapPointerBounds;
-
     if (background == nullptr) {
         dMapPointerBounds = {};
         return;
@@ -141,18 +136,15 @@ void get_dungeon_map_pointer_bounds(dMenu_DmapBg_c* background) {
         .right = bottom_right.x,
         .bottom = bottom_right.y,
         .background = background,
-        .valid = true,
     };
 }
 
 MapPointerInput pointer_drag_dmap(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_c* map) {
-    static bool mapMouseClicked = false;
     static bool mapMouseDragging = false;
     static f32 mapMousePreviousX = 0.0f;
     static f32 mapMousePreviousY = 0.0f;
 
     if (background == nullptr || map == nullptr || !dusk::menu_pointer::enabled()) {
-        mapMouseClicked = false;
         mapMouseDragging = false;
         return {};
     }
@@ -184,27 +176,20 @@ MapPointerInput pointer_drag_dmap(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
 
     // Drag the map
     if (isMouse && mapMouseDragging && pointer.down) {
-        DuskLog.debug("Dragging map: current=({}, {})", pointer.x, pointer.y);
+        input.dragging = true;
 
         // This value tries to match 1:1 the cursor movement to the map dragging speed
         constexpr f32 dragMultiplier = 3900.0f;
-
-        const auto& pointer = dusk::menu_pointer::state();
-        input.deltaX = pointer.x - mapMousePreviousX;
-        input.deltaZ = pointer.y - mapMousePreviousY;
         const f32 pixelPerCm = map->getPixelPerCm() * dragMultiplier;
 
-        //map->calcZoomCenter(&input.deltaX, &input.deltaZ);
-
-        input.deltaX = (dusk::getSettings().game.enableMirrorMode ? input.deltaX : -input.deltaX) * pixelPerCm;
-        input.deltaZ = -input.deltaZ * pixelPerCm;
+        input.deltaX = (pointer.x - mapMousePreviousX) * pixelPerCm;
+        input.deltaZ = -(pointer.y - mapMousePreviousY) * pixelPerCm;
 
         mapMousePreviousX = pointer.x;
         mapMousePreviousY = pointer.y;
     }
 
     if (inside) {
-        DuskLog.debug("Pointer inside dungeon map bounds: ({}, {})", pointer.x, pointer.y);
         dusk::menu_pointer::set_hover_target(0);
         input.clicked = pointer.clicked || dusk::menu_pointer::consume_click();
     }

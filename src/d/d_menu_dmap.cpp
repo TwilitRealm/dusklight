@@ -38,10 +38,6 @@
 #include "dusk/logging.h"
 #endif
 
-#if TARGET_PC
-dusk::map_pointer::MapPointerInput mapPointerInput;
-#endif
-
 #if (PLATFORM_WII || PLATFORM_SHIELD)
 #define POINTER_OPT dComIfGs_getOptPointer()
 #else
@@ -2073,6 +2069,10 @@ void dMenu_Dmap_c::mapControl() {
         return;
     }
 
+#if TARGET_PC
+    dusk::map_pointer::pointer_drag_dmap(mpDrawBg, mMapCtrl);
+#endif
+
     (this->*map_move_process[field_0x17e])();
 
     if (field_0x17e != temp_r27) {
@@ -2321,7 +2321,7 @@ void dMenu_Dmap_c::presentMapView() {
 #if TARGET_PC
     const auto pointerInput = dusk::map_pointer::pointer_drag_dmap(mpDrawBg, mMapCtrl);
     if (pointerInput.dragging) {
-        mMapCtrl->setPlusZoomCenterX(dusk::getSettings().game.enableMirrorMode ? -pointerInput.deltaX : pointerInput.deltaX);
+        mMapCtrl->setPlusZoomCenterX(dusk::getSettings().game.enableMirrorMode ? pointerInput.deltaX : -pointerInput.deltaX);
         mMapCtrl->setPlusZoomCenterZ(pointerInput.deltaZ);
     }
 #endif
@@ -2856,11 +2856,9 @@ void dMenu_Dmap_c::zoomWait_init_proc() {}
 void dMenu_Dmap_c::zoomWait_proc() {
     if (m_process == 1) {
 
-        if(mapPointerInput.clicked) {
-            DuskLog.debug("Clicked map pointer");
-        }
+        const auto pointerInput = dusk::map_pointer::pointer_drag_dmap(mpDrawBg, mMapCtrl);
 
-        if ((mDoCPd_c::getTrigA(PAD_1) IF_DUSK(|| mapPointerInput.clicked)) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
+        if ((mDoCPd_c::getTrigA(PAD_1) IF_DUSK(|| pointerInput.clicked)) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
             if (!mZoomState && mMapCtrl->isEnableZoomIn()) {
                 field_0x17e = 1;
                 field_0x181 = 0;
