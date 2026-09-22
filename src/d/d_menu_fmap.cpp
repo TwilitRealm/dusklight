@@ -39,11 +39,19 @@
 namespace {
 struct MapPointerInput {
     bool hovered = false;
+    bool dragging = false;
     bool clicked = false;
+    f32 deltaX = 0.0f;
+    f32 deltaZ = 0.0f;
 };
+
+bool mapMouseDragging = false;
+f32 mapMousePreviousX = 0.0f;
+f32 mapMousePreviousY = 0.0f;
 
 MapPointerInput move_map_cursor_with_pointer(dMenu_Fmap2DBack_c* map) {
     if (map == nullptr || !dusk::menu_pointer::enabled()) {
+        mapMouseDragging = false;
         return {};
     }
 
@@ -53,30 +61,69 @@ MapPointerInput move_map_cursor_with_pointer(dMenu_Fmap2DBack_c* map) {
     const f32 top = map->getMapScissorAreaLY();
     const f32 right = left + map->getMapScissorAreaSizeRealX();
     const f32 bottom = top + map->getMapScissorAreaSizeRealY();
-
-    // Don't move the cursor if the pointer is outside the map area
-    if (!pointer.valid ||
-        pointer.x < left || pointer.x > right ||
-        pointer.y < top  || pointer.y > bottom) {
+    const bool inside = pointer.valid && pointer.x >= left && pointer.x <= right &&
+                        pointer.y >= top && pointer.y <= bottom;
+    if (!pointer.valid) {
+        mapMouseDragging = false;
         return {};
     }
 
-    f32 pointer_x = pointer.x;
-
-    if (dusk::getSettings().game.enableMirrorMode) {
-        pointer_x = map->getMirrorPosX(pointer_x, 0.0f);
+    const bool mouse = !pointer.touch;
+    if (mouse && pointer.pressed && inside) {
+        mapMouseDragging = true;
+        mapMousePreviousX = pointer.x;
+        mapMousePreviousY = pointer.y;
     }
 
-    f32 pos_x;
-    f32 pos_z;
-    map->calcAllMapPosWorld(pointer_x, pointer.y, &pos_x, &pos_z);
-    map->setArrowPosAxis(pos_x, pos_z);
+    MapPointerInput input;
+    input.hovered = inside;
 
-    dusk::menu_pointer::set_hover_target(0);
-    return {
-        .hovered = true,
-        .clicked = dusk::menu_pointer::consume_click(),
-    };
+    if (mouse && mapMouseDragging && pointer.down) {
+        input.dragging = true;
+
+        f32 previous_x = mapMousePreviousX;
+        f32 current_x = pointer.x;
+        if (dusk::getSettings().game.enableMirrorMode) {
+            previous_x = map->getMirrorPosX(previous_x, 0.0f);
+            current_x = map->getMirrorPosX(current_x, 0.0f);
+        }
+
+        f32 previous_world_x;
+        f32 previous_world_z;
+        f32 current_world_x;
+        f32 current_world_z;
+        map->calcAllMapPosWorld(previous_x, mapMousePreviousY, &previous_world_x,
+                                &previous_world_z);
+        map->calcAllMapPosWorld(current_x, pointer.y, &current_world_x, &current_world_z);
+        input.deltaX = current_world_x - previous_world_x;
+        input.deltaZ = current_world_z - previous_world_z;
+        mapMousePreviousX = pointer.x;
+        mapMousePreviousY = pointer.y;
+    }
+
+    if (inside && !input.dragging) {
+        f32 pointer_x = pointer.x;
+
+        if (dusk::getSettings().game.enableMirrorMode) {
+            pointer_x = map->getMirrorPosX(pointer_x, 0.0f);
+        }
+
+        f32 pos_x;
+        f32 pos_z;
+        map->calcAllMapPosWorld(pointer_x, pointer.y, &pos_x, &pos_z);
+        map->setArrowPosAxis(pos_x, pos_z);
+    }
+
+    if (inside) {
+        dusk::menu_pointer::set_hover_target(0);
+        input.clicked = dusk::menu_pointer::consume_click();
+    }
+
+    if (mouse && pointer.released) {
+        mapMouseDragging = false;
+    }
+
+    return input;
 }
 }
 #endif
@@ -1452,7 +1499,10 @@ void dMenu_Fmap_c::spot_map_init() {
 void dMenu_Fmap_c::spot_map_proc() {
 
 #if TARGET_PC
-    move_map_cursor_with_pointer(mpDraw2DBack);
+    const auto pointerInput = move_map_cursor_with_pointer(mpDraw2DBack);
+    if (pointerInput.dragging) {
+        mpDraw2DBack->stageMapDrag(pointerInput.deltaX, pointerInput.deltaZ);
+    }
 #endif
 
     if (dMw_B_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
