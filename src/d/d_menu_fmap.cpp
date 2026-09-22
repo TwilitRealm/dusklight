@@ -30,15 +30,21 @@
 #include "dusk/interp/user_interface.h"
 #include "dusk/memory.h"
 #include "dusk/menu_pointer.h"
+#include "dusk/settings.h"
 #include "dusk/version.hpp"
 #include "helpers/string.hpp"
 #endif
 
 #if TARGET_PC
 namespace {
-void move_map_cursor_with_pointer(dMenu_Fmap2DBack_c* map) {
+struct MapPointerInput {
+    bool hovered = false;
+    bool clicked = false;
+};
+
+MapPointerInput move_map_cursor_with_pointer(dMenu_Fmap2DBack_c* map) {
     if (map == nullptr || !dusk::menu_pointer::enabled()) {
-        return;
+        return {};
     }
 
     dusk::menu_pointer::begin_context(dusk::menu_pointer::Context::Map);
@@ -52,7 +58,7 @@ void move_map_cursor_with_pointer(dMenu_Fmap2DBack_c* map) {
     if (!pointer.valid ||
         pointer.x < left || pointer.x > right ||
         pointer.y < top  || pointer.y > bottom) {
-        return;
+        return {};
     }
 
     f32 pointer_x = pointer.x;
@@ -65,6 +71,12 @@ void move_map_cursor_with_pointer(dMenu_Fmap2DBack_c* map) {
     f32 pos_z;
     map->calcAllMapPosWorld(pointer_x, pointer.y, &pos_x, &pos_z);
     map->setArrowPosAxis(pos_x, pos_z);
+
+    dusk::menu_pointer::set_hover_target(0);
+    return {
+        .hovered = true,
+        .clicked = dusk::menu_pointer::consume_click(),
+    };
 }
 }
 #endif
@@ -892,7 +904,10 @@ void dMenu_Fmap_c::all_map_proc() {
     mpStick->checkTrigger();
 
 #if TARGET_PC
-    move_map_cursor_with_pointer(mpDraw2DBack);
+    const auto pointerInput = move_map_cursor_with_pointer(mpDraw2DBack);
+    if (pointerInput.hovered) {
+        mpDraw2DBack->allmap_move2(mpStick);
+    }
 #endif
 
     u8 region = mpDraw2DBack->getSelectRegion();
@@ -916,7 +931,7 @@ void dMenu_Fmap_c::all_map_proc() {
         mpDraw2DTop->setAButtonString(0, dMenu_Fmap2DTop_c::ALPHA_DEFAULT);
     }
 
-    if (dMw_A_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
+    if ((dMw_A_TRIGGER() IF_DUSK(|| pointerInput.clicked)) && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
         if (region == 0xff || !mpDraw2DBack->isShowRegion(region)) {
@@ -1094,7 +1109,10 @@ void dMenu_Fmap_c::region_map_proc() {
     r29 = true;
 
 #if TARGET_PC
-    move_map_cursor_with_pointer(mpDraw2DBack);
+    const auto pointerInput = move_map_cursor_with_pointer(mpDraw2DBack);
+    if (pointerInput.hovered) {
+        mpDraw2DBack->regionMapMove(mpStick);
+    }
 #endif
 
     if (dMw_B_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
@@ -1102,7 +1120,7 @@ void dMenu_Fmap_c::region_map_proc() {
     {
         setProcess(PROC_ZOOM_REGION_TO_ALL);
         mpMenuFmapMap->setFlashOff();
-    } else if (dMw_A_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
+    } else if ((dMw_A_TRIGGER() IF_DUSK(|| pointerInput.clicked)) && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
         if (r29) {
@@ -1221,7 +1239,10 @@ void dMenu_Fmap_c::portal_warp_map_proc() {
     mpStick->checkTrigger();
 
 #if TARGET_PC
-    move_map_cursor_with_pointer(mpDraw2DBack);
+    const auto pointerInput = move_map_cursor_with_pointer(mpDraw2DBack);
+    if (pointerInput.hovered) {
+        portalWarpMapMove(mpStick);
+    }
 #endif
 
     if (dMw_B_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
@@ -1231,7 +1252,7 @@ void dMenu_Fmap_c::portal_warp_map_proc() {
         if (mErrorSound == true) {
             mErrorSound = false;
         }
-    } else if (dMw_A_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
+    } else if ((dMw_A_TRIGGER() IF_DUSK(|| pointerInput.clicked)) && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
         if (mPortalNo != 0xff) {
