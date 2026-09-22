@@ -39,6 +39,37 @@
 #if TARGET_PC
 namespace {
 
+struct DungeonMapPointerBounds {
+    dMenu_DmapBg_c* background = nullptr;
+    f32 left = 0.0f;
+    f32 top = 0.0f;
+    f32 right = 0.0f;
+    f32 bottom = 0.0f;
+    bool valid = false;
+};
+
+DungeonMapPointerBounds dungeonMapPointerBounds;
+
+void cache_dungeon_map_pointer_bounds(dMenu_DmapBg_c* background) {
+    if (background == nullptr) {
+        dungeonMapPointerBounds = {};
+        return;
+    }
+
+    CPaneMgr pane;
+    Mtx matrix;
+    const Vec top_left = pane.getGlobalVtx(background->getMapPane(), &matrix, 0, false, 0);
+    const Vec bottom_right = pane.getGlobalVtx(background->getMapPane(), &matrix, 3, false, 0);
+    dungeonMapPointerBounds = {
+        .background = background,
+        .left = top_left.x,
+        .top = top_left.y,
+        .right = bottom_right.x,
+        .bottom = bottom_right.y,
+        .valid = true,
+    };
+}
+
 bool dungeonMapDragging = false;
 bool dungeonMapClicked = false;
 f32 dungeonMapPreviousX = 0.0f;
@@ -62,12 +93,13 @@ bool dungeon_map_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_c* m
         return false;
     }
 
-    CPaneMgr pane;
-    Mtx matrix;
-    const Vec top_left = pane.getGlobalVtx(background->getMapPane(), &matrix, 0, false, 0);
-    const Vec bottom_right = pane.getGlobalVtx(background->getMapPane(), &matrix, 3, false, 0);
-    const bool inside = pointer.x >= top_left.x && pointer.x <= bottom_right.x &&
-                        pointer.y >= top_left.y && pointer.y <= bottom_right.y;
+    if (dungeonMapPointerBounds.background != background || !dungeonMapPointerBounds.valid)
+    {
+        cache_dungeon_map_pointer_bounds(background);
+    }
+    const auto& bounds = dungeonMapPointerBounds;
+    const bool inside = pointer.x >= bounds.left && pointer.x <= bounds.right &&
+                        pointer.y >= bounds.top && pointer.y <= bounds.bottom;
     if (!pointer.touch && pointer.pressed && inside) {
         dungeonMapDragging = true;
         dungeonMapPreviousX = pointer.x;
@@ -1052,6 +1084,10 @@ void dMenu_DmapBg_c::dMapBgWide() {
 
     // Decorations
     mButtonScreen->search(MULTI_CHAR('kazari_n'))->scale(mDoGph_gInf_c::hudAspectScaleDown, 1.0f);
+
+    #if TARGET_PC
+    cache_dungeon_map_pointer_bounds(this);
+    #endif
 }
 
 void dMenu_DmapBg_c::draw() {
