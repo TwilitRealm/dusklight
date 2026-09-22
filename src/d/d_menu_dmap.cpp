@@ -30,9 +30,62 @@
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/interp/menus.h"
 #include "dusk/interp/user_interface.h"
+#include "dusk/menu_pointer.h"
 #include "dusk/settings.h"
 #include "dusk/version.hpp"
 #include "helpers/string.hpp"
+#endif
+
+#if TARGET_PC
+namespace {
+
+bool dungeonMapDragging = false;
+bool dungeonMapClicked = false;
+f32 dungeonMapPreviousX = 0.0f;
+f32 dungeonMapPreviousY = 0.0f;
+
+bool dungeon_map_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_c* map,
+                              bool applyDrag) {
+    if (!applyDrag) {
+        dungeonMapClicked = false;
+    }
+    if (background == nullptr || map == nullptr || !dusk::menu_pointer::enabled())
+    {
+        dungeonMapDragging = false;
+        return false;
+    }
+
+    dusk::menu_pointer::begin_context(dusk::menu_pointer::Context::Map);
+    const auto& pointer = dusk::menu_pointer::state();
+    if (!pointer.valid) {
+        dungeonMapDragging = false;
+        return false;
+    }
+
+    CPaneMgr pane;
+    Mtx matrix;
+    const Vec top_left = pane.getGlobalVtx(background->getMapPane(), &matrix, 0, false, 0);
+    const Vec bottom_right = pane.getGlobalVtx(background->getMapPane(), &matrix, 3, false, 0);
+    const bool inside = pointer.x >= top_left.x && pointer.x <= bottom_right.x &&
+                        pointer.y >= top_left.y && pointer.y <= bottom_right.y;
+    if (!pointer.touch && pointer.pressed && inside) {
+        dungeonMapDragging = true;
+        dungeonMapPreviousX = pointer.x;
+        dungeonMapPreviousY = pointer.y;
+    }
+
+    if (inside) {
+        dusk::menu_pointer::set_hover_target(0);
+        dungeonMapClicked = pointer.clicked || dusk::menu_pointer::consume_click();
+    }
+
+    if (!applyDrag && pointer.released) {
+        dungeonMapDragging = false;
+    }
+
+    return true;
+}
+}
 #endif
 
 #if (PLATFORM_WII || PLATFORM_SHIELD)
@@ -166,7 +219,7 @@ void dMenu_DmapBg_c::mapScreenInit() {
 
         dPaneClass_showNullPane(mMapScreen[i]);
     }
-    
+
     #if (PLATFORM_WII || PLATFORM_SHIELD)
     mpBlack = JKR_NEW CPaneMgrAlpha(mMapScreen[0], MULTI_CHAR('m_black'), 2, NULL);
     JUT_ASSERT(699, mpBlack != NULL);
@@ -174,7 +227,7 @@ void dMenu_DmapBg_c::mapScreenInit() {
     #else
     mpBlack = NULL;
     #endif
-    
+
     mMapScreen[0]->search(MULTI_CHAR('map_icon'))->hide();
     mMapScreen[0]->search(MULTI_CHAR('map_aria'))->hide();
     mMapScreen[0]->search(MULTI_CHAR('n_all'))->hide();
@@ -280,7 +333,7 @@ bool dMenu_DmapBg_c::iconScaleAnm() {
     bool rv = false;
     if (field_0xdd2 > field_0xdd1) {
         return true;
-    } 
+    }
 
     IF_DUSK(dusk::vdt::advance_toward_frame(field_0xdd2, field_0xdd1, 1.0f));
     f32 dVar7 = DUSK_IF_ELSE(dusk::vdt::present_sine_ease(field_0xdd1, field_0xdd2),
@@ -951,7 +1004,7 @@ void dMenu_DmapBg_c::decGoldFrameAlphaRate() {
 
     if (field_0xdd7 >= g_fmapHIO.mUndisplayFrameNum) {
         field_0xdd7 = g_fmapHIO.mUndisplayFrameNum / 2;
-    } 
+    }
 
     field_0xdd7 = 0;
     if (field_0xdd7 == 0) {
@@ -960,7 +1013,7 @@ void dMenu_DmapBg_c::decGoldFrameAlphaRate() {
         field_0xdd7--;
         rate = (f32)(field_0xdd7 * field_0xdd7) / (f32)(g_fmapHIO.mUndisplayFrameNum * g_fmapHIO.mUndisplayFrameNum);
     }
-    
+
     setGoldFrameAlphaRate(rate);
 }
 
@@ -1388,7 +1441,7 @@ void dMenu_Dmap_c::screenInit() {
         mSelFloor[i]->getPanePtr()->translate(mSelFloor[i]->getPanePtr()->getTranslateX(), var_f31);
         var_f31 += var_f30 + var_f28;
     }
-    
+
     field_0x10->getPanePtr()->translate(mSelFloor[getCurFloorPos()]->getPanePtr()->getTranslateX(), mSelFloor[getCurFloorPos()]->getPanePtr()->getTranslateY());
     iconMoveCalc();
     Vec local_b0 = mSelFloor[getDefaultCurFloorPos()]->getGlobalVtxCenter(false, 0);
@@ -1399,7 +1452,7 @@ void dMenu_Dmap_c::screenInit() {
     field_0x7c[2] = JKR_NEW CPaneMgr(mpDrawBg->mBaseScreen, MULTI_CHAR('key_n'), 3, NULL);
     field_0x88[0] = JKR_NEW CPaneMgr(mpDrawBg->mBaseScreen, MULTI_CHAR('map000'), 3, NULL);
     field_0x88[1] = JKR_NEW CPaneMgr(mpDrawBg->mBaseScreen, MULTI_CHAR('con000'), 3, NULL);
-    
+
     if (dStage_stagInfo_GetSaveTbl(dComIfGp_getStageStagInfo()) == dStage_SaveTbl_LV2) {
         field_0x88[2] = JKR_NEW CPaneMgr(mpDrawBg->mBaseScreen, MULTI_CHAR('i_key_n'), 3, NULL);
     } else if (dStage_stagInfo_GetSaveTbl(dComIfGp_getStageStagInfo()) == dStage_SaveTbl_LV5) {
@@ -1468,12 +1521,12 @@ void dMenu_Dmap_c::screenInit() {
             if (dComIfGs_isDungeonItemBossKey()) {
                 itemNo = dItemNo_LV5_BOSS_KEY_e;
                 field_0x174[2] = (u8)dComIfGs_isDungeonItemBossKey() ? dItemNo_LV5_BOSS_KEY_e : 0;
-                                                                    /* dSv_event_flag_c::F_0003 - Snowpeak Ruins - Handed over 
+                                                                    /* dSv_event_flag_c::F_0003 - Snowpeak Ruins - Handed over
                                                                                                   tomato puree and left room */
             } else if (checkItemGet(dItemNo_TOMATO_PUREE_e, 1) && !dComIfGs_isEventBit(2)) {
                 itemNo = dItemNo_TOMATO_PUREE_e;
                 field_0x174[2] = dItemNo_TOMATO_PUREE_e;
-                                                             /* dSv_event_flag_c::F_0004 - Snowpeak Ruins - Handed over secret 
+                                                             /* dSv_event_flag_c::F_0004 - Snowpeak Ruins - Handed over secret
                                                                                            ingredient and left room */
             } else if (checkItemGet(dItemNo_TASTE_e, 1) && !dComIfGs_isEventBit(1)) {
                 itemNo = dItemNo_TASTE_e;
@@ -1888,7 +1941,7 @@ void dMenu_Dmap_c::_create() {
     JKRHEAP_NAME(mDmapHeap, "dMenu_Dmap_c::mDmapHeap");
     JKRHeap* heap = mDoExt_setCurrentHeap(mDmapHeap);
     u32 sp28 = mDmapHeap->getTotalFreeSize();
-    
+
     mMapCtrl = JKR_NEW dMenu_DmapMapCtrl_c();
     JUT_ASSERT(3739, mMapCtrl != NULL);
 
@@ -1936,7 +1989,7 @@ void dMenu_Dmap_c::_create() {
         if (dComIfGs_isSaveSwitch(0x67)) {
             sp8++;
         } else if (dComIfGs_isSaveSwitch(0x66) || dComIfGs_isSaveSwitch(0x65)) {
-            
+
         }
 
         mMapCtrl->_create(mpDrawBg->getMapWidth(), mpDrawBg->getMapHeight(), mpDrawBg->getMapWidth(), mpDrawBg->getMapHeight(), sp8, mpBinData);
@@ -1994,7 +2047,7 @@ void dMenu_Dmap_c::_create() {
     mDoExt_setCurrentHeap(heap);
 
     getIconPos(mMapCtrl->getNowStayFloorNo(), 1.0f);
-    
+
     field_0x17d = 0;
     (this->*init_process[m_process])();
 
@@ -2062,6 +2115,10 @@ void dMenu_Dmap_c::mapControl() {
         return;
     }
 
+#if TARGET_PC
+    dungeon_map_pointer_drag(mpDrawBg, mMapCtrl, false);
+#endif
+
     (this->*map_move_process[field_0x17e])();
 
     if (field_0x17e != temp_r27) {
@@ -2080,7 +2137,7 @@ void dMenu_Dmap_c::mapControl() {
 
     if (stick_value >= sp28 && field_0x181 != 2) {
         var_r28 = true;
-        
+
 #if !TARGET_PC
         f32 var_f31 = mMapCtrl->getStageMapSizeX();
         if (var_f31 < mMapCtrl->getStageMapSizeZ()) {
@@ -2167,7 +2224,7 @@ bool dMenu_Dmap_c::isOpen() {
 
     field_0x164++;
     f32 temp_f31 = (f32)field_0x164 / (f32)display_frame_num;
-    
+
     if (mInOutDir == 1) {
         field_0x104 = (1.0f - temp_f31) * -mDoGph_gInf_c::getWidthF();
         field_0x108 = 0.0f;
@@ -2181,7 +2238,7 @@ bool dMenu_Dmap_c::isOpen() {
         field_0x104 = 0.0f;
         field_0x108 = (1.0f - temp_f31) * mDoGph_gInf_c::getHeightF();
     }
-    
+
     field_0x10c = temp_f31;
 
     if (m_process == 0) {
@@ -2306,6 +2363,25 @@ void dMenu_Dmap_c::presentMapView() {
             mMapCtrl->setPlusZoomCenterZ(sp14);
         }
     }
+
+    #if TARGET_PC
+    if (dusk::menu_pointer::enabled() && dungeonMapDragging) {
+        // This value tries to match 1:1 the cursor movement to the map dragging speed
+        constexpr f32 dragMultiplier = 3900.0f;
+
+        const auto& pointer = dusk::menu_pointer::state();
+        if (pointer.valid && !pointer.touch && pointer.down) {
+            const f32 deltaX = pointer.x - dungeonMapPreviousX;
+            const f32 deltaY = pointer.y - dungeonMapPreviousY;
+            const f32 pixelPerCm = mMapCtrl->getPixelPerCm() * dragMultiplier;
+            mMapCtrl->setPlusZoomCenterX((dusk::getSettings().game.enableMirrorMode ? deltaX : -deltaX) * pixelPerCm);
+            mMapCtrl->setPlusZoomCenterZ(-deltaY * pixelPerCm);
+            dungeonMapPreviousX = pointer.x;
+            dungeonMapPreviousY = pointer.y;
+        }
+    }
+    #endif
+
     mMapCtrl->move();
     if (can_stick_scroll) {
         if (scrolled && (disp_center_x != mMapCtrl->getDispCenterX() ||
@@ -2387,7 +2463,7 @@ void dMenu_Dmap_c::_draw() {
                 spC.x = mpDrawBg->mMapScreen[0]->search(MULTI_CHAR('center_n'))->getGlbBounds().i.x + (mpDrawBg->mMapScreen[0]->search(MULTI_CHAR('center_n'))->getWidth() / 2);
                 spC.y = mpDrawBg->mMapScreen[0]->search(MULTI_CHAR('center_n'))->getGlbBounds().i.y + (mpDrawBg->mMapScreen[0]->search(MULTI_CHAR('center_n'))->getHeight() / 2);
 #endif
-                
+
                 CPaneMgr sp70;
                 //!@bug It's unclear what this is supposed to be, but a stack pointer being converted to a bool is probably not intended.
                 u8 sp40[0x30];
@@ -2822,7 +2898,7 @@ void dMenu_Dmap_c::floorChange_proc() {
         field_0x10->show();
         field_0x10->getPanePtr()->translate(mSelFloor[getCurFloorPos()]->getPanePtr()->getTranslateX(),
                                             mSelFloor[getCurFloorPos()]->getPanePtr()->getTranslateY());
-        
+
         Vec sp14 = mSelFloor[getDefaultCurFloorPos()]->getGlobalVtxCenter(false, 0);
         mpDrawBg->mpDrawCursor->setPos(sp14.x + field_0x104, sp14.y, mSelFloor[getDefaultCurFloorPos()]->getPanePtr(), 1);
         field_0x17d = 0;
@@ -2835,7 +2911,7 @@ void dMenu_Dmap_c::zoomWait_init_proc() {}
 
 void dMenu_Dmap_c::zoomWait_proc() {
     if (m_process == 1) {
-        if (mDoCPd_c::getTrigA(PAD_1) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
+        if ((mDoCPd_c::getTrigA(PAD_1) IF_DUSK(|| dungeonMapClicked)) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
             if (!mZoomState && mMapCtrl->isEnableZoomIn()) {
                 field_0x17e = 1;
                 field_0x181 = 0;
