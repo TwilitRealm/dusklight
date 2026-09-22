@@ -1,6 +1,5 @@
 #include "d/dolzel.h" // IWYU pragma: keep
 
-#include "d/d_menu_dmap.h"
 #include "JSystem/J2DGraph/J2DAnmLoader.h"
 #include "JSystem/J2DGraph/J2DGrafContext.h"
 #include "JSystem/J2DGraph/J2DOrthoGraph.h"
@@ -17,6 +16,7 @@
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
 #include "d/d_lib.h"
+#include "d/d_menu_dmap.h"
 #include "d/d_menu_dmap_map.h"
 #include "d/d_msg_string.h"
 #include "d/d_meter_haihai.h"
@@ -31,93 +31,15 @@
 #include "dusk/interp/menus.h"
 #include "dusk/interp/user_interface.h"
 #include "dusk/menu_pointer.h"
+#include "dusk/map_pointer.h"
 #include "dusk/settings.h"
 #include "dusk/version.hpp"
 #include "helpers/string.hpp"
+#include "dusk/logging.h"
 #endif
 
 #if TARGET_PC
-namespace {
-
-struct DungeonMapPointerBounds {
-    dMenu_DmapBg_c* background = nullptr;
-    f32 left = 0.0f;
-    f32 top = 0.0f;
-    f32 right = 0.0f;
-    f32 bottom = 0.0f;
-    bool valid = false;
-};
-
-DungeonMapPointerBounds dungeonMapPointerBounds;
-
-void cache_dungeon_map_pointer_bounds(dMenu_DmapBg_c* background) {
-    if (background == nullptr) {
-        dungeonMapPointerBounds = {};
-        return;
-    }
-
-    CPaneMgr pane;
-    Mtx matrix;
-    const Vec top_left = pane.getGlobalVtx(background->getMapPane(), &matrix, 0, false, 0);
-    const Vec bottom_right = pane.getGlobalVtx(background->getMapPane(), &matrix, 3, false, 0);
-    dungeonMapPointerBounds = {
-        .background = background,
-        .left = top_left.x,
-        .top = top_left.y,
-        .right = bottom_right.x,
-        .bottom = bottom_right.y,
-        .valid = true,
-    };
-}
-
-bool dungeonMapDragging = false;
-bool dungeonMapClicked = false;
-f32 dungeonMapPreviousX = 0.0f;
-f32 dungeonMapPreviousY = 0.0f;
-
-bool dungeon_map_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_c* map,
-                              bool applyDrag) {
-    if (!applyDrag) {
-        dungeonMapClicked = false;
-    }
-    if (background == nullptr || map == nullptr || !dusk::menu_pointer::enabled())
-    {
-        dungeonMapDragging = false;
-        return false;
-    }
-
-    dusk::menu_pointer::begin_context(dusk::menu_pointer::Context::Map);
-    const auto& pointer = dusk::menu_pointer::state();
-    if (!pointer.valid) {
-        dungeonMapDragging = false;
-        return false;
-    }
-
-    if (dungeonMapPointerBounds.background != background || !dungeonMapPointerBounds.valid)
-    {
-        cache_dungeon_map_pointer_bounds(background);
-    }
-    const auto& bounds = dungeonMapPointerBounds;
-    const bool inside = pointer.x >= bounds.left && pointer.x <= bounds.right &&
-                        pointer.y >= bounds.top && pointer.y <= bounds.bottom;
-    if (!pointer.touch && pointer.pressed && inside) {
-        dungeonMapDragging = true;
-        dungeonMapPreviousX = pointer.x;
-        dungeonMapPreviousY = pointer.y;
-    }
-
-    if (inside) {
-        dusk::menu_pointer::set_hover_target(0);
-        dungeonMapClicked = pointer.clicked || dusk::menu_pointer::consume_click();
-    }
-
-    if (!applyDrag && pointer.released) {
-        dungeonMapDragging = false;
-    }
-
-    return true;
-}
-}
+dusk::map_pointer::MapPointerInput mapPointerInput;
 #endif
 
 #if (PLATFORM_WII || PLATFORM_SHIELD)
@@ -1085,9 +1007,9 @@ void dMenu_DmapBg_c::dMapBgWide() {
     // Decorations
     mButtonScreen->search(MULTI_CHAR('kazari_n'))->scale(mDoGph_gInf_c::hudAspectScaleDown, 1.0f);
 
-    #if TARGET_PC
-    cache_dungeon_map_pointer_bounds(this);
-    #endif
+#if TARGET_PC
+    dusk::map_pointer::get_dungeon_map_pointer_bounds(this);
+#endif
 }
 
 void dMenu_DmapBg_c::draw() {
@@ -2151,10 +2073,6 @@ void dMenu_Dmap_c::mapControl() {
         return;
     }
 
-#if TARGET_PC
-    dungeon_map_pointer_drag(mpDrawBg, mMapCtrl, false);
-#endif
-
     (this->*map_move_process[field_0x17e])();
 
     if (field_0x17e != temp_r27) {
@@ -2400,23 +2318,13 @@ void dMenu_Dmap_c::presentMapView() {
         }
     }
 
-    #if TARGET_PC
-    if (dusk::menu_pointer::enabled() && dungeonMapDragging) {
-        // This value tries to match 1:1 the cursor movement to the map dragging speed
-        constexpr f32 dragMultiplier = 3900.0f;
-
-        const auto& pointer = dusk::menu_pointer::state();
-        if (pointer.valid && !pointer.touch && pointer.down) {
-            const f32 deltaX = pointer.x - dungeonMapPreviousX;
-            const f32 deltaY = pointer.y - dungeonMapPreviousY;
-            const f32 pixelPerCm = mMapCtrl->getPixelPerCm() * dragMultiplier;
-            mMapCtrl->setPlusZoomCenterX((dusk::getSettings().game.enableMirrorMode ? deltaX : -deltaX) * pixelPerCm);
-            mMapCtrl->setPlusZoomCenterZ(-deltaY * pixelPerCm);
-            dungeonMapPreviousX = pointer.x;
-            dungeonMapPreviousY = pointer.y;
-        }
+#if TARGET_PC
+    const auto pointerInput = dusk::map_pointer::pointer_drag_dmap(mpDrawBg, mMapCtrl);
+    if (pointerInput.dragging) {
+        mMapCtrl->setPlusZoomCenterX(dusk::getSettings().game.enableMirrorMode ? -pointerInput.deltaX : pointerInput.deltaX);
+        mMapCtrl->setPlusZoomCenterZ(pointerInput.deltaZ);
     }
-    #endif
+#endif
 
     mMapCtrl->move();
     if (can_stick_scroll) {
@@ -2947,7 +2855,12 @@ void dMenu_Dmap_c::zoomWait_init_proc() {}
 
 void dMenu_Dmap_c::zoomWait_proc() {
     if (m_process == 1) {
-        if ((mDoCPd_c::getTrigA(PAD_1) IF_DUSK(|| dungeonMapClicked)) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
+
+        if(mapPointerInput.clicked) {
+            DuskLog.debug("Clicked map pointer");
+        }
+
+        if ((mDoCPd_c::getTrigA(PAD_1) IF_DUSK(|| mapPointerInput.clicked)) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
             if (!mZoomState && mMapCtrl->isEnableZoomIn()) {
                 field_0x17e = 1;
                 field_0x181 = 0;
