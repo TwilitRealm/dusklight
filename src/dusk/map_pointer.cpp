@@ -1,3 +1,7 @@
+#include "dusk/map_pointer.h"
+#include "dusk/logging.h"
+#include "dusk/menu_pointer.h"
+#include "dusk/settings.h"
 
 #include "d/d_menu_dmap.h"
 #include "d/d_menu_dmap_map.h"
@@ -6,21 +10,19 @@
 #include "d/d_meter2_info.h"
 #include "d/d_meter_haihai.h"
 
-#include "dusk/map_pointer.h"
-#include "dusk/menu_pointer.h"
-#include "dusk/settings.h"
-#include "dusk/logging.h"
-
 namespace dusk::map_pointer {
 
-static dusk::map_pointer::FMapPointerBounds fMapPointerBounds;
-static dusk::map_pointer::DMapPointerBounds dMapPointerBounds;
+static dusk::map_pointer::MapPointerBounds fMapPointerBounds;
+static dusk::map_pointer::MapPointerBounds dMapPointerBounds;
+// This value tries to match 1:1 the cursor movement to the map dragging speed
+constexpr f32 kDMapDragMultiplier = 4000.0f;
 
 MapPointerInput pointer_drag_fmap(dMenu_Fmap2DBack_c* map) {
     static bool mapMouseDragging = false;
     static f32 mapMousePreviousX = 0.0f;
     static f32 mapMousePreviousY = 0.0f;
 
+    // Check if the map is valid and the menu pointer setting is enabled
     if (map == nullptr || !dusk::menu_pointer::enabled()) {
         mapMouseDragging = false;
         return {};
@@ -28,7 +30,6 @@ MapPointerInput pointer_drag_fmap(dMenu_Fmap2DBack_c* map) {
 
     dusk::menu_pointer::begin_context(dusk::menu_pointer::Context::Map);
     const auto& pointer = dusk::menu_pointer::state();
-
     if (!pointer.valid) {
         mapMouseDragging = false;
         return {};
@@ -90,9 +91,8 @@ MapPointerInput pointer_drag_fmap(dMenu_Fmap2DBack_c* map) {
     }
 
     if (inside) {
-
         dusk::menu_pointer::set_hover_target(0);
-        input.clicked = dusk::menu_pointer::consume_click();
+        input.clicked = pointer.clicked || dusk::menu_pointer::consume_click();
     }
 
     if (isMouse && pointer.released) {
@@ -135,7 +135,6 @@ void get_dungeon_map_pointer_bounds(dMenu_DmapBg_c* background) {
         .top = top_left.y,
         .right = bottom_right.x,
         .bottom = bottom_right.y,
-        .background = background,
     };
 }
 
@@ -144,6 +143,7 @@ MapPointerInput pointer_drag_dmap(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
     static f32 mapMousePreviousX = 0.0f;
     static f32 mapMousePreviousY = 0.0f;
 
+    // Check if the map is valid and the menu pointer setting is enabled
     if (background == nullptr || map == nullptr || !dusk::menu_pointer::enabled()) {
         mapMouseDragging = false;
         return {};
@@ -151,7 +151,6 @@ MapPointerInput pointer_drag_dmap(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
 
     dusk::menu_pointer::begin_context(dusk::menu_pointer::Context::Map);
     const auto& pointer = dusk::menu_pointer::state();
-
     if (!pointer.valid) {
         mapMouseDragging = false;
         return {};
@@ -178,9 +177,7 @@ MapPointerInput pointer_drag_dmap(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
     if (isMouse && mapMouseDragging && pointer.down) {
         input.dragging = true;
 
-        // This value tries to match 1:1 the cursor movement to the map dragging speed
-        constexpr f32 dragMultiplier = 3900.0f;
-        const f32 pixelPerCm = map->getPixelPerCm() * dragMultiplier;
+        const f32 pixelPerCm = map->getPixelPerCm() * kDMapDragMultiplier;
 
         input.deltaX = (pointer.x - mapMousePreviousX) * pixelPerCm;
         input.deltaZ = -(pointer.y - mapMousePreviousY) * pixelPerCm;

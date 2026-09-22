@@ -2069,10 +2069,6 @@ void dMenu_Dmap_c::mapControl() {
         return;
     }
 
-#if TARGET_PC
-    dusk::map_pointer::pointer_drag_dmap(mpDrawBg, mMapCtrl);
-#endif
-
     (this->*map_move_process[field_0x17e])();
 
     if (field_0x17e != temp_r27) {
