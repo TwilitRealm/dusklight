@@ -19,4 +19,11 @@ namespace dusk {
      */
     constexpr auto AppName = "Dusklight";
 
+#if _WIN32
+    /**
+     * \brief Widechar version of @ref AppName.
+     */
+    constexpr auto AppNameW = L"Dusklight";
+#endif
+
 }

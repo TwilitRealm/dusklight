@@ -1,5 +1,6 @@
 #include "natives.hpp"
 
+#include "amsi.hpp"
 #include "loader.hpp"
 #include "native_module.hpp"
 
@@ -363,6 +364,14 @@ std::string native_status_message(const NativeModStatus status) {
     return "native mod failed to load";
 }
 
+bool check_for_malware(std::filesystem::path const& targetPath, std::span<u8 const> data) {
+#if _WIN32
+    return loader::amsi::check_for_malware(targetPath, data);
+#else
+    return false;
+#endif
+}
+
 }  // namespace
 
 fs::path ModLoader::external_native_lib_path(const LoadedMod& mod) const {
@@ -466,6 +475,11 @@ void ModLoader::load_native(
             } catch (const std::exception& e) {
                 log::write(
                     mod.metadata.id, LOG_LEVEL_ERROR, "failed to extract {}: {}", entry, e.what());
+                return;
+            }
+
+            if (check_for_malware(outputPath, data)) {
+                log::write(mod.metadata.id, LOG_LEVEL_ERROR, "malware detected in mod natives, not extracting");
                 return;
             }
 
