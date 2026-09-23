@@ -29,6 +29,7 @@ private:
     Rml::Element* mSpeedrunTimer = nullptr;
     Rml::Element* mSpeedrunRta = nullptr;
     Rml::Element* mSpeedrunIgt = nullptr;
+    Rml::Element* mModsDisplay = nullptr;
     clock::time_point mCurrentToastStartTime;
     clock::time_point mMenuNotificationStartTime;
     clock::time_point mPipelineProgressStartTime;

@@ -206,6 +206,9 @@ int daAlink_c::setDamagePoint(int i_dmgAmount, BOOL i_checkZoraMag, BOOL i_setDm
 #if TARGET_PC
         if(checkMagicArmorWearAbility() && dusk::getSettings().game.armorRupeeDrain.getValue() == dusk::MagicArmorMode::DOUBLE_DEFENSE) {
             i_dmgAmount /= 2;
+            if (i_dmgAmount <= 0) {
+                i_dmgAmount = 1;
+            }
         }
 #endif
         dComIfGp_setItemLifeCount(-i_dmgAmount, 0);

@@ -7,6 +7,7 @@
 #include <revolution/os.h>
 #else
 #include <dolphin/ar.h>
+#include <dolphin/arq.h>
 #include <dolphin/os.h>
 #endif
 

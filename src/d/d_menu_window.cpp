@@ -215,6 +215,14 @@ void dMw_offMenuRing() {
     }
 }
 
+#if TARGET_PC
+bool dMw_isCapturePending() {
+    dMw_c* menuWindow = dMeter2Info_getMenuWindowClass();
+    return menuWindow != NULL && menuWindow->mpCapture != NULL &&
+           menuWindow->mpCapture->getDrawFlag() == 1;
+}
+#endif
+
 static BOOL dMw_isMenuRing() {
     dMw_c* menu_window = dMeter2Info_getMenuWindowClass();
     if (menu_window != NULL) {

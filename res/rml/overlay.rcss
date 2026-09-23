@@ -266,6 +266,26 @@ speedrun-igt {
     display: block;
 }
 
+mods-display {
+    display: none;
+    position: absolute;
+    top: 220dp;
+    left: 12dp;
+    z-index: 99;
+    padding: 9dp var(--space-md);
+    border-color: var(--color-border);
+    border-radius: var(--radius-control);
+    border-width: 1dp;
+    background-color: rgba(var(--color-surface-rgb), 80%);
+    pointer-events: none;
+    font-size: var(--font-size-md);
+    white-space: pre-wrap;
+}
+
+mods-display[open] {
+    display: block;
+}
+
 fps[open] {
     display: block;
 }

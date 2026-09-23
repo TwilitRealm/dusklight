@@ -80,12 +80,14 @@ void resetForSpeedrunMode() {
     getSettings().game.fastSpinner.setSpeedrunValue(false);
     getSettings().game.armorRupeeDrain.setSpeedrunValue(MagicArmorMode::NORMAL);
     getSettings().game.invincibleEnemies.setSpeedrunValue(false);
+    getSettings().game.easyQuickSpin.setSpeedrunValue(false);
 
     getSettings().game.pauseOnFocusLost.setSpeedrunValue(false);
 
     getSettings().backend.enableAdvancedSettings.setSpeedrunValue(false);
     getSettings().game.recordingMode.setSpeedrunValue(false);
     getSettings().game.debugFlyCam.setSpeedrunValue(false);
+    getSettings().game.debugFlyCamLockEvents.setSpeedrunValue(false);
 
     getSettings().game.enableMoveLinkCombo.setSpeedrunValue(false);
     getSettings().game.enableTeleportCombo.setSpeedrunValue(false);

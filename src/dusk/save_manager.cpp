@@ -920,6 +920,7 @@ DiscCompatibility disc_compatibility(const GciHeader& header, const SaveIdentity
          std::string_view{identity.game}.substr(0, 3) == "RZD") {
         return DiscCompatibility::PlatformChange;
     }
+    return DiscCompatibility::Incompatible;
 }
 
 ValueResult<Artifact> read_artifact(std::string_view location) {

@@ -7,6 +7,7 @@
 #include "dusk/achievements.h"
 #include "dusk/action_bindings.h"
 #include "dusk/livesplit.h"
+#include "dusk/mod_loader.hpp"
 #include "dusk/settings.h"
 #include "dusk/speedrun.h"
 #include "dusk/ui/i18n.hpp"
@@ -54,6 +55,8 @@ const Rml::String kDocumentSource = R"RML(
         <speedrun-rta id="speedrun-rta" />
         <speedrun-igt id="speedrun-igt" />
     </speedrun-timer>
+    <mods-display id="mods-display">
+    </mods-display>
 </body>
 </rml>
 )RML";
@@ -240,6 +243,7 @@ Overlay::Overlay() : Document(kDocumentSource, true, DocumentScope::Overlay) {
     mSpeedrunTimer = mDocument->GetElementById("speedrun-timer");
     mSpeedrunRta = mDocument->GetElementById("speedrun-rta");
     mSpeedrunIgt = mDocument->GetElementById("speedrun-igt");
+    mModsDisplay = mDocument->GetElementById("mods-display");
 
     listen(mDocument, Rml::EventId::Focus, [](Rml::Event&) { Log.warn("Overlay received focus"); });
     listen(mDocument, Rml::EventId::Transitionend, [this](Rml::Event& event) {
@@ -371,6 +375,24 @@ void Overlay::update() {
                 fmt::format("IGT  {}", FormatElapsedTime(speedrun::g_speedrunInfo.m_igtTimer)));
         } else {
             mSpeedrunTimer->RemoveAttribute("open");
+        }
+    }
+
+    if (mModsDisplay != nullptr) {
+        if (dusk::speedrun::isActive() && !dusk::mods::ModLoader::instance().active_mods().empty()) {
+            std::string enabled_mods_list;
+            for (const auto& mod : dusk::mods::ModLoader::instance().active_mods()) {
+                const std::string& displayName = mod.metadata.name.empty() ? mod.metadata.id : mod.metadata.name;
+                if (!enabled_mods_list.empty()) {
+                    enabled_mods_list += "\n";
+                }
+                enabled_mods_list += fmt::format("• {}", displayName);
+            }
+
+            mModsDisplay->SetAttribute("open", "");
+            set_text_content(mModsDisplay, fmt::format("Enabled Mods:\n{}", enabled_mods_list));
+        } else {
+            mModsDisplay->RemoveAttribute("open");
         }
     }
 

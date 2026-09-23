@@ -2694,7 +2694,7 @@ int mDoGph_Painter() {
     #endif
 
     #if TARGET_PC
-    if (dusk::getSettings().game.enableMirrorMode)
+    if (dusk::getSettings().game.enableMirrorMode && dComIfGp_getWindowNum() != 0)
     #elif PLATFORM_WII
     if (data_8053a730)
     #endif

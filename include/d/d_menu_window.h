@@ -35,6 +35,10 @@ void dMw_offPauseWindow();
 void dMw_onMenuRing();
 void dMw_offMenuRing();
 
+#if TARGET_PC
+bool dMw_isCapturePending();
+#endif
+
 class dDlst_MENU_CAPTURE_c;
 
 class dMw_c : public msg_class {

@@ -165,6 +165,7 @@ elseif (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
             $<$<COMPILE_LANGUAGE:C,CXX>:/bigobj>
             $<$<COMPILE_LANGUAGE:C,CXX>:/MP>
             $<$<COMPILE_LANGUAGE:C,CXX>:/FS>
+            /Zc:__cplusplus # Enable updated `__cplusplus` macro
     )
 
     if (NOT DUSK_BUILD_WARNINGS)
