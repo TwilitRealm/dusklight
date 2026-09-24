@@ -2852,7 +2852,9 @@ void dMenu_Dmap_c::zoomWait_init_proc() {}
 void dMenu_Dmap_c::zoomWait_proc() {
     if (m_process == 1) {
 
+#if TARGET_PC
         const auto mapPointer = dusk::map_pointer::dmap_pointer_drag(mpDrawBg, mMapCtrl);
+#endif
 
         if ((mDoCPd_c::getTrigA(PAD_1) IF_DUSK(|| mapPointer.clicked)) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
             if (!mZoomState && mMapCtrl->isEnableZoomIn()) {
