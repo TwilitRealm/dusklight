@@ -1004,7 +1004,7 @@ void dMenu_DmapBg_c::dMapBgWide() {
     mButtonScreen->search(MULTI_CHAR('kazari_n'))->scale(mDoGph_gInf_c::hudAspectScaleDown, 1.0f);
 
 #if TARGET_PC
-    dusk::map_pointer::get_dungeon_map_pointer_bounds(this);
+    dusk::map_pointer::get_dmap_pointer_bounds(this);
 #endif
 }
 
@@ -2315,7 +2315,7 @@ void dMenu_Dmap_c::presentMapView() {
     }
 
 #if TARGET_PC
-    const auto pointerInput = dusk::map_pointer::pointer_drag_dmap(mpDrawBg, mMapCtrl);
+    const auto pointerInput = dusk::map_pointer::dmap_pointer_drag(mpDrawBg, mMapCtrl);
     if (pointerInput.dragging) {
         mMapCtrl->setPlusZoomCenterX(dusk::getSettings().game.enableMirrorMode ? pointerInput.deltaX : -pointerInput.deltaX);
         mMapCtrl->setPlusZoomCenterZ(pointerInput.deltaZ);
@@ -2852,7 +2852,7 @@ void dMenu_Dmap_c::zoomWait_init_proc() {}
 void dMenu_Dmap_c::zoomWait_proc() {
     if (m_process == 1) {
 
-        const auto pointerInput = dusk::map_pointer::pointer_drag_dmap(mpDrawBg, mMapCtrl);
+        const auto pointerInput = dusk::map_pointer::dmap_pointer_drag(mpDrawBg, mMapCtrl);
 
         if ((mDoCPd_c::getTrigA(PAD_1) IF_DUSK(|| pointerInput.clicked)) && (((POINTER_OPT == 1 && mpDrawBg->field_0xdd3 != 0xFF) || POINTER_OPT == 0) && !dMeter2Info_isTouchKeyCheck(0xC))) {
             if (!mZoomState && mMapCtrl->isEnableZoomIn()) {

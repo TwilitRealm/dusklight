@@ -20,10 +20,10 @@ struct MapPointerInput {
     bool clicked = false;
 };
 
-void get_field_map_pointer_bounds(dMenu_Fmap2DBack_c* map);
-void get_dungeon_map_pointer_bounds(dMenu_DmapBg_c* background);
+void get_fmap_pointer_bounds(dMenu_Fmap2DBack_c* map);
+void get_dmap_pointer_bounds(dMenu_DmapBg_c* background);
 
-MapPointerInput pointer_drag_fmap(dMenu_Fmap2DBack_c* map);
-MapPointerInput pointer_drag_dmap(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_c* map);
+MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map);
+MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_c* map);
 
 }  // namespace dusk::map_pointer

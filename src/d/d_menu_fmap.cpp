@@ -859,7 +859,7 @@ void dMenu_Fmap_c::all_map_proc() {
     mpStick->checkTrigger();
 
 #if TARGET_PC
-    const auto pointerInput = dusk::map_pointer::pointer_drag_fmap(mpDraw2DBack);
+    const auto pointerInput = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
     if (pointerInput.hovered) {
         mpDraw2DBack->allmap_move2(mpStick);
     }
@@ -1064,7 +1064,7 @@ void dMenu_Fmap_c::region_map_proc() {
     r29 = true;
 
 #if TARGET_PC
-    const auto pointerInput = dusk::map_pointer::pointer_drag_fmap(mpDraw2DBack);
+    const auto pointerInput = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
     if (pointerInput.hovered) {
         mpDraw2DBack->regionMapMove(mpStick);
     }
@@ -1194,7 +1194,7 @@ void dMenu_Fmap_c::portal_warp_map_proc() {
     mpStick->checkTrigger();
 
 #if TARGET_PC
-    const auto pointerInput = dusk::map_pointer::pointer_drag_fmap(mpDraw2DBack);
+    const auto pointerInput = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
     if (pointerInput.hovered) {
         portalWarpMapMove(mpStick);
     }
@@ -1407,7 +1407,7 @@ void dMenu_Fmap_c::spot_map_init() {
 void dMenu_Fmap_c::spot_map_proc() {
 
 #if TARGET_PC
-    const auto pointerInput = dusk::map_pointer::pointer_drag_fmap(mpDraw2DBack);
+    const auto pointerInput = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
     if (pointerInput.dragging) {
         mpDraw2DBack->stageMapDrag(pointerInput.deltaX, pointerInput.deltaZ);
     }
