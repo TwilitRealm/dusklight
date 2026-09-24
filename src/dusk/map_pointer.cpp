@@ -18,6 +18,7 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
     static bool mapMouseDragging = false;
     static f32 mapMousePreviousX = 0.0f;
     static f32 mapMousePreviousY = 0.0f;
+    MapPointerInput input;
 
     // Check if the map is valid and the menu pointer setting is enabled
     if (map == nullptr || !dusk::menu_pointer::enabled()) {
@@ -34,21 +35,17 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
 
     // Calculate map bounds
     dusk::map_pointer::get_fmap_pointer_bounds(map);
-    const bool isInside = pointer.x >= fMapBounds.left &&
-                        pointer.x <= fMapBounds.right &&
-                        pointer.y >= fMapBounds.top &&
-                        pointer.y <= fMapBounds.bottom;
+    input.hovered = pointer.x >= fMapBounds.left && pointer.x <= fMapBounds.right &&
+                    pointer.y >= fMapBounds.top && pointer.y <= fMapBounds.bottom;
 
-    if (pointer.pressed && isInside) {
+    // If the pointer is pressed inside the map bounds, turn on the dragging flag
+    if (pointer.pressed && input.hovered) {
         mapMouseDragging = true;
         mapMousePreviousX = pointer.x;
         mapMousePreviousY = pointer.y;
     }
 
-    MapPointerInput input;
-    input.hovered = isInside;
-
-    // Drag the map
+    // Drag the map (works even if the pointer is outside the map bounds)
     if (mapMouseDragging && pointer.down) {
         input.dragging = true;
 
@@ -73,7 +70,7 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
         mapMousePreviousY = pointer.y;
     }
 
-    if (isInside && !input.dragging) {
+    if (input.hovered && !input.dragging) {
         f32 pointer_x = pointer.x;
 
         if (dusk::getSettings().game.enableMirrorMode) {
@@ -86,7 +83,7 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
         map->setArrowPosAxis(pos_x, pos_z);
     }
 
-    if (isInside) {
+    if (input.hovered) {
         dusk::menu_pointer::set_hover_target(0);
         input.clicked = pointer.clicked || dusk::menu_pointer::consume_click();
     }
@@ -139,6 +136,7 @@ MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
     static bool mapMouseDragging = false;
     static f32 mapMousePreviousX = 0.0f;
     static f32 mapMousePreviousY = 0.0f;
+    MapPointerInput input;
 
     // Check if the map is valid and the menu pointer setting is enabled
     if (background == nullptr || map == nullptr || !dusk::menu_pointer::enabled()) {
@@ -155,22 +153,18 @@ MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
 
     // Calculate map bounds
     dusk::map_pointer::get_dmap_pointer_bounds(background);
-    const bool isInside = pointer.x >= dMapBounds.left &&
-                        pointer.x <= dMapBounds.right &&
-                        pointer.y >= dMapBounds.top &&
-                        pointer.y <= dMapBounds.bottom;
+    input.hovered = pointer.x >= dMapBounds.left && pointer.x <= dMapBounds.right &&
+                    pointer.y >= dMapBounds.top && pointer.y <= dMapBounds.bottom;
 
-    if (pointer.pressed && isInside) {
+    // If the pointer is pressed inside the map bounds, turn on the dragging flag
+    if (pointer.pressed && input.hovered) {
         mapMouseDragging = true;
         mapMousePreviousX = pointer.x;
         mapMousePreviousY = pointer.y;
     }
 
-    MapPointerInput input;
-    input.hovered = isInside;
-
-    // Drag the map
-    if (mapMouseDragging && pointer.down) {
+    // Drag the map (works even if the pointer is outside the map bounds)
+    if (pointer.down) {
         input.dragging = true;
 
         const f32 pixelPerCm = map->getPixelPerCm() * kDMapDragMultiplier;
@@ -182,7 +176,7 @@ MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
         mapMousePreviousY = pointer.y;
     }
 
-    if (isInside) {
+    if (input.hovered) {
         dusk::menu_pointer::set_hover_target(0);
         input.clicked = pointer.clicked || dusk::menu_pointer::consume_click();
     }
