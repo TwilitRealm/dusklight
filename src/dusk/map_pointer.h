@@ -10,6 +10,15 @@ struct MapPointerBounds {
     f32 top = 0.0f;
     f32 right = 0.0f;
     f32 bottom = 0.0f;
+    inline bool contains(f32 x, f32 y) const {
+        return x >= left && x <= right && y >= top && y <= bottom;
+    }
+};
+
+struct MapDragState {
+    bool dragging = false;
+    f32 previousX = 0.0f;
+    f32 previousY = 0.0f;
 };
 
 struct MapPointerInput {
@@ -20,8 +29,8 @@ struct MapPointerInput {
     bool clicked = false;
 };
 
-void get_fmap_pointer_bounds(dMenu_Fmap2DBack_c* map);
-void get_dmap_pointer_bounds(dMenu_DmapBg_c* background);
+MapPointerBounds get_fmap_pointer_bounds(dMenu_Fmap2DBack_c* map);
+MapPointerBounds get_dmap_pointer_bounds(dMenu_DmapBg_c* background);
 
 MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map);
 MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_c* map);
