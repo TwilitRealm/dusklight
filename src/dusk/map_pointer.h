@@ -15,7 +15,7 @@ struct MapPointerBounds {
 struct MapPointerInput {
     f32 deltaX = 0.0f;
     f32 deltaZ = 0.0f;
-    bool hovered = false;
+    bool hover = false;
     bool dragging = false;
     bool clicked = false;
 };
