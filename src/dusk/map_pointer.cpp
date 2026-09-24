@@ -39,8 +39,7 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
                         pointer.y >= fMapBounds.top &&
                         pointer.y <= fMapBounds.bottom;
 
-    const bool isMouse = !pointer.touch;
-    if (isMouse && pointer.pressed && isInside) {
+    if (pointer.pressed && isInside) {
         mapMouseDragging = true;
         mapMousePreviousX = pointer.x;
         mapMousePreviousY = pointer.y;
@@ -50,7 +49,7 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
     input.hovered = isInside;
 
     // Drag the map
-    if (isMouse && mapMouseDragging && pointer.down) {
+    if (mapMouseDragging && pointer.down) {
         input.dragging = true;
 
         f32 previous_x = mapMousePreviousX;
@@ -92,7 +91,7 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
         input.clicked = pointer.clicked || dusk::menu_pointer::consume_click();
     }
 
-    if (isMouse && pointer.released) {
+    if (pointer.released) {
         mapMouseDragging = false;
     }
 
@@ -161,8 +160,7 @@ MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
                         pointer.y >= dMapBounds.top &&
                         pointer.y <= dMapBounds.bottom;
 
-    const bool isMouse = !pointer.touch;
-    if (isMouse && pointer.pressed && isInside) {
+    if (pointer.pressed && isInside) {
         mapMouseDragging = true;
         mapMousePreviousX = pointer.x;
         mapMousePreviousY = pointer.y;
@@ -172,7 +170,7 @@ MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
     input.hovered = isInside;
 
     // Drag the map
-    if (isMouse && mapMouseDragging && pointer.down) {
+    if (mapMouseDragging && pointer.down) {
         input.dragging = true;
 
         const f32 pixelPerCm = map->getPixelPerCm() * kDMapDragMultiplier;
@@ -189,7 +187,7 @@ MapPointerInput dmap_pointer_drag(dMenu_DmapBg_c* background, dMenu_DmapMapCtrl_
         input.clicked = pointer.clicked || dusk::menu_pointer::consume_click();
     }
 
-    if (isMouse && pointer.released) {
+    if (pointer.released) {
         mapMouseDragging = false;
     }
 
