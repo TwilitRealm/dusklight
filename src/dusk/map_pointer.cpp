@@ -74,23 +74,31 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
         state.previousY = pointer.y;
     }
 
+    // Compute the current pointer's world position
+    f32 current_x = pointer.x;
+    if (isMirrorMode) {
+        current_x = map->getMirrorPosX(current_x, 0.0f);
+    }
+
+    f32 current_world_x = 0.0f;
+    f32 current_world_z = 0.0f;
+    const bool needsCurrentWorldPos = (state.dragging && pointer.down) || mapPointerInput.hover;
+    if (needsCurrentWorldPos) {
+        map->calcAllMapPosWorld(current_x, pointer.y, &current_world_x, &current_world_z);
+    }
+
     // Drag the map (works even if the pointer is outside the map bounds)
     if (state.dragging && pointer.down) {
         mapPointerInput.dragging = true;
 
         f32 previous_x = state.previousX;
-        f32 current_x = pointer.x;
         if (isMirrorMode) {
             previous_x = map->getMirrorPosX(previous_x, 0.0f);
-            current_x = map->getMirrorPosX(current_x, 0.0f);
         }
 
         f32 previous_world_x;
         f32 previous_world_z;
-        f32 current_world_x;
-        f32 current_world_z;
         map->calcAllMapPosWorld(previous_x, state.previousY, &previous_world_x, &previous_world_z);
-        map->calcAllMapPosWorld(current_x, pointer.y, &current_world_x, &current_world_z);
 
         mapPointerInput.deltaX = current_world_x - previous_world_x;
         mapPointerInput.deltaZ = current_world_z - previous_world_z;
@@ -101,16 +109,7 @@ MapPointerInput fmap_pointer_drag(dMenu_Fmap2DBack_c* map) {
 
     // Update the cursor position on the Fmap if the pointer is hovering over it
     if (mapPointerInput.hover) {
-        f32 pointer_x = pointer.x;
-
-        if (isMirrorMode) {
-            pointer_x = map->getMirrorPosX(pointer_x, 0.0f);
-        }
-
-        f32 pos_x;
-        f32 pos_z;
-        map->calcAllMapPosWorld(pointer_x, pointer.y, &pos_x, &pos_z);
-        map->setArrowPosAxis(pos_x, pos_z);
+        map->setArrowPosAxis(current_world_x, current_world_z);
 
         // Consume clicks inside the map bounds
         dusk::menu_pointer::set_hover_target(0);
