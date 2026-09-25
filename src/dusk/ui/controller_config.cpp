@@ -61,6 +61,20 @@ struct ButtonNames {
     std::vector<SpecificButtonName> names;
 };
 
+/*
+   SDL DOSNT USE BUTTOMS FOR TRIGGERS
+   SO WE HAD TO USE SDL_GamepadAxis (Available only from SDL 3.2.0)
+*/
+struct SpecificAxisName {
+    SDL_GamepadType type;
+    const char* name;
+};
+
+struct AxisNames {
+    SDL_GamepadAxis axis;
+    std::vector<SpecificAxisName> names;
+};
+
 // clang-format off
 const std::vector<ButtonNames> kGamepadButtonNames = {
     { SDL_GAMEPAD_BUTTON_LEFT_STICK, {
@@ -70,6 +84,7 @@ const std::vector<ButtonNames> kGamepadButtonNames = {
         {SDL_GAMEPAD_TYPE_XBOX360, "Left Stick"},
         {SDL_GAMEPAD_TYPE_XBOXONE, "Left Stick"},
         {SDL_GAMEPAD_TYPE_GAMECUBE, "Control Stick"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "Left Stick"},
     }},
     { SDL_GAMEPAD_BUTTON_RIGHT_STICK, {
         {SDL_GAMEPAD_TYPE_PS3, "R3"},
@@ -78,6 +93,7 @@ const std::vector<ButtonNames> kGamepadButtonNames = {
         {SDL_GAMEPAD_TYPE_XBOX360, "Right Stick"},
         {SDL_GAMEPAD_TYPE_XBOXONE, "Right Stick"},
         {SDL_GAMEPAD_TYPE_GAMECUBE, "C Stick"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "Right Stick"},
     }},
     { SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, {
         {SDL_GAMEPAD_TYPE_PS3, "L1"},
@@ -85,6 +101,7 @@ const std::vector<ButtonNames> kGamepadButtonNames = {
         {SDL_GAMEPAD_TYPE_PS5, "L1"},
         {SDL_GAMEPAD_TYPE_XBOX360, "LB"},
         {SDL_GAMEPAD_TYPE_XBOXONE, "LB"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "L"},
     }},
     { SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, {
         {SDL_GAMEPAD_TYPE_PS3, "R1"},
@@ -93,6 +110,7 @@ const std::vector<ButtonNames> kGamepadButtonNames = {
         {SDL_GAMEPAD_TYPE_XBOX360, "RB"},
         {SDL_GAMEPAD_TYPE_XBOXONE, "RB"},
         {SDL_GAMEPAD_TYPE_GAMECUBE, "Z"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "R"},
     }},
     { SDL_GAMEPAD_BUTTON_BACK, {
         {SDL_GAMEPAD_TYPE_PS3, "Select"},
@@ -100,6 +118,7 @@ const std::vector<ButtonNames> kGamepadButtonNames = {
         {SDL_GAMEPAD_TYPE_PS5, "Create"},
         {SDL_GAMEPAD_TYPE_XBOX360, "Back"},
         {SDL_GAMEPAD_TYPE_XBOXONE, "View"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "-"},
     }},
     { SDL_GAMEPAD_BUTTON_START, {
         {SDL_GAMEPAD_TYPE_PS3, "Start"},
@@ -108,12 +127,52 @@ const std::vector<ButtonNames> kGamepadButtonNames = {
         {SDL_GAMEPAD_TYPE_XBOX360, "Start"},
         {SDL_GAMEPAD_TYPE_XBOXONE, "Menu"},
         {SDL_GAMEPAD_TYPE_GAMECUBE, "Start/Pause"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "+"},
+    }},
+};
+
+const std::vector<AxisNames> kGamepadAxisNames = {
+    { SDL_GAMEPAD_AXIS_LEFT_TRIGGER, {
+        {SDL_GAMEPAD_TYPE_PS3, "L2"},
+        {SDL_GAMEPAD_TYPE_PS4, "L2"},
+        {SDL_GAMEPAD_TYPE_PS5, "L2"},
+        {SDL_GAMEPAD_TYPE_XBOX360, "LT"},
+        {SDL_GAMEPAD_TYPE_XBOXONE, "LT"},
+        {SDL_GAMEPAD_TYPE_GAMECUBE, "L Analog"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "ZL"},
+    }},
+    { SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, {
+        {SDL_GAMEPAD_TYPE_PS3, "R2"},
+        {SDL_GAMEPAD_TYPE_PS4, "R2"},
+        {SDL_GAMEPAD_TYPE_PS5, "R2"},
+        {SDL_GAMEPAD_TYPE_XBOX360, "RT"},
+        {SDL_GAMEPAD_TYPE_XBOXONE, "RT"},
+        {SDL_GAMEPAD_TYPE_GAMECUBE, "R Analog"},
+        {SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, "ZR"},
     }},
 };
 // clang-format on
 
 Rml::String native_axis_name(const PADAxisMapping& mapping, SDL_Gamepad* gamepad) {
     if (mapping.nativeAxis.nativeAxis != -1) {
+        const auto axis = static_cast<SDL_GamepadAxis>(mapping.nativeAxis.nativeAxis);
+        const SDL_GamepadType type =
+            gamepad != nullptr ? SDL_GetGamepadType(gamepad) : SDL_GAMEPAD_TYPE_UNKNOWN;
+
+        // search for axis names
+        for (const auto& axisNames : kGamepadAxisNames) {
+            if (axisNames.axis != axis) {
+                continue;
+            }
+
+            for (const auto& name : axisNames.names) {
+                if (name.type == type) {
+                    return name.name;
+                }
+            }
+        }
+
+        // if it dosnt find a custom name its will use the native standar name of SDL
         Rml::String value = PADGetNativeAxisName(mapping.nativeAxis);
         if (mapping.padAxis != PAD_AXIS_TRIGGER_L && mapping.padAxis != PAD_AXIS_TRIGGER_R) {
             value += mapping.nativeAxis.sign == AXIS_SIGN_POSITIVE ? "+" : "-";
