@@ -13,7 +13,7 @@
 #include <array>
 #include <string>
 #include <utility>
-#include <vector>
+
 
 #include "dusk/action_bindings.h"
 #include "dusk/config.hpp"
@@ -448,7 +448,10 @@ void ControllerConfigWindow::render_page(Pane& pane, int port, Page page) {
         break;
     }
     case Page::Buttons: {
-        if (keyboard_active(port)) {
+        const bool isKeyboard = keyboard_active(port);
+        const bool hasDevice = isKeyboard || (PADGetIndexForPort(port) >= 0);
+
+        if (isKeyboard) {
             auto addKeyButton = [&](PADButton button) {
                 pane.add_select_button(
                         {
@@ -494,70 +497,89 @@ void ControllerConfigWindow::render_page(Pane& pane, int port, Page page) {
             addKeyButton(PAD_BUTTON_DOWN);
             addKeyButton(PAD_BUTTON_LEFT);
             addKeyButton(PAD_BUTTON_RIGHT);
-            break;
-        }
-
-        u32 buttonCount = 0;
-        PADButtonMapping* mappings = PADGetButtonMappings(port, &buttonCount);
-        if (mappings == nullptr) {
-            pane.add_text("No Device Selected");
-            break;
-        }
-
-        SDL_Gamepad* gamepad = gamepad_for_port(port);
-        pane.add_section("Buttons");
-        for (u32 i = 0; i < buttonCount; ++i) {
-            PADButtonMapping& mapping = mappings[i];
-            if (!is_action_button(mapping.padButton)) {
-                continue;
+        } else {
+            u32 buttonCount = 0;
+            PADButtonMapping* mappings = PADGetButtonMappings(port, &buttonCount);
+            if (mappings == nullptr) {
+                pane.add_text("No Device Selected");
+                break;
             }
 
-            pane.add_select_button({
-                                       .key = PADGetButtonName(mapping.padButton),
-                                       .getValue =
-                                           [this, &mapping, gamepad] {
-                                               if (mPendingButtonMapping == &mapping) {
-                                                   return pending_button_label();
-                                               }
-                                               return native_button_name(
-                                                   gamepad, mapping.nativeButton);
-                                           },
-                                   })
-                .on_pressed([this, port, &mapping] {
-                    mDoAud_seStartMenu(kSoundClick);
-                    cancel_pending_binding();
-                    mPendingPort = port;
-                    mPendingBindingArmed = false;
-                    mPendingButtonMapping = &mapping;
-                });
-        }
+            SDL_Gamepad* gamepad = gamepad_for_port(port);
+            pane.add_section("Buttons");
+            for (u32 i = 0; i < buttonCount; ++i) {
+                PADButtonMapping& mapping = mappings[i];
+                if (!is_action_button(mapping.padButton)) {
+                    continue;
+                }
 
-        pane.add_section("D-Pad");
-        for (u32 i = 0; i < buttonCount; ++i) {
-            PADButtonMapping& mapping = mappings[i];
-            if (!is_dpad_button(mapping.padButton)) {
-                continue;
+                pane.add_select_button({
+                                           .key = PADGetButtonName(mapping.padButton),
+                                           .getValue =
+                                               [this, &mapping, gamepad] {
+                                                   if (mPendingButtonMapping == &mapping) {
+                                                       return pending_button_label();
+                                                   }
+                                                   return native_button_name(
+                                                       gamepad, mapping.nativeButton);
+                                               },
+                                       })
+                    .on_pressed([this, port, &mapping] {
+                        mDoAud_seStartMenu(kSoundClick);
+                        cancel_pending_binding();
+                        mPendingPort = port;
+                        mPendingBindingArmed = false;
+                        mPendingButtonMapping = &mapping;
+                    });
             }
 
-            pane.add_select_button({
-                                       .key = PADGetButtonName(mapping.padButton),
-                                       .getValue =
-                                           [this, &mapping, gamepad] {
-                                               if (mPendingButtonMapping == &mapping) {
-                                                   return pending_button_label();
-                                               }
-                                               return native_button_name(
-                                                   gamepad, mapping.nativeButton);
-                                           },
-                                   })
-                .on_pressed([this, port, &mapping] {
-                    mDoAud_seStartMenu(kSoundClick);
-                    cancel_pending_binding();
-                    mPendingPort = port;
-                    mPendingBindingArmed = false;
-                    mPendingButtonMapping = &mapping;
-                });
+            pane.add_section("D-Pad");
+            for (u32 i = 0; i < buttonCount; ++i) {
+                PADButtonMapping& mapping = mappings[i];
+                if (!is_dpad_button(mapping.padButton)) {
+                    continue;
+                }
+
+                pane.add_select_button({
+                                           .key = PADGetButtonName(mapping.padButton),
+                                           .getValue =
+                                               [this, &mapping, gamepad] {
+                                                   if (mPendingButtonMapping == &mapping) {
+                                                       return pending_button_label();
+                                                   }
+                                                   return native_button_name(
+                                                       gamepad, mapping.nativeButton);
+                                               },
+                                       })
+                    .on_pressed([this, port, &mapping] {
+                        mDoAud_seStartMenu(kSoundClick);
+                        cancel_pending_binding();
+                        mPendingPort = port;
+                        mPendingBindingArmed = false;
+                        mPendingButtonMapping = &mapping;
+                    });
+            }
         }
+
+        if (hasDevice) {
+            pane.add_section("Presets");
+            for (const auto& preset : kDevicePresets) {
+                const bool isKeyboardPreset = (preset.name == "Keyboard");
+
+                if (isKeyboard != isKeyboardPreset) {
+                    continue;
+                }
+
+                pane.add_button({ .text = preset.name })
+                    .on_pressed([this, port, preset] {
+                        mDoAud_seStartMenu(kSoundClick);
+                        cancel_pending_binding();
+                        apply_preset(port, preset);
+                        render_page(*mRightPane, port, Page::Buttons);
+                    });
+            }
+        }
+
         break;
     }
     case Page::Triggers: {
@@ -1234,6 +1256,44 @@ void ControllerConfigWindow::stop_rumble_test() {
     }
     mRumbleTestActive = false;
     mRumbleTestPort = -1;
+}
+
+void ControllerConfigWindow::apply_preset(int port, const DevicePreset& preset) {
+    if (keyboard_active(port)) {
+        for (const auto& [padBtn, value] : preset.buttonMappings) {
+            PADSetKeyButtonBinding(static_cast<u32>(port), { static_cast<s32>(value), padBtn });
+        }
+        for (const auto& [padAxis, value] : preset.axisMappings) {
+            if (std::holds_alternative<s32>(value)) {
+                PADSetKeyAxisBinding(static_cast<u32>(port), { std::get<s32>(value), padAxis, 0 });
+            }
+        }
+    } else {
+        u32 btnCount = 0;
+        PADButtonMapping* btnMappings = PADGetButtonMappings(port, &btnCount);
+        if (btnMappings != nullptr) {
+            for (const auto& [padBtn, nativeBtn] : preset.buttonMappings) {
+                for (u32 i = 0; i < btnCount; ++i) {
+                    if (btnMappings[i].padButton == padBtn) {
+                        btnMappings[i].nativeButton = nativeBtn;
+                        break;
+                    }
+                }
+            }
+        }
+        u32 axisCount = 0;
+        PADAxisMapping* axisMappings = PADGetAxisMappings(port, &axisCount);
+        if (axisMappings != nullptr) {
+            for (const auto& [padAxis, value] : preset.axisMappings) {
+                if (std::holds_alternative<PADSignedNativeAxis>(value) && static_cast<u32>(padAxis) < axisCount) {
+                    axisMappings[padAxis].nativeAxis = std::get<PADSignedNativeAxis>(value);
+                    axisMappings[padAxis].nativeButton = -1; // Limpiar binding por botón digital
+                }
+            }
+        }
+    }
+
+    PADSerializeMappings();
 }
 
 Rml::String native_button_name(SDL_Gamepad* gamepad, u32 buttonUntyped) {
