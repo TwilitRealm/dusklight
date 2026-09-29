@@ -786,7 +786,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             });
 
         config_int_select(leftPane, rightPane, getSettings().video.uiScale,
-            "UI Scale", 
+            "UI Scale",
             "Scales the Dusklight interface relative to the display's DPI scale. Has no effect on the game's UI and HUD.",
             50, 200, 25, {}, {}, "%");
 
@@ -1454,6 +1454,8 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             });
         addCheat("Invincible Enemies", getSettings().game.invincibleEnemies,
             "Prevents enemies from taking damage.");
+        addCheat("Infinite Epona Stamina", getSettings().game.infiniteEponaStamina,
+            "Prevents Epona's stamina from depleting.");
     });
 
     add_tab("Interface", [this](Rml::Element* content) {

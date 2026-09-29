@@ -152,6 +152,7 @@ UserSettings g_userSettings = {
         .armorRupeeDrain {"game.armorRupeeDrain", MagicArmorMode::NORMAL},
         .invincibleEnemies {"game.invincibleEnemies", false},
         .easyQuickSpin {"game.easyQuickSpin", false},
+        .infiniteEponaStamina {"game.infiniteEponaStamina", false},
 
         // Technical
         .restoreWiiGlitches {"game.restoreWiiGlitches", false},
@@ -258,7 +259,7 @@ void registerSettings() {
     Register(g_userSettings.video.rememberWindowSize);
     Register(g_userSettings.video.lastWindowWidth);
     Register(g_userSettings.video.lastWindowHeight);
-    Register(g_userSettings.video.uiScale, 
+    Register(g_userSettings.video.uiScale,
         [](const int&, const int&) { dusk::ui::apply_scale(); });
 
     // Audio
@@ -363,6 +364,7 @@ void registerSettings() {
     Register(g_userSettings.game.alwaysGreatspin);
     Register(g_userSettings.game.invincibleEnemies);
     Register(g_userSettings.game.easyQuickSpin);
+    Register(g_userSettings.game.infiniteEponaStamina);
 
     Register(g_userSettings.game.enableFrameInterpolation);
     Register(g_userSettings.game.enableGyroAim);

@@ -312,6 +312,7 @@ struct UserSettings {
         ConfigVar<MagicArmorMode> armorRupeeDrain;
         ConfigVar<bool> invincibleEnemies;
         ConfigVar<bool> easyQuickSpin;
+        ConfigVar<bool> infiniteEponaStamina;
 
         // Technical
         ConfigVar<bool> restoreWiiGlitches;
