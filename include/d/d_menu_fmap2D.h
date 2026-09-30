@@ -83,6 +83,7 @@ public:
 
     #if TARGET_PC
     void fMapBackWide();
+    void stageMapDrag(f32, f32);
     #endif
 
     virtual void draw();
@@ -160,7 +161,7 @@ public:
     void offArrowDrawFlag() { mArrowDrawFlag = false; }
     void onArrowDrawFlag() { mArrowDrawFlag = true; }
     bool isArrowDrawFlag() { return mArrowDrawFlag; }
-    
+
     void onShowRegionFlag(int region_bit) { mRegionFlag |= (u8)(1 << region_bit); }
     BOOL isShowRegionFlag(int region_bit) { return mRegionFlag & (u8)(1 << region_bit) ? TRUE : FALSE; }
 
