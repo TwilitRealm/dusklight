@@ -684,7 +684,7 @@ bool dCamera_c::stokerEvCamera() {
             OS_REPORT("camera: event: error: target actor dead\n");
             return 1;
         }
-    
+
         cStack_d0.Val(stoker_p->field_0x10);
         cStack_d0.V(cStack_d0.V() + stoker_p->field_0x30->shape_angle.x);
         cStack_d0.U(cStack_d0.U() + stoker_p->field_0x30->shape_angle.y);
@@ -762,7 +762,7 @@ bool dCamera_c::rollingEvCamera() {
                 }
                 rolling_p->field_0x10 = relationalPos(rolling_p->mpRelActor, &rolling_p->mCenter);
 
-            }  
+            }
         } else {
             rolling_p->field_0x10 = rolling_p->mCenter;
         }
@@ -894,7 +894,7 @@ bool dCamera_c::fixedPositionEvCamera() {
         if (fpos_p->field_0x3c && isRelChar(fpos_p->field_0x48[0])) {
             fpos_p->field_0x4 = relationalPos(fpos_p->field_0x3c, &sp24);
         } else {
-            fpos_p->field_0x4 = sp24;        
+            fpos_p->field_0x4 = sp24;
         }
 
         fpos_p->field_0x1c = mCenter;
@@ -1341,8 +1341,8 @@ bool dCamera_c::transEvCamera(int param_1) {
             cSGlobe cStack_818(pos.mXyz_0 - pos.mXyz_1);
             cSGlobe cStack_820(pos2.mXyz_0 - pos2.mXyz_1);
 
-            cSGlobe cStack_828(cStack_818.R() + (my_main_f32 * (cStack_820.R() - cStack_818.R())), 
-                               cStack_818.V() + ((cStack_820.V() - cStack_818.V()) * my_main_f32), 
+            cSGlobe cStack_828(cStack_818.R() + (my_main_f32 * (cStack_820.R() - cStack_818.R())),
+                               cStack_818.V() + ((cStack_820.V() - cStack_818.V()) * my_main_f32),
                                cStack_818.U() + ((cStack_820.U() - cStack_818.U()) * my_main_f32));
 
             sp168 = mViewCache.mCenter + cStack_828.Xyz();
@@ -1368,7 +1368,7 @@ bool dCamera_c::transEvCamera(int param_1) {
             }
 
             cSGlobe cStack_840(cStack_830.R() + ((cStack_838.R() - cStack_830.R()) * my_main_f32),
-                              (cStack_830.V() + (cStack_838.V() - cStack_830.V()) * my_main_f32), 
+                              (cStack_830.V() + (cStack_838.V() - cStack_830.V()) * my_main_f32),
                               (cStack_830.U() + acStack_8a8));
 
             sp168 = mViewCache.mCenter + cStack_840.Xyz();
@@ -1391,8 +1391,8 @@ bool dCamera_c::transEvCamera(int param_1) {
                 acStack_8ac.Val(my_main_f32 * (acStack_8ac.Degree() + -360.0f));
             }
 
-            cSGlobe cStack_858(cStack_848.R() + (my_main_f32 * (cStack_850.R() - cStack_848.R())), 
-                               cStack_848.V() + (cStack_850.V() - cStack_848.V()) * my_main_f32, 
+            cSGlobe cStack_858(cStack_848.R() + (my_main_f32 * (cStack_850.R() - cStack_848.R())),
+                               cStack_848.V() + (cStack_850.V() - cStack_848.V()) * my_main_f32,
                                cStack_848.U() + acStack_8ac);
 
             sp168 = mViewCache.mCenter + cStack_858.Xyz();
@@ -1404,7 +1404,7 @@ bool dCamera_c::transEvCamera(int param_1) {
             mViewCache.mCenter += (sp15c - mViewCache.mCenter) * trans->mCushion;
             sp168 = pos.mXyz_0 + (pos2.mXyz_0 * my_main_f32);
             mViewCache.mEye += (sp168 - mViewCache.mEye) * trans->mCushion;
-            
+
         } else {
             sp15c = pos.mXyz_1 + ((pos2.mXyz_1 - pos.mXyz_1) * my_main_f32);
             mViewCache.mCenter += (sp15c - mViewCache.mCenter) * trans->mCushion;
@@ -1755,7 +1755,7 @@ bool dCamera_c::restorePosEvCamera() {
 
             case 9: {
                 s16 sVar1 = restorePos->field_0x48.mBank.Val();
-                dComIfGp_loadCameraPosition(0, &restorePos->field_0x48.mCenter, &restorePos->field_0x48.mEye, 
+                dComIfGp_loadCameraPosition(0, &restorePos->field_0x48.mCenter, &restorePos->field_0x48.mEye,
                                             &restorePos->field_0x48.mFovy, &sVar1);
                 break;
             }
@@ -1817,7 +1817,7 @@ bool dCamera_c::restorePosEvCamera() {
                 mViewCache.mDirection.V((mViewCache.mDirection.V() + ((restorePos->field_0x38.V() - mViewCache.mDirection.V()) * fVar1)));
 
                 mViewCache.mEye = mViewCache.mCenter + mViewCache.mDirection.Xyz();
-                
+
                 mViewCache.mFovy += fVar1 * (restorePos->field_0x48.mFovy - mViewCache.mFovy);
                 return 0;
             }
@@ -2007,7 +2007,7 @@ bool dCamera_c::gameOverEvCamera() {
     cXyz sp218((mIsWolf != 1) ? sp1f4 : (gover_p->field_0x3c != 0) ? sp20c : sp200);
     cXyz* pos = (mIsWolf != 1) ? spd8 : (gover_p->field_0x3c != 0) ? sp138 : sp108;
     // -----------
- 
+
     int w_54 = 3;
     f32 unused_f32 = 75.0f;
     (void) unused_f32;
@@ -2143,7 +2143,11 @@ bool dCamera_c::gameOverEvCamera() {
 
             gover_p->field_0x0++;
             gover_p->field_0x4 = 0.0f;
+#if TARGET_PC
+            mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
             mViewCache.mFovy = 60.0f;
+#endif
         }
         // fallthrough
         case 3: {
@@ -2232,7 +2236,11 @@ bool dCamera_c::gameOverEvCamera() {
             mViewCache.mCenter = sp224;
             mViewCache.mEye = sp230;
             bVar9 = true;
+#if TARGET_PC
+            mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
             mViewCache.mFovy = 60.0f;
+#endif
             ++gover_p->field_0x0;
         }
         // fallthrough
@@ -2819,7 +2827,7 @@ bool dCamera_c::useItem0EvCamera() {
     };
     UseItem0Data data_list[13] = {
         {&vec_1c4, vecs_308, const_2nd_4_val, 65.0f, 30,  0, -1},
-        {&vec_1d0, vecs_368, const_6_val,     65.0f, 40,  0, -1}, 
+        {&vec_1d0, vecs_368, const_6_val,     65.0f, 40,  0, -1},
         {&vec_1c4, vecs_308, const_2nd_4_val, 65.0f, 40,  0,  7},
         {&vec_1b8, vecs_2d8, const_3rd_4_val, 65.0f, 40,  0,  7},
         {&vec_1dc, vecs_338, const_1st_4_val, 65.0f, 10, 73, -1},
@@ -3629,7 +3637,7 @@ bool dCamera_c::twoActor0EvCamera() {
         cStack_34 = relationalPos(twoact0_p->mActor1, twoact0_p->mActor2, &twoact0_p->mCtrGap, 0.25f);
 
     } else {
-        cStack_34 = (attentionPos(twoact0_p->mActor1) + 
+        cStack_34 = (attentionPos(twoact0_p->mActor1) +
                     attentionPos(twoact0_p->mActor2)) * twoact0_p->mCtrRatio;
     }
 
@@ -3750,7 +3758,11 @@ bool dCamera_c::digHoleEvCamera() {
                 sp7c = sp70 + cStack_138.Xyz();
 
                 if (!lineBGCheck(&sp70, &sp7c, 0x4007)) {
+#if TARGET_PC
+                    mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
                     mViewCache.mFovy = 60.0f;
+#endif
                     mViewCache.mCenter = sp70;
                     mViewCache.mDirection = cStack_138;
                     mViewCache.mEye = sp7c;
@@ -3818,7 +3830,11 @@ bool dCamera_c::digHoleEvCamera() {
                 mViewCache.mCenter = digHole->field_0x14;
                 mViewCache.mEye = digHole->field_0x20;
                 mViewCache.mDirection.Val(mViewCache.mEye - mViewCache.mCenter);
+#if TARGET_PC
+                mViewCache.mFovy = static_cast<f32>(dusk::getSettings().game.cameraFieldOfView.getValue());
+#else
                 mViewCache.mFovy = 60.0f;
+#endif
             }
         }
     }
