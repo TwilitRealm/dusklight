@@ -81,6 +81,12 @@ enum class MagicArmorMode : u8 {
     COSMETIC = 4,
 };
 
+enum class LedStatusMode : u8 {
+    OFF = 0,
+    GAME_STATE = 1,
+    PLAYER_HP = 2,
+};
+  
 enum class AudioOutputMode : u8 {
     StereoSpeakers = 0,
     StereoHeadphones = 1,   // spatial audio
@@ -153,6 +159,12 @@ template <>
 struct ConfigEnumRange<MagicArmorMode> {
     static constexpr auto min = MagicArmorMode::NORMAL;
     static constexpr auto max = MagicArmorMode::COSMETIC;
+};
+
+template <>
+struct ConfigEnumRange<LedStatusMode> {
+    static constexpr auto min = LedStatusMode::OFF;
+    static constexpr auto max = LedStatusMode::PLAYER_HP;
 };
 
 template <>
@@ -290,7 +302,7 @@ struct UserSettings {
         ConfigVar<bool> debugFlyCam;
         ConfigVar<bool> debugFlyCamLockEvents;
         ConfigVar<bool> allowBackgroundInput;
-        std::array<ConfigVar<bool>, 4> enableLED;
+        std::array<ConfigVar<LedStatusMode>, 4> ledStatusMode;
         ConfigVar<bool> swapDirectSelect;
 
         // Cheats
