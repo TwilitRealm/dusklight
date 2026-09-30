@@ -36,7 +36,7 @@ void daAlink_c::handleWolfHowl() {
         mDoCPd_c::getCpadInfo(PAD_1).mPressedButtonFlags = 0;
 
         // Ensure that the Z Button is not dimmed
-        if (meterDrawPtr->getButtonZAlpha() != 1.f) {
+        if (meterDrawPtr->getButtonZAlpha() != 1.f && !dusk::getSettings().game.minimalHUD) {
             Z2GetAudioMgr()->seStart(Z2SE_SYS_ERROR, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
             return;
         }
@@ -102,7 +102,7 @@ void daAlink_c::handleQuickTransform() {
     }
 
     // Ensure that the Z Button is not dimmed
-    if (meterDrawPtr->getButtonZAlpha() != 1.f) {
+    if (meterDrawPtr->getButtonZAlpha() != 1.f && !dusk::getSettings().game.minimalHUD) {
         Z2GetAudioMgr()->seStart(Z2SE_SYS_ERROR, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
         return;
     }
