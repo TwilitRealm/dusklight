@@ -166,6 +166,12 @@ static int daTag_FWall_IsDelete(daTag_FWall_c* i_this) {
 
 static int daTag_FWall_Delete(daTag_FWall_c* i_this) {
     int id = fopAcM_GetID(i_this);
+#if TARGET_PC
+    if (i_this == fire_leader) {
+        fire_leader = NULL;
+        fire_num = 0;
+    }
+#endif
     return 1;
 }
 
