@@ -898,8 +898,14 @@ void dEvDtStaff_c::specialProcDirector() {
         return;
     }
 
+#if TARGET_PC
+    // This is passed to strcmp below, so we need the full null-terminated string
+    char* sp2C = dComIfGp_getEventManager().getMyNowCutNameStr(staffId);
+    char* nowCutName = dComIfGp_getEventManager().getMyNowCutName(staffId);
+#else
     char* sp2C = dComIfGp_getEventManager().getMyNowCutName(staffId);
     char* nowCutName = sp2C;
+#endif
 
     if (dComIfGp_evmng_getIsAddvance(staffId)) {
         int* idata_flag = dComIfGp_evmng_getMyIntegerP(staffId, "EventFlag");
