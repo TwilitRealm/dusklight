@@ -6,6 +6,9 @@
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
 #include "d/actor/d_a_b_dr.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 #include "d/d_com_inf_game.h"
 #include "d/actor/d_a_player.h"
 #include "d/d_menu_window.h"
@@ -16,6 +19,21 @@
 #include "c/c_damagereaction.h"
 #include "f_op/f_op_camera_mng.h"
 #include "Z2AudioLib/Z2Instances.h"
+#if TARGET_PC  // additional actor attribute integration
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace dusk::mods::svc::actor_attr {
+template <> struct EnemyAttributeOwner<daB_DR_c> {
+    static fopAc_ac_c* get(daB_DR_c* i_this) {
+
+        fopAc_ac_c* parent = fopAcM_SearchByID(i_this->parentActorID);
+        return parent != NULL && fopAcM_GetName(parent) == fpcNm_B_DR_e ? parent : i_this;
+
+}
+};
+}
+#endif
 
 
 class daB_DR_HIO_c : public JORReflexible {
@@ -290,6 +308,33 @@ daB_DR_HIO_c::daB_DR_HIO_c() {
 static u8 hio_set;
 
 static daB_DR_HIO_c l_HIO;
+#if TARGET_PC  // enemy attribute integration
+
+// Argorok's mounted-back sequence has the same nested damage-budget problem
+// as Morpheel: a native number of sword hits per mount sits inside the boss's
+// overall randomized health budget. Split the health multiplier across those
+// dimensions with sqrt(), so higher/lower health changes both how many hits
+// fit in one mount and, naturally through Argorok's real HP, how many mounts
+// the fight takes without applying the full health multiplier twice.
+static f32 dragon_health_budget_scale(daB_DR_c* i_this) {
+
+    return JMAFastSqrt(actor_attr::enemy_health_amount(i_this, 1.0f));
+}
+
+static s16 dragon_hits_per_mount(daB_DR_c* i_this) {
+
+    return actor_attr::positive_s16(4.0f * dragon_health_budget_scale(i_this));
+}
+
+// This is a mount/attack opportunity window, not a stun. Keep it independent
+// of the randomized stun-duration attribute, and expand/contract it in the
+// same proportion as the number of sword hits allowed per mount.
+// Vanilla: 4 hits / 150 frames.
+static s16 dragon_mount_window_for_hits(daB_DR_c* i_this, f32 vanillaFrames) {
+
+    return actor_attr::positive_s16(vanillaFrames * ((f32)dragon_hits_per_mount(i_this) / 4.0f));
+}
+#endif
 
 int daB_DR_c::ctrlJoint(J3DJoint* i_joint, J3DModel* i_model) {
     cXyz unused_sp20;
@@ -478,6 +523,12 @@ static int daB_DR_Draw(daB_DR_c* i_this) {
 }
 
 void daB_DR_c::setBck(int i_anm, u8 i_mode, f32 i_morf, f32 i_speed) {
+#if TARGET_PC  // enemy attribute integration
+
+    const actor_attr::ActionAnimationParams actorAttributeAnimation = actor_attr::enemy_animation_params(this, i_morf, i_speed);
+    i_morf = actorAttributeAnimation.morph;
+    i_speed = actorAttributeAnimation.playbackSpeed;
+#endif
     mpModelMorf->setAnm((J3DAnmTransform*)dComIfG_getObjectRes("B_DR", i_anm), i_mode, i_morf, i_speed, 0.0f, -1.0f);
     mAnm = i_anm;
 }
@@ -511,13 +562,19 @@ void daB_DR_c::mBoot_c_tranceSet(bool param_0) {
             mae.z = 500.0f;
             MtxPosition(&mae, &ato);
 
+#if TARGET_PC  // enemy attribute integration
+            mBoot_c_trance.x += actor_attr::enemy_action_step(this, ato.x / 45.0f);
+            mBoot_c_trance.y += actor_attr::enemy_action_step(this, ato.y / 45.0f);
+            mBoot_c_trance.z += actor_attr::enemy_action_step(this, ato.z / 45.0f);
+#else
             mBoot_c_trance.x += ato.x / 45.0f;
             mBoot_c_trance.y += ato.y / 45.0f;
             mBoot_c_trance.z += ato.z / 45.0f;
+#endif
         }
     } else {
         ato.zero();
-        cLib_addCalcPos(&mBoot_c_trance, ato, 0.8f, 20.0f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &mBoot_c_trance, ato, 0.8f, 20.0f, 5.0f), cLib_addCalcPos(&mBoot_c_trance, ato, 0.8f, 20.0f, 5.0f));
     }
 }
 
@@ -804,6 +861,9 @@ void daB_DR_c::chkPartCreate(bool param_0) {
     int part_no = 0;
     int var_r27 = 0;
     int part_max = 0;
+#if TARGET_PC  // enemy attribute integration
+    const int parts_per_frame = std::max(1, static_cast<int>(std::ceil(actor_attr::enemy_action_step(this, 4.0f))));
+#endif
 
     if (param_0 || field_0x7d1 != 2) {
         int break_no = mBreakPartsNo;
@@ -830,7 +890,7 @@ void daB_DR_c::chkPartCreate(bool param_0) {
             return;
         }
 
-        for (; part_no < part_max && var_r27 < 4; var_r27++) {
+        for (; part_no < part_max && var_r27 < DUSK_IF_ELSE(parts_per_frame, 4); var_r27++) {
             mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(BREAK_PARTS_DT[part_no].jnt_no));
             mDoMtx_stack_c::multVecZero(&pos);
             mDoMtx_MtxToRot(mDoMtx_stack_c::get(), &rot);
@@ -842,7 +902,7 @@ void daB_DR_c::chkPartCreate(bool param_0) {
 
             prm |= (BREAK_PARTS_DT[part_no].prm << 8);
             size.x = size.y = size.z = BREAK_PARTS_DT[part_no].size;
-            fopAcM_create(fpcNm_B_DR_e, prm, &pos, fopAcM_GetRoomNo(this), &rot, &size, -1);
+            DUSK_IF_ELSE(fopAcM_createChild(fpcNm_B_DR_e, fopAcM_GetID(this), prm, &pos, fopAcM_GetRoomNo(this), &rot, &size, -1, NULL), fopAcM_create(fpcNm_B_DR_e, prm, &pos, fopAcM_GetRoomNo(this), &rot, &size, -1));
 
             field_0x7e0++;
             part_no++;
@@ -866,12 +926,12 @@ void daB_DR_c::mHabatakiAnmSet(int param_0) {
         setBck(ANM_DR_BRAKE_TO_HOVER, 0, 3.0f, 1.0f);
         break;
     case ANM_DR_FLY:
-        if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) {
+        if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f))) {
             setBck(ANM_DR_BRAKE_TO_HOVER, 0, l_HIO.unk_0x2c, 1.0f);
         }
         break;
     case ANM_DR_FLAP:
-        if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) {
+        if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f))) {
             if (param_0 != 5 && param_0 != 6) {
                 setBck(ANM_DR_FLAP_TO_FLY, 0, 3.0f, 1.0f);
             } else {
@@ -897,7 +957,7 @@ void daB_DR_c::mHabatakiAnmSet(int param_0) {
         setBck(ANM_DR_HOVERING, 2, 3.0f, 1.0f);
         /* fallthrough */
     case ANM_DR_HOVERING:
-        if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f) && param_0 == 4) {
+        if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) && param_0 == 4) {
             setBck(ANM_DR_FLAP, 2, 3.0f, 1.0f);
         }
         break;
@@ -916,13 +976,13 @@ void daB_DR_c::mGlider_AniSet(bool param_0) {
     if (cLib_calcTimer<int>(&mTimer[0]) == 0) {
         switch (mAnm) {
         case ANM_DR_WIND_ATTACKB:
-            if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) {
+            if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f))) {
                 setBck(ANM_DR_WIND_ATTACKBTOFLY, 2, 3.0f, 1.0f);
             }
             break;
         case ANM_DR_HOVERING:
         case ANM_DR_WIND_ATTACKBTOFLY:
-            if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) {
+            if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f))) {
                 if (mAnm == ANM_DR_WIND_ATTACKBTOFLY) {
                     setBck(ANM_DR_FLY, 2, 5.0f, 1.0f);
                 } else {
@@ -931,19 +991,19 @@ void daB_DR_c::mGlider_AniSet(bool param_0) {
             }
             break;
         case ANM_DR_FLY:
-            if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) {
+            if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f))) {
                 setBck(ANM_DR_FLY_TO_GLIDE, 0, 3.0f, 1.0f);
             }
             break;
         case ANM_DR_FLY_TO_GLIDE:
             if (mpModelMorf->isStop()) {
                 setBck(ANM_DR_GLIDE, 2, 3.0f, 1.0f);
-                mTimer[0] = cM_rndF(50.0f) + 50.0f;
+                mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(50.0f) + 50.0f), cM_rndF(50.0f) + 50.0f);
             }
             break;
         case ANM_DR_GLIDE:
             if (!param_0) {
-                if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) {
+                if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f))) {
                     setBck(ANM_DR_GLIDE_TO_FLY, 0, 3.0f, 1.0f);
                 }
             }
@@ -952,7 +1012,7 @@ void daB_DR_c::mGlider_AniSet(bool param_0) {
         case ANM_DR_GLIDE_TO_FLY:
             if (mpModelMorf->isStop()) {
                 setBck(ANM_DR_FLY, 2, 3.0f, 1.0f);
-                mTimer[0] = cM_rndF(34.0f) + 34.0f;
+                mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(34.0f) + 34.0f), cM_rndF(34.0f) + 34.0f);
             }
             break;
         }
@@ -971,7 +1031,7 @@ void daB_DR_c::mGliderAtAniSet() {
         setBck(ANM_DR_WIND_ATTACKATOB, 0, 3.0f, 1.0f);
         break;
     case ANM_DR_FLY:
-        if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) {
+        if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f))) {
             setBck(ANM_DR_WIND_ATTACKATOB, 0, 3.0f, 1.0f);
         }
         break;
@@ -1066,11 +1126,21 @@ void daB_DR_c::mHeadAngleSet() {
             target_angle_x = -0x1000;
         }
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &mHeadAngle.y, target_angle_y, 8, 0x500);
+        actor_attr::enemy_add_action_angle(this, &mHeadAngle.x, target_angle_x, 8, 0x500);
+#else
         cLib_addCalcAngleS2(&mHeadAngle.y, target_angle_y, 8, 0x500);
         cLib_addCalcAngleS2(&mHeadAngle.x, target_angle_x, 8, 0x500);
+#endif
     } else {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &mHeadAngle.y, 0, 8, 0x500);
+        actor_attr::enemy_add_action_angle(this, &mHeadAngle.x, 0, 8, 0x500);
+#else
         cLib_addCalcAngleS2(&mHeadAngle.y, 0, 8, 0x500);
         cLib_addCalcAngleS2(&mHeadAngle.x, 0, 8, 0x500);
+#endif
     }
 }
 
@@ -1095,10 +1165,10 @@ bool daB_DR_c::flapMove(bool param_0) {
         field_0x724 = 20.0f;
     }
 
-    cLib_addCalc2(&current.pos.y, target_y, 0.8f, field_0x724);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &current.pos.y, target_y, 0.8f, field_0x724), cLib_addCalc2(&current.pos.y, target_y, 0.8f, field_0x724));
 
     if (!param_0) {
-        cLib_addCalc2(&field_0x724, 4.0f, 0.8f, 2.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &field_0x724, 4.0f, 0.8f, 2.0f), cLib_addCalc2(&field_0x724, 4.0f, 0.8f, 2.0f));
     }
 
     if (fabsf(current.pos.y - target_y) < 100.0f) {
@@ -1122,7 +1192,7 @@ bool daB_DR_c::revolutionMove() {
     arg0 = 1;
 
     if (fabsf(current.pos.y - mTargetHeight) > 100.0f) {
-        cLib_addCalc2(&current.pos.y, mTargetHeight, 0.8f, 50.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &current.pos.y, mTargetHeight, 0.8f, 50.0f), cLib_addCalc2(&current.pos.y, mTargetHeight, 0.8f, 50.0f));
         mae = current.pos - home.pos;
         mae.y = 0.0f;
         field_0x750 = 200;
@@ -1130,7 +1200,7 @@ bool daB_DR_c::revolutionMove() {
         return false;
     }
 
-    cLib_addCalc0(&speed.y, 0.7f, 5.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc0(this, &speed.y, 0.7f, 5.0f), cLib_addCalc0(&speed.y, 0.7f, 5.0f));
     cMtx_YrotS(*calc_mtx, field_0x74c);
     mae.x = 0.0f;
     mae.y = 0.0f;
@@ -1142,8 +1212,13 @@ bool daB_DR_c::revolutionMove() {
     mae = field_0x7a8 - current.pos;
     mae.y = 0.0f;
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(this, &current.angle.y, (s16)mae.atan2sX_Z(), field_0x750, 0x400);
+    actor_attr::enemy_add_action_angle(this, &field_0x750, 8, 10, 40);
+#else
     cLib_addCalcAngleS2(&current.angle.y, (s16)mae.atan2sX_Z(), field_0x750, 0x400);
     cLib_addCalcAngleS2(&field_0x750, 8, 10, 40);
+#endif
     shape_angle.y = current.angle.y;
 
     if (abs((s16)((s16)mae.atan2sX_Z() - shape_angle.y)) > 0x1000) {
@@ -1191,17 +1266,32 @@ bool daB_DR_c::mBgFallGroundCheck() {
         chkpos.y = home.pos.y;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    const f32 body_clearance = actor_attr::enemy_size_value(this, 80.0f);
+    if (!mAcch.ChkGroundHit() && !(body_clearance + chkpos.y > current.pos.y)) {
+#else
     if (!mAcch.ChkGroundHit() && !(80.0f + chkpos.y > current.pos.y)) {
+#endif
         return false;
     }
 
     speed.y = 0.0f;
 
+#if TARGET_PC  // enemy attribute integration
+    if (current.pos.y < body_clearance + home.pos.y) {
+        current.pos.y = body_clearance + home.pos.y;
+#else
     if (current.pos.y < 80.0f + home.pos.y) {
         current.pos.y = 80.0f + home.pos.y;
+#endif
     }
+#if TARGET_PC  // enemy attribute integration
+    if (current.pos.y < body_clearance + chkpos.y) {
+        current.pos.y = body_clearance + chkpos.y;
+#else
     if (current.pos.y < 80.0f + chkpos.y) {
         current.pos.y = 80.0f + chkpos.y;
+#endif
     }
 
     gravity = 0.0f;
@@ -1235,8 +1325,13 @@ void daB_DR_c::normalHoverMove() {
     target_pos += home.pos;
     target_pos.y = current.pos.y;
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_calc_pos(this, &current.pos, target_pos, 0.4f, 5.0f, field_0x744);
+    actor_attr::enemy_add_action_calc2(this, &field_0x744, 1.0f, 0.3f, 0.1f);
+#else
     cLib_addCalcPos(&current.pos, target_pos, 0.4f, 5.0f, field_0x744);
     cLib_addCalc2(&field_0x744, 1.0f, 0.3f, 0.1f);
+#endif
 
     target_vec = target_pos - current.pos;
     target_vec.y = 0.0f;
@@ -1262,19 +1357,25 @@ void daB_DR_c::executeWait() {
     switch (mMoveMode) {
     case 0:
         mAllClr();
-        mTimer[2] = l_HIO.no_attack_time;
+        mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.no_attack_time), l_HIO.no_attack_time);
         field_0x750 = JREG_S(8) + 200;
         mMoveMode++;
         /* fallthrough */
     case 1:
         sp20.set(home.pos);
         sp20.y = current.pos.y;
-        cLib_addCalcPos(&current.pos, sp20, 0.8f, 20.0f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, sp20, 0.8f, 20.0f, 5.0f), cLib_addCalcPos(&current.pos, sp20, 0.8f, 20.0f, 5.0f));
         sp14 = sp20 - current.pos;
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), 10, 0x800);
+        actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, field_0x750, 0x400);
+        actor_attr::enemy_add_action_angle(this, &field_0x750, 8, 8, 20);
+#else
         cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), 10, 0x800);
         cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, 0x400);
         cLib_addCalcAngleS2(&field_0x750, 8, 8, 20);
+#endif
 
         if (daPy_getPlayerActorClass()->getDamageWaitTimer() == 0 && temp_r27 && sp14.abs() < 100.0f) {
             if (mBreakPartsNo == 0) {
@@ -1298,8 +1399,13 @@ void daB_DR_c::executeWait() {
         }
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_calc0(this, &speedF, 0.8f, 10.0f);
+    actor_attr::enemy_add_action_calc0(this, &speed.y, 0.8f, 10.0f);
+#else
     cLib_addCalc0(&speedF, 0.8f, 10.0f);
     cLib_addCalc0(&speed.y, 0.8f, 10.0f);
+#endif
 
     if (mMoveMode == 2 && (cLib_calcTimer<int>(&mTimer[2]) == 0 || dComIfGp_checkPlayerStatus0(0, 0x100))) {
         if (mPlayerHighCheck()) {
@@ -1326,7 +1432,7 @@ void daB_DR_c::executeFlyWait() {
     }
 #endif
 
-    cLib_addCalc0(&speedF, 0.8f, 10.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc0(this, &speedF, 0.8f, 10.0f), cLib_addCalc0(&speedF, 0.8f, 10.0f));
     mHabatakiAnmSet(0);
 
     switch (mMoveMode) {
@@ -1338,7 +1444,7 @@ void daB_DR_c::executeFlyWait() {
         field_0x724 = 0.0f;
         if (revolutionMove()) {
             field_0x750 = JREG_S(8) + 200;
-            mTimer[2] = l_HIO.no_attack_no_armor_time;
+            mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.no_attack_no_armor_time), l_HIO.no_attack_no_armor_time);
             mMoveMode = 2;
         } else {
             mMoveMode = 1;
@@ -1350,18 +1456,23 @@ void daB_DR_c::executeFlyWait() {
         }
 
         field_0x750 = JREG_S(8) + 200;
+#if TARGET_PC  // enemy attribute integration
+        mTimer[2] = actor_attr::enemy_sync_timer(this, l_HIO.no_attack_no_armor_time);
+        actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 1.0f);
+#else
         mTimer[2] = l_HIO.no_attack_no_armor_time;
         mpModelMorf->setPlaySpeed(1.0f);
+#endif
         mMoveMode = 2;
         // fallthrough
     case 2:
         field_0x7d6 = 0;
         normalHoverMove();
-        cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), field_0x750, 0x200);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), field_0x750, 0x200), cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), field_0x750, 0x200));
 
         sp8.set(home.pos);
         sp8.y = current.pos.y;
-        cLib_addCalcPos(&current.pos, sp8, 0.8f, 20.0f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, sp8, 0.8f, 20.0f, 5.0f), cLib_addCalcPos(&current.pos, sp8, 0.8f, 20.0f, 5.0f));
 
         if (mTargetHeight < player->current.pos.y || mPlayerHighCheck()) {
             setActionMode(ACTION_BREATH_ATTACK, 0);
@@ -1374,12 +1485,12 @@ void daB_DR_c::executeFlyWait() {
     }
 
     if (mMoveMode < 10) {
-        cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, 0x400);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, field_0x750, 0x400), cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, 0x400));
     } else {
-        cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, 0x200);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, field_0x750, 0x200), cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, 0x200));
     }
 
-    cLib_addCalcAngleS2(&field_0x750, 8, 10, 20);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &field_0x750, 8, 10, 20), cLib_addCalcAngleS2(&field_0x750, 8, 10, 20));
 }
 
 void daB_DR_c::executeTailHit() {
@@ -1399,7 +1510,7 @@ void daB_DR_c::executeTailHit() {
 #endif
 
     bool sp10 = mPlayerHighCheck();
-    if (daPy_getPlayerActorClass()->getDamageWaitTimer() != 0) {
+    if (DUSK_IF_ELSE(daPy_getPlayerActorClass()->getDamageWaitTimer() != 0 && mMoveMode < 10, daPy_getPlayerActorClass()->getDamageWaitTimer() != 0)) {
         dMw_onPauseWindow();
         if (field_0x7d1 != 2) {
             field_0x724 = 50.0f;
@@ -1411,8 +1522,60 @@ void daB_DR_c::executeTailHit() {
     }
 
     if ((mMoveMode == 0 || mMoveMode == 1) && current.pos.y < (1000.0f + l_HIO.breath_attack_threshold)) {
-        cLib_addCalc2(&current.pos.y, 1000.0f + l_HIO.breath_attack_threshold, 0.7f, 20.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &current.pos.y, 1000.0f + l_HIO.breath_attack_threshold, 0.7f, 20.0f), cLib_addCalc2(&current.pos.y, 1000.0f + l_HIO.breath_attack_threshold, 0.7f, 20.0f));
     }
+#if TARGET_PC  // enemy attribute integration
+
+    // Compute the world-space Y where Argorok should actually be considered
+    // landed for this pose/size.  This is shared by the BOOT_A synchronization
+    // below and the normal BOOT_B fallback fall.
+    auto tail_fall_landing_y = [&](f32* out_landing_ground) -> f32 {
+        const f32 landing_ground = std::max(field_0x734, home.pos.y);
+        if (out_landing_ground != NULL) {
+            *out_landing_ground = landing_ground;
+        }
+
+        const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(this);
+        f32 landing_clearance = 80.0f;
+
+        if (sizeMultiplier != 1.0f) {
+            const f32 scaledVanillaClearance = actor_attr::enemy_size_value(this, 80.0f);
+            const f32 tailBottomY = mTailCc.GetC().y - mTailCc.GetR();
+            const f32 tailClearance = current.pos.y - tailBottomY;
+
+            landing_clearance = std::max(scaledVanillaClearance, tailClearance);
+        }
+
+        return landing_ground + landing_clearance;
+    };
+
+    // Normal post-animation fallback.  field_0x728 is the accumulated fall
+    // acceleration/max Y step; do not size-scale it here.
+    auto advance_tail_fall_position = [&](f32* out_landing_ground) -> bool {
+        field_0x728 += actor_attr::enemy_action_step(this, l_HIO.fall_accel);
+        if (field_0x728 >= l_HIO.fall_accel_max) {
+            field_0x728 = l_HIO.fall_accel_max;
+        }
+
+        actor_attr::enemy_add_action_calc2(this, &current.pos.y, field_0x734, 0.8f, field_0x728);
+        actor_attr::enemy_add_action_calc2(this, &current.pos.x, home.pos.x, 0.8f, 8.0f);
+        actor_attr::enemy_add_action_calc2(this, &current.pos.z, home.pos.z, 0.8f, 8.0f);
+
+        mAcch.SetWallNone();
+        mAcch.SetGroundUpY(75.0f);
+        mAcch.CrrPos(dComIfG_Bgsp());
+
+        const f32 landing_y = tail_fall_landing_y(out_landing_ground);
+
+        const bool boss_landed = current.pos.y <= landing_y || (mAcch.ChkGroundHit() && current.pos.y <= landing_y + actor_attr::enemy_size_value(this, 100.0f));
+
+        if (boss_landed) {
+            current.pos.y = landing_y;
+        }
+
+        return boss_landed;
+    };
+#endif
 
     switch (mMoveMode) {
     case 0:
@@ -1426,7 +1589,7 @@ void daB_DR_c::executeTailHit() {
 
         if (dComIfGp_checkPlayerStatus1(0, 0x10000)) {
             field_0x728 = 0.0f;
-            mTimer[0] = l_HIO.tail_hit_chance_time;
+            mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, l_HIO.tail_hit_chance_time), l_HIO.tail_hit_chance_time);
             mMoveMode++;
         }
         break;
@@ -1510,11 +1673,66 @@ void daB_DR_c::executeTailHit() {
         }
         break;
     case 10:
+#if TARGET_PC  // enemy attribute integration
+    {
+#endif
         mStatusONOFF(0);
         dComIfGs_onZoneSwitch(22, fopAcM_GetRoomNo(this));
 
         if (mBreakPartsNo == 0) {
             dCam_getBody()->SetTrimTypeForce(2);
+#if TARGET_PC  // enemy attribute integration
+        }
+
+        const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(this);
+
+        if (sizeMultiplier > 1.0f) {
+            // BOOT_A visually pitches/falls Argorok forward.  On a large model
+            // that visual displacement is much larger, so the actor origin must
+            // descend faster during this one animation too.
+            //
+            // Keep field_0x728 as the fall acceleration/max-step value, but use
+            // a size-scaled fall step here.  Also calculate the minimum catch-up
+            // step needed to reach the real landing Y by the end of BOOT_A.
+            // This keeps the physical fall matched to the animation instead of
+            // finishing the pose in mid-air and then free-falling afterward.
+            field_0x728 += actor_attr::enemy_action_step(this, l_HIO.fall_accel);
+            if (field_0x728 >= l_HIO.fall_accel_max) {
+                field_0x728 = l_HIO.fall_accel_max;
+            }
+
+            actor_attr::enemy_add_action_calc2(this, &current.pos.x, home.pos.x, 0.8f, 8.0f);
+            actor_attr::enemy_add_action_calc2(this, &current.pos.z, home.pos.z, 0.8f, 8.0f);
+
+            mAcch.SetWallNone();
+            mAcch.SetGroundUpY(75.0f);
+            mAcch.CrrPos(dComIfG_Bgsp());
+
+            f32 unused_landing_ground;
+            const f32 landing_y = tail_fall_landing_y(&unused_landing_ground);
+
+            if (current.pos.y > landing_y) {
+                const f32 remainingY = current.pos.y - landing_y;
+                const f32 frame = mpModelMorf->getFrame();
+                const f32 endFrame = mpModelMorf->getEndFrame();
+                const f32 frameStep = std::max(fabsf(mpModelMorf->getPlaySpeed()), 0.001f);
+                const f32 remainingFrames = std::max(endFrame - frame, frameStep);
+
+                const f32 sizeScaledFallStep = field_0x728 * sizeMultiplier;
+                const f32 catchUpStep = remainingY * std::min(frameStep / remainingFrames, 1.0f);
+
+                const f32 fallStep = std::max(sizeScaledFallStep, catchUpStep);
+
+                current.pos.y -= std::min(remainingY, fallStep);
+            }
+
+            // action() checks this before mpModelMorf->play() advances the
+            // animation for the current update.  If BOOT_A is already stopped
+            // here, make the endpoint exact before changing to BOOT_B.
+            if (mpModelMorf->isStop()) {
+                current.pos.y = landing_y;
+            }
+#endif
         }
 
         if (!mpModelMorf->isStop()) {
@@ -1524,25 +1742,66 @@ void daB_DR_c::executeTailHit() {
         setBck(ANM_DR_BOOT_B, 2, 3.0f, 1.0f);
         mBgFallGroundCheck();
         mMoveMode++;
+#if TARGET_PC  // enemy attribute integration
+        /* fallthrough */
+    }
+#endif
     case 11:
+#if TARGET_PC  // enemy attribute integration
+    {
+#endif
         if (mBreakPartsNo == 0) {
             dCam_getBody()->SetTrimTypeForce(2);
         }
 
+#if TARGET_PC  // enemy attribute integration
+        f32 landing_ground;
+        const bool boss_landed = advance_tail_fall_position(&landing_ground);
+
+        if (player->current.pos.y < landing_ground) {
+            // The original fallback treated any position below the sampled
+            // floor as a successful landing. At a slow boss action rate Link
+            // can instead remain hook-carried through the arena floor. Release
+            // that carry, restore the player to the surface, and give player
+            // collision one update before this sequence is allowed to advance.
+            fopAcM_cancelHookCarryNow(this);
+            cXyz player_landing_pos(player->current.pos);
+            player_landing_pos.y = landing_ground;
+            player->setPlayerPosAndAngle(&player_landing_pos, player->shape_angle.y, 1);
+            return;
+#else
         field_0x728 += l_HIO.fall_accel;
         if (field_0x728 >= l_HIO.fall_accel_max) {
             field_0x728 = l_HIO.fall_accel_max;
+#endif
         }
 
+#if TARGET_PC  // enemy attribute integration
+        const bool player_landed = player->getFootOnGround() || fabsf(player->current.pos.y - landing_ground) < 10.0f;
+#else
         cLib_addCalc2(&current.pos.y, field_0x734, 0.8f, field_0x728);
         cLib_addCalc2(&current.pos.x, home.pos.x, 0.8f, 8.0f);
         cLib_addCalc2(&current.pos.z, home.pos.z, 0.8f, 8.0f);
+#endif
 
+#if TARGET_PC  // enemy attribute integration
+        // At high action speeds Argorok can reach his size-aware tail landing
+        // point one update before Link's hook-carried position reaches the
+        // floor.  Once the boss/tail is safely landed, stop carrying Link so
+        // he can fall the remaining small distance naturally.  Returning here
+        // also avoids re-applying the hook carry offset at the end of this
+        // function while we wait for Link to touch down.
+        if (boss_landed && !player_landed) {
+            fopAcM_cancelHookCarryNow(this);
+            return;
+        }
+#else
         mAcch.SetWallNone();
         mAcch.SetGroundUpY(75.0f);
         mAcch.CrrPos(dComIfG_Bgsp());
+#endif
 
-        if (player->getFootOnGround() || player->current.pos.y < 10.0f + field_0x734) {
+        if (DUSK_IF_ELSE(player_landed && boss_landed, player->getFootOnGround() || player->current.pos.y < 10.0f + field_0x734)) {
             mSound.startCreatureSound(Z2SE_EN_DR_LAND, 0, -1);
 
             if (mBreakPartsNo != 0) {
@@ -1569,11 +1828,15 @@ void daB_DR_c::executeTailHit() {
             mMoveMode++;
         }
         break;
+#if TARGET_PC  // enemy attribute integration
+    }
+#endif
     case 12:
         if (startDemoCheck()) {
             shape_angle.y = current.angle.y = home.angle.y;
             current.pos.x = home.pos.x;
             current.pos.z = home.pos.z;
+            IF_DUSK(field_0x7e0 = 0;)
 
             setBck(ANM_DR_IMPACT, 0, 3.0f, 1.0f);
             mMoveMode++;
@@ -1582,12 +1845,12 @@ void daB_DR_c::executeTailHit() {
     case 13:
         if (mAnm == ANM_DR_BOOT_C) {
             if ((int)mpModelMorf->getFrame() >= 34) {
-                cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f), cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f));
             }
 
             if (mpModelMorf->isStop()) {
                 setBck(ANM_DR_DOWN_WAIT, 2, 3.0f, 1.0f);
-                mTimer[0] = 35;
+                mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 35), 35);
             }
         }
 
@@ -1605,7 +1868,7 @@ void daB_DR_c::executeTailHit() {
     case 14:
         if (mAnm == ANM_DR_BOOT_C) {
             if ((int)mpModelMorf->getFrame() >= 34) {
-                cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f), cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f));
             }
             if (!mpModelMorf->isStop()) {
                 break;
@@ -1614,7 +1877,7 @@ void daB_DR_c::executeTailHit() {
 
         if (mAnm != ANM_DR_DOWN_WAIT) {
             setBck(ANM_DR_DOWN_WAIT, 2, 3.0f, 1.0f);
-            mTimer[0] = 35;
+            mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 35), 35);
         }
     
         if (cLib_calcTimer<int>(&mTimer[0]) != 0) {
@@ -1629,7 +1892,7 @@ void daB_DR_c::executeTailHit() {
         Z2GetAudioMgr()->subBgmStart(Z2BGM_DRAGON_D02);
         dComIfGs_onZoneSwitch(23, fopAcM_GetRoomNo(this));
         field_0x7e0 = 0;
-        mTimer[0] = BREG_S(3) + 100;
+        mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, BREG_S(3) + 100), BREG_S(3) + 100);
         mMoveMode = 1000;
         break;
     case 20:
@@ -1651,7 +1914,7 @@ void daB_DR_c::executeTailHit() {
                     flapMove(1);
                 } else {
                     revolutionMove();
-                    cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 8, 0x400);
+                    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, 8, 0x400), cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 8, 0x400));
                 }
             }
         }
@@ -1721,7 +1984,7 @@ void daB_DR_c::executeTailHit() {
     }
 
     if (mMoveMode >= 10 && mMoveMode <= 11) {
-        cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), 40, 0x200);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), 40, 0x200), cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), 40, 0x200));
         shape_angle.y = current.angle.y;
     }
 
@@ -1760,12 +2023,28 @@ void daB_DR_c::executeWeekHit() {
 
         mCount[0] = cM_rndF(2.0f);
         mCount[1] = 0;
-        mTimer[2] = l_HIO.back_hit_chance_time;
+        // Before Link is actually riding Argorok, this is a latch/transition
+        // window.  Keep that part synchronized with movement/action speed so a
+        // slow Argorok cannot burn through the health-based attack window
+        // while Link is still completing the latch animation.
+        mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.back_hit_chance_time), l_HIO.back_hit_chance_time);
         field_0x7d0 = 0;
         field_0x7d6 = 1;
         mMoveMode++;
         /* fallthrough */
     case 1:
+#if TARGET_PC  // enemy attribute integration
+        // Start the health-based sword-hit opportunity only once Link is
+        // actually latched onto Argorok's back.  Do this before ticking the
+        // timer so a latch that completes on the old timer's final frame still
+        // receives the full mounted attack window.
+        if (mCount[1] == 0 && player->checkDragonHangRide()) {
+            setBck(ANM_DR_RIDE, 0, 3.0f, 1.0f);
+            dComIfGp_getVibration().StartShock(VIBMODE_S_POWER2, 0x4F, cXyz(0.0f, 1.0f, 0.0f));
+            mCount[1] = 1;
+            mTimer[2] = dragon_mount_window_for_hits(this, l_HIO.back_hit_chance_time);
+        }
+#endif
         if (cLib_calcTimer<int>(&mTimer[2]) == 0) {
             setBck(ANM_DR_SHAKEB, 0, 10.0f, 1.0f);
             Z2GetAudioMgr()->changeBgmStatus(1);
@@ -1773,11 +2052,13 @@ void daB_DR_c::executeWeekHit() {
             field_0x744 = 0.0f;
             break;
         } else {
+#if !TARGET_PC  // enemy attribute integration
             if (mCount[1] == 0 && player->checkDragonHangRide()) {
                 setBck(ANM_DR_RIDE, 0, 3.0f, 1.0f);
                 dComIfGp_getVibration().StartShock(VIBMODE_S_POWER2, 0x4F, cXyz(0.0f, 1.0f, 0.0f));
                 mCount[1] = 1;
             }
+#endif
 
             if ((mAnm == ANM_DR_RIDE || mAnm == ANM_DR_DAMAGE_L || mAnm == ANM_DR_DAMAGE_R || mAnm == ANM_DR_CATCH) && mpModelMorf->isStop()) {
                 setBck(ANM_DR_HOVERING_B, 2, 3.0f, 1.0f);
@@ -1788,7 +2069,7 @@ void daB_DR_c::executeWeekHit() {
             }
 
             offCutDownHitFlg();
-            field_0x7d0 = 4;
+            field_0x7d0 = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(this, 4), 4);
 
             mSound.startCreatureExtraSound(Z2SE_EN_DR_CORE_HIT, 0, -1);
             dComIfGp_getVibration().StartShock(VIBMODE_S_POWER5, 0x1F, cXyz(0.0f, 1.0f, 0.0f));
@@ -1806,7 +2087,7 @@ void daB_DR_c::executeWeekHit() {
             }
 
             field_0x7e8++;
-            mTimer[2] = l_HIO.back_hit_chance_time;
+            mTimer[2] = DUSK_IF_ELSE(dragon_mount_window_for_hits(this, l_HIO.back_hit_chance_time), l_HIO.back_hit_chance_time);
 
             mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(15));
             mDoMtx_stack_c::multVecZero(&sp50);
@@ -1837,12 +2118,12 @@ void daB_DR_c::executeWeekHit() {
                 sp44.x = 0.0f;
 
                 parentActorID = fopAcM_createChild(fpcNm_B_DRE_e, fopAcM_GetID(this), 0, &sp44, fopAcM_GetRoomNo(this), &shape_angle, NULL, -1, NULL);
-                mTimer[0] = BREG_S(3) + 20;
+                mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, BREG_S(3) + 20), BREG_S(3) + 20);
                 mMoveMode = 1000;
                 return;
             }
 
-            if (field_0x7e8 >= 4) {
+            if (field_0x7e8 >= DUSK_IF_ELSE(dragon_hits_per_mount(this), 4)) {
                 mSound.startCollisionSE(Z2SE_HIT_SWORD, 0x20);
 
                 if (bitSw2 != 0xFF) {
@@ -1852,7 +2133,7 @@ void daB_DR_c::executeWeekHit() {
                     fopAcM_onSwitch(this, bitSw3);
                 }
 
-                if (health <= 8) {
+                if (health <= DUSK_IF_ELSE(actor_attr::enemy_health_value(this, 8), 8)) {
                     onDownFlg();
                 }
 
@@ -1901,7 +2182,7 @@ void daB_DR_c::executeWeekHit() {
         if (mAnm == ANM_DR_FALL_DOWN && mpModelMorf->isStop()) {
             setBck(ANM_DR_DOWN_WAIT, 2, 10.0f, 1.0f);
             field_0x7d7 = 1;
-            mTimer[0] = 35;
+            mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 35), 35);
         }
 
         if (mAnm == ANM_DR_DOWN_WAIT && cLib_calcTimer<int>(&mTimer[0]) == 0) {
@@ -1974,8 +2255,15 @@ void daB_DR_c::mBreathSet() {
     cXyz mae;
     cXyz ato;
 
-    cLib_addCalc2(&field_0x72c, 50.0f, 0.7f, 4.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &field_0x72c, 50.0f, 0.7f, 4.0f), cLib_addCalc2(&field_0x72c, 50.0f, 0.7f, 4.0f));
     data_805C7974 = field_0x72c;
+#if TARGET_PC  // enemy attribute integration
+
+    // The fire particles have their own movement, separate from the damaging
+    // child actor. Give them the same half-strength action speed scaling.
+    const f32 fireSpeedScale = 1.0f + (actor_attr::enemy_action_step(this, 100.0f) - 100.0f) / 500.0f;
+    JGeometry::TVec3<f32> fireDynamicsScale(fireSpeedScale, fireSpeedScale, fireSpeedScale);
+#endif
 
     csXyz sp1C(shape_angle);
     for (int i = 0; i < 4; i++) {
@@ -1985,6 +2273,7 @@ void daB_DR_c::mBreathSet() {
         JPABaseEmitter* emitter_p = dComIfGp_particle_getEmitter(field_0x27dc[i]);
         if (emitter_p != NULL) {
             emitter_p->setGlobalSRTMatrix(mpModelMorf->getModel()->getAnmMtx(0x13));
+            IF_DUSK(emitter_p->setGlobalDynamicsScale(fireDynamicsScale);)
 
             cMtx_YrotS(*calc_mtx, fopAcM_searchPlayerAngleY(this));
             mae.x = 0.0f;
@@ -2007,7 +2296,7 @@ void daB_DR_c::mBreathSet() {
         }
 
         sp1C.x = NREG_S(8) - 1000;
-        mTimer[1] = 3;
+        mTimer[1] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 3), 3);
         fopAcM_createChild(fpcNm_B_DR_e, fopAcM_GetID(this), 10, &field_0x760, fopAcM_GetRoomNo(this), &sp1C, NULL, -1, NULL);
     }
 }
@@ -2045,12 +2334,18 @@ bool daB_DR_c::mBreathHighSet(bool param_0) {
     }
 
     if (param_0 == 0) {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), field_0x750, 0x800);
+        actor_attr::enemy_add_action_angle(this, &field_0x750, 4, 4, 40);
+        actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, 8, 0x300);
+#else
         cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), field_0x750, 0x800);
         cLib_addCalcAngleS2(&field_0x750, 4, 4, 40);
         cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 8, 0x300);
+#endif
     }
 
-    cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, l_HIO.breath_move_speed_max, l_HIO.breath_move_speed_min);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x7a8, 0.8f, l_HIO.breath_move_speed_max, l_HIO.breath_move_speed_min), cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, l_HIO.breath_move_speed_max, l_HIO.breath_move_speed_min));
 
     ato = field_0x7a8 - current.pos;
     if (ato.abs() < 100.0f && fabsf(field_0x7a8.y - current.pos.y) < 40.0f && (param_0 || abs((s16)(shape_angle.y - fopAcM_searchPlayerAngleY(this))) < 0x200)) {
@@ -2065,20 +2360,20 @@ bool daB_DR_c::mFeintBreath() {
 
     switch (field_0x718) {
     case 0:
-        mTimer[2] = l_HIO.breath_feint1_time;
+        mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.breath_feint1_time), l_HIO.breath_feint1_time);
         field_0x718++;
         /* fallthrough */
     case 1:
         if (cLib_calcTimer<int>(&mTimer[2]) == 0) {
             setBck(ANM_DR_FEINT_A, 0, 3.0f, 1.0f);
-            mTimer[2] = l_HIO.breath_feint2_time;
+            mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.breath_feint2_time), l_HIO.breath_feint2_time);
             field_0x718++;
         } else {
             mBreathSet();
 
-            cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), l_HIO.body_search2_speed, l_HIO.body_search_speed_max);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), l_HIO.body_search2_speed, l_HIO.body_search_speed_max), cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), l_HIO.body_search2_speed, l_HIO.body_search_speed_max));
             field_0x756 = current.angle.y - shape_angle.y;
-            cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 4, 0x400);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, 4, 0x400), cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 4, 0x400));
             field_0x754 = current.angle.y;
         }
         break;
@@ -2088,7 +2383,15 @@ bool daB_DR_c::mFeintBreath() {
         }
 
         if (cLib_calcTimer<int>(&mTimer[2]) == 0) {
+#if TARGET_PC  // enemy attribute integration
+            // At high action speed the turn can finish before FEINT_A does.
+            // State 3 only advances from FEINT_B, so wait for that handoff.
+            if (mAnm == ANM_DR_FEINT_B) {
+#endif
             field_0x718++;
+#if TARGET_PC  // enemy attribute integration
+            }
+#endif
         } else {
             if (field_0x756 > 0) {
                 ANGLE_ADD(temp_r30, l_HIO.feint_angle * 0xB6);
@@ -2097,15 +2400,23 @@ bool daB_DR_c::mFeintBreath() {
             }
 
             if (abs((s16)(current.angle.y - temp_r30)) > 0x100) {
+#if TARGET_PC  // enemy attribute integration
+                actor_attr::enemy_add_action_angle(this, &current.angle.y, temp_r30, 1, l_HIO.body_search_feint_speed_max);
+                actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, 2, 0x800);
+#else
                 cLib_addCalcAngleS2(&current.angle.y, temp_r30, 1, l_HIO.body_search_feint_speed_max);
                 cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 2, 0x800);
+#endif
             } else {
                 mTimer[2] = 0;
             }
         }
         break;
     case 3:
-        if (mAnm == ANM_DR_FEINT_B && (int)mpModelMorf->getFrame() >= 23) {
+        if (mAnm == ANM_DR_FEINT_B &&
+            // FEINT_B loops; at 400% speed it can wrap past frame 23
+            // between calls to action(). Detect the crossing as well.
+            DUSK_IF_ELSE((mpModelMorf->getFrame() >= 23.0f || mpModelMorf->checkFrame(23.0f)), (int)mpModelMorf->getFrame() >= 23)) {
             setBck(ANM_DR_FEINT_C, 0, 3.0f, 1.0f);
             field_0x718++;
         }
@@ -2113,7 +2424,7 @@ bool daB_DR_c::mFeintBreath() {
     case 4:
         if (mpModelMorf->isStop()) {
             setBck(ANM_DR_FIREB, 2, 3.0f, 1.0f);
-            mTimer[2] = l_HIO.breath_feint3_time;
+            mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.breath_feint3_time), l_HIO.breath_feint3_time);
             field_0x718++;
         }
         break;
@@ -2160,8 +2471,13 @@ void daB_DR_c::executeBreathAttack() {
         return;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_calc0(this, &speedF, 0.5f, 2.0f);
+    actor_attr::enemy_add_action_calc0(this, &speed.y, 0.5f, 2.0f);
+#else
     cLib_addCalc0(&speedF, 0.5f, 2.0f);
     cLib_addCalc0(&speed.y, 0.5f, 2.0f);
+#endif
 
     switch (mMoveMode) {
     case 0:
@@ -2169,7 +2485,7 @@ void daB_DR_c::executeBreathAttack() {
         gravity = 0.0f;
         field_0x750 = 200;
         if (dComIfGp_checkPlayerStatus1(0, 0x2000000)) {
-            mTimer[3] = l_HIO.unk_0x4c;
+            mTimer[3] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.unk_0x4c), l_HIO.unk_0x4c);
         }
         mMoveMode++;
         /* fallthrough */
@@ -2184,17 +2500,29 @@ void daB_DR_c::executeBreathAttack() {
 
         mMoveMode++;
     case 2:
+#if TARGET_PC  // enemy attribute integration
+    {
+#endif
         sp8 = mBreathHighSet(0);
         if (mAnm == ANM_DR_HOVERING) {
             if (field_0x7d1 != 2) {
                 mStatusONOFF(1);
             }
+#if TARGET_PC  // enemy attribute integration
+            const bool crossedBreathFrame = actor_attr::enemy_action_time_speed(this) != 1.0f && (int)mpModelMorf->getFrame() < 33 && mpModelMorf->checkFrame(33.0f);
+            if (((int)mpModelMorf->getFrame() >= 33 || crossedBreathFrame) && sp8) {
+                OS_REPORT("[Dusklight randomizer] B_DR phase-two breath start " "(frame %.2f, crossing %u)\n", mpModelMorf->getFrame(), static_cast<unsigned>(crossedBreathFrame));
+#else
             if ((int)mpModelMorf->getFrame() >= 33 && sp8) {
+#endif
                 setBck(ANM_DR_FIREA, 0, 3.0f, 1.0f);
                 mMoveMode++;
             }
         }
         break;
+#if TARGET_PC  // enemy attribute integration
+    }
+#endif
     case 3:
         mBreathHighSet(1);
         if (!mpModelMorf->isStop()) {
@@ -2202,17 +2530,23 @@ void daB_DR_c::executeBreathAttack() {
         }
 
         if (field_0x7d1 != 2 || mTargetHeight > player->current.pos.y || dComIfGp_checkPlayerStatus1(0, 0x2000000)) {
-            mTimer[2] = l_HIO.breath_continue_time;
+            mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.breath_continue_time), l_HIO.breath_continue_time);
         } else {
+#if TARGET_PC  // enemy attribute integration
+            mTimer[2] = actor_attr::enemy_sync_timer(this, l_HIO.breath_continue_no_armor_time);
+            if (health <= actor_attr::enemy_health_value(this, 8)) {
+                mTimer[2] = actor_attr::enemy_sync_timer(this, l_HIO.breath_feint1_time);
+#else
             mTimer[2] = l_HIO.breath_continue_no_armor_time;
             if (health <= 8) {
                 mTimer[2] = l_HIO.breath_feint1_time;
+#endif
             }
             mActionMode = ACTION_BREATH_ATTACK2;
         }
 
         if (BREG_S(0) != 0) {
-            mTimer[2] = 10;
+            mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
         }
 
         field_0x72c = 0.0f;
@@ -2237,7 +2571,7 @@ void daB_DR_c::executeBreathAttack() {
                 var_r28 = -0x2000;
             }
 
-            if (health <= 0x10) {
+            if (health <= DUSK_IF_ELSE(actor_attr::enemy_health_value(this, 0x10), 0x10)) {
                 spC = l_HIO.neck_search2_speed;
                 spA = l_HIO.body_search2_speed;
             } else {
@@ -2245,13 +2579,13 @@ void daB_DR_c::executeBreathAttack() {
                 spA = l_HIO.body_search_speed;
             }
 
-            if (mMoveMode == 20 && mActionMode == ACTION_BREATH_ATTACK2 && health <= 8 && !mFeintBreath()) {
+            if (mMoveMode == 20 && mActionMode == ACTION_BREATH_ATTACK2 && health <= DUSK_IF_ELSE(actor_attr::enemy_health_value(this, 8), 8) && !mFeintBreath()) {
                 break;
             }
 
-            cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), spA, l_HIO.body_search_speed_max);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), spA, l_HIO.body_search_speed_max), cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), spA, l_HIO.body_search_speed_max));
             field_0x756 = current.angle.y - shape_angle.y;
-            cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 4, 0x400);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, 4, 0x400), cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 4, 0x400));
 
             if (mTargetHeight - 300.0f > player->current.pos.y) {
                 mTimer[2] = 0;
@@ -2271,10 +2605,10 @@ void daB_DR_c::executeBreathAttack() {
         mBreathHighSet(1);
 
         if (!mpModelMorf->isStop()) {
-            cLib_addCalcAngleS2(&mHeadAngle.y, 0, 100, 0x200);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &mHeadAngle.y, 0, 100, 0x200), cLib_addCalcAngleS2(&mHeadAngle.y, 0, 100, 0x200));
         } else if (mActionMode == ACTION_BREATH_ATTACK2 && field_0x7d1 == 2 && mTargetHeight < player->current.pos.y) {
             setBck(ANM_DR_FIRED, 2, 10.0f, 1.0f);
-            mTimer[3] = l_HIO.after_breath_chance_time;
+            mTimer[3] = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, l_HIO.after_breath_chance_time), l_HIO.after_breath_chance_time);
             mWeekCc.OnTgSetBit();
             mStatusONOFF(1);
             mMoveMode = 100;
@@ -2314,9 +2648,9 @@ void daB_DR_c::executeBreathAttack() {
         }
 
         if (field_0x7d1 != 2) {
-            mTimer[3] = l_HIO.no_attack_time;
+            mTimer[3] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.no_attack_time), l_HIO.no_attack_time);
         } else {
-            mTimer[3] = l_HIO.no_attack_no_armor_time;
+            mTimer[3] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.no_attack_no_armor_time), l_HIO.no_attack_no_armor_time);
         }
         mMoveMode = 1;
         break;
@@ -2324,7 +2658,7 @@ void daB_DR_c::executeBreathAttack() {
         mBreathHighSet(1);
 
         if (BREG_S(7) != 0) {
-            mTimer[3] = 1000;
+            mTimer[3] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 1000), 1000);
         }
 
         attention_info.flags |= fopAc_AttnFlag_BATTLE_e;
@@ -2351,8 +2685,13 @@ void daB_DR_c::executeBreathAttack() {
         break;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(this, &mHeadAngle.x, 0, 100, 0x200);
+    actor_attr::enemy_add_action_angle(this, &mHeadAngle.y, var_r28, spC, l_HIO.neck_search_speed_max);
+#else
     cLib_addCalcAngleS2(&mHeadAngle.x, 0, 100, 0x200);
     cLib_addCalcAngleS2(&mHeadAngle.y, var_r28, spC, l_HIO.neck_search_speed_max);
+#endif
 
     if (mMoveMode < 9 && !mPlayerHighCheck()) {
         if (mAnm == ANM_DR_FIREB) {
@@ -2379,8 +2718,13 @@ void daB_DR_c::executeWindAttack() {
         mHabatakiAnmSet(mActionMode);
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_calc0(this, &speedF, 0.5f, 5.0f + WREG_F(7));
+    actor_attr::enemy_add_action_calc0(this, &speed.y, 0.5f, 5.0f);
+#else
     cLib_addCalc0(&speedF, 0.5f, 5.0f + WREG_F(7));
     cLib_addCalc0(&speed.y, 0.5f, 5.0f);
+#endif
 
     switch (mMoveMode) {
     case 0:
@@ -2400,7 +2744,7 @@ void daB_DR_c::executeWindAttack() {
         /* fallthrough */
     case 1:
         field_0x7a8.set(home.pos);
-        cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 40.0f, 20.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x7a8, 0.8f, 40.0f, 20.0f), cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 40.0f, 20.0f));
         sp30 = field_0x7a8 - current.pos;
         sp30.y = 0.0f;
 
@@ -2431,26 +2775,26 @@ void daB_DR_c::executeWindAttack() {
 
     if (mAnm == ANM_DR_FLAP) {
         if (sp24.abs() > 100.0f + l_HIO.wind_large_attack_lockon_range) {
-            mpModelMorf->setPlaySpeed(1.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 1.0f), mpModelMorf->setPlaySpeed(1.0f));
 
             mCount[2] = 0;
             mTimer[2] = 0;
             if (mCount[1] == 0 && mTimer[1] == 0) {
-                mTimer[1] = l_HIO.unk_0x48;
+                mTimer[1] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.unk_0x48), l_HIO.unk_0x48);
                 mCount[1] = 1;
                 if (WREG_S(1) != 0) {
-                    mTimer[1] = 200;
+                    mTimer[1] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 200), 200);
                 }
             }
         } else {
             field_0x7d3 = 2;
-            mpModelMorf->setPlaySpeed(1.25f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 1.25f), mpModelMorf->setPlaySpeed(1.25f));
 
             if (mCount[2] == 0) {
                 mCount[2] = 1;
-                mTimer[2] = l_HIO.center_wind_time;
+                mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.center_wind_time), l_HIO.center_wind_time);
                 if (WREG_S(1) != 0) {
-                    mTimer[2] = 200;
+                    mTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 200), 200);
                 }
             }
         }
@@ -2478,15 +2822,21 @@ void daB_DR_c::executeWindAttack() {
         }
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), field_0x750, 0x400);
+    actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, field_0x750, 0x400);
+    actor_attr::enemy_add_action_angle(this, &field_0x750, 8, 8, 20);
+#else
     cLib_addCalcAngleS2(&current.angle.y, fopAcM_searchPlayerAngleY(this), field_0x750, 0x400);
     cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, 0x400);
     cLib_addCalcAngleS2(&field_0x750, 8, 8, 20);
+#endif
 
     if (WREG_S(1) != 0) {
         mTargetHeight = 1500.0f + mAcch.GetGroundH();
     }
 
-    cLib_addCalc2(&current.pos.y, 400.0f + mTargetHeight, 0.8f, 20.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &current.pos.y, 400.0f + mTargetHeight, 0.8f, 20.0f), cLib_addCalc2(&current.pos.y, 400.0f + mTargetHeight, 0.8f, 20.0f));
 }
 
 bool daB_DR_c::mGliderMoveSub(f32 param_0) {
@@ -2505,7 +2855,7 @@ bool daB_DR_c::mGliderMoveSub(f32 param_0) {
     }
     field_0x7a8.y += field_0x740;
 
-    cLib_addCalc2(&field_0x740, param_0, 0.8f, 25.0f + WREG_F(0));
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &field_0x740, param_0, 0.8f, 25.0f + WREG_F(0)), cLib_addCalc2(&field_0x740, param_0, 0.8f, 25.0f + WREG_F(0)));
 
     sp18 = field_0x7a8 - current.pos;
     if (sp18.abs() > 1300.0f + NREG_F(6)) {
@@ -2698,7 +3048,7 @@ void daB_DR_c::executeGliderAttack() {
             }
         }
 
-        cLib_addCalc2(&field_0x748, var_f31, 0.1f, 0.025f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &field_0x748, var_f31, 0.1f, 0.025f), cLib_addCalc2(&field_0x748, var_f31, 0.1f, 0.025f));
 
         if (mGliderMoveSub(field_0x748) != 0) {
             if (field_0x73c < 3000.0f + BREG_F(14)) {
@@ -2747,7 +3097,7 @@ void daB_DR_c::executeGliderAttack() {
             mGlider_AniSet(0);
         }
 
-        cLib_addCalc2(&field_0x748, var_f31, 0.1f, 0.025f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &field_0x748, var_f31, 0.1f, 0.025f), cLib_addCalc2(&field_0x748, var_f31, 0.1f, 0.025f));
 
         if (mGliderMoveSub(field_0x748) != 0) {
             mStatusONOFF(0);
@@ -2756,7 +3106,7 @@ void daB_DR_c::executeGliderAttack() {
             fopAcM_OffStatus(this, 0);
 
             mCount[2] = 0;
-            mTimer[1] = 20;
+            mTimer[1] = DUSK_IF_ELSE(actor_attr::enemy_sync_terminal_timer(this, 19), 20);
             mMoveMode++;
         }
         break;
@@ -2797,18 +3147,37 @@ void daB_DR_c::executeGliderAttack() {
     }
 
     ato = field_0x7a8 - current.pos;
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(this, &current.angle.y, (s16)ato.atan2sX_Z(), field_0x750, JREG_S(2) + 0x500);
+    actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, field_0x750, JREG_S(3) + 0x500);
+    // field_0x750 is itself the turning divisor used by the glider steering.
+    // At low action speeds, the scaled divisor passed to cLib_addCalcAngleS2
+    // can become larger than the remaining difference to the target. With
+    // integer angle math that makes the update truncate to zero (at 0.25x it
+    // was getting stuck at 87 instead of continuing toward the vanilla target
+    // of 8), leaving Argorok unable to turn tightly enough to reach the
+    // waypoint and causing an endless circle.
+    //
+    // Use the min-step overload so this control value always continues
+    // converging. action_s16_step keeps a positive minimum at least 1, while
+    // the divisor/max-step still follow the randomized action speed.
+    actor_attr::enemy_add_action_angle(this, &field_0x750, JREG_S(4) + 8, JREG_S(5) + 20, JREG_S(6) + 40, 1);
+    actor_attr::enemy_add_action_angle(this, &current.angle.x, ato.atan2sY_XZ(), 20, NREG_S(3) + 0x400);
+    actor_attr::enemy_add_action_angle(this, &shape_angle.x, current.angle.x, NREG_S(2) + 20, NREG_S(3) + 0x400);
+#else
     cLib_addCalcAngleS2(&current.angle.y, (s16)ato.atan2sX_Z(), field_0x750, JREG_S(2) + 0x500);
     cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, JREG_S(3) + 0x500);
     cLib_addCalcAngleS2(&field_0x750, JREG_S(4) + 8, JREG_S(5) + 20, JREG_S(6) + 40);
     cLib_addCalcAngleS2(&current.angle.x, ato.atan2sY_XZ(), 20, NREG_S(3) + 0x400);
     cLib_addCalcAngleS2(&shape_angle.x, current.angle.x, NREG_S(2) + 20, NREG_S(3) + 0x400);
+#endif
 
     if (mMoveMode >= 2) {
         f32 var_f30 = 90.0f + NREG_F(9);
         if (mAnm == ANM_DR_FLY) {
             var_f30 = 120.0f + NREG_F(9);
         }
-        cLib_addCalc2(&speedF, var_f30, 0.5f, 2.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &speedF, var_f30, 0.5f, 2.0f), cLib_addCalc2(&speedF, var_f30, 0.5f, 2.0f));
     }
 
     if (mMoveMode < 10 || mMoveMode > 22) {
@@ -2818,10 +3187,15 @@ void daB_DR_c::executeGliderAttack() {
         mae.y = 0.0f;
         mae.z = speedF;
         MtxPosition(&mae, &ato);
-        cLib_addCalc2(&speed.y, ato.y, 0.8f, 10.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &speed.y, ato.y, 0.8f, 10.0f), cLib_addCalc2(&speed.y, ato.y, 0.8f, 10.0f));
     } else {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc0(this, &speed.y, 0.8f, 10.0f);
+        actor_attr::enemy_add_action_calc2(this, &current.pos.y, field_0x7a8.y, 0.8f, 25.0f);
+#else
         cLib_addCalc0(&speed.y, 0.8f, 10.0f);
         cLib_addCalc2(&current.pos.y, field_0x7a8.y, 0.8f, 25.0f);
+#endif
     }
 }
 
@@ -2867,19 +3241,29 @@ void daB_DR_c::executePillarSearch() {
 
         mMoveMode++;
     case 2:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc2(this, &current.pos.y, field_0x7b4.y, 0.8f + NREG_F(10), 5.0f + NREG_F(11));
+        actor_attr::enemy_add_action_calc2(this, &speedF, 20.0f + NREG_F(14), 0.8f + NREG_F(15), 4.0f + NREG_F(16));
+#else
         cLib_addCalc2(&current.pos.y, field_0x7b4.y, 0.8f + NREG_F(10), 5.0f + NREG_F(11));
         cLib_addCalc2(&speedF, 20.0f + NREG_F(14), 0.8f + NREG_F(15), 4.0f + NREG_F(16));
+#endif
 
         if (!(fabsf(current.pos.y - field_0x7b4.y) > 20.0f) && !(speedF > 22.0f + NREG_F(14))) {
             mHabatakiAnmSet(0);
 
             field_0x7a8.set(home.pos);
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_add_action_calc2(this, &current.pos.x, field_0x7b4.x, 0.8f + NREG_F(10), speedF);
+            actor_attr::enemy_add_action_calc2(this, &current.pos.z, field_0x7b4.z, 0.8f + NREG_F(10), speedF);
+#else
             cLib_addCalc2(&current.pos.x, field_0x7b4.x, 0.8f + NREG_F(10), speedF);
             cLib_addCalc2(&current.pos.z, field_0x7b4.z, 0.8f + NREG_F(10), speedF);
+#endif
             sp30 = field_0x7b4 - current.pos;
 
             if (mAnm == ANM_DR_HOVERING) {
-                if ((int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f) && sp30.abs() < 20.0f) {
+                if (DUSK_IF_ELSE(mpModelMorf->checkFrame(mpModelMorf->getEndFrame() - 1.0f), (int)mpModelMorf->getFrame() >= (int)(mpModelMorf->getEndFrame() - 1.0f)) && sp30.abs() < 20.0f) {
                     speedF = 0.0f;
                     field_0x7a8.set(mPillarTop_dt[mCount[1]]);
                     field_0x7a8.y = 6000.0f;
@@ -2892,11 +3276,19 @@ void daB_DR_c::executePillarSearch() {
 
     if (mActionMode != ACTION_PILLAR_WAIT) {
         sp30 = field_0x7a8 - current.pos;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &current.angle.y, (s16)sp30.atan2sX_Z(), field_0x750, JREG_S(2) + 0x400);
+        actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, field_0x750, JREG_S(3) + 0x400);
+        actor_attr::enemy_add_action_angle(this, &field_0x750, JREG_S(4) + 10, JREG_S(5) + 10, JREG_S(6) + 20);
+        actor_attr::enemy_add_action_angle(this, &current.angle.x, sp30.atan2sY_XZ(), 20, NREG_S(3) + 0x400);
+        actor_attr::enemy_add_action_angle(this, &shape_angle.x, current.angle.x, NREG_S(2) + 20, NREG_S(3) + 0x400);
+#else
         cLib_addCalcAngleS2(&current.angle.y, (s16)sp30.atan2sX_Z(), field_0x750, JREG_S(2) + 0x400);
         cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, field_0x750, JREG_S(3) + 0x400);
         cLib_addCalcAngleS2(&field_0x750, JREG_S(4) + 10, JREG_S(5) + 10, JREG_S(6) + 20);
         cLib_addCalcAngleS2(&current.angle.x, sp30.atan2sY_XZ(), 20, NREG_S(3) + 0x400);
         cLib_addCalcAngleS2(&shape_angle.x, current.angle.x, NREG_S(2) + 20, NREG_S(3) + 0x400);
+#endif
 
         if (mPlayerHighCheck() && -G_CM3D_F_INF != mAcch.GetGroundH()) {
             setActionMode(ACTION_BREATH_ATTACK, 0);
@@ -2923,8 +3315,13 @@ void daB_DR_c::executePillarWait() {
         field_0x7d6 = 0;
         mAllClr();
 
+#if TARGET_PC  // enemy attribute integration
+        mTimer[2] = actor_attr::enemy_sync_timer(this, 50);
+        mTimer[0] = actor_attr::enemy_sync_timer(this, l_HIO.unk_0x62);
+#else
         mTimer[2] = 50;
         mTimer[0] = l_HIO.unk_0x62;
+#endif
 
         mPillarCc.OnCoSetBit();
         speed.y = 0.0f;
@@ -2965,7 +3362,7 @@ void daB_DR_c::executePillarWait() {
         }
 
         if (mPlayerHighCheck()) {
-            mTimer[0] = l_HIO.unk_0x62;
+            mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.unk_0x62), l_HIO.unk_0x62);
         }
 
         if ((fopAcM_searchPlayerDistanceXZ(this) < 350.0f && player->current.pos.y > 4500.0f) || mTargetHeight < player->current.pos.y || cLib_calcTimer<int>(&mTimer[0]) == 0 || (player->current.pos.y >= 5000.0f && fopAcM_searchPlayerDistanceXZ(this) > 3100.0f) || mPillarCc.ChkTgHit()) {
@@ -2982,7 +3379,7 @@ void daB_DR_c::executePillarWait() {
     case 3:
         if ((int)mpModelMorf->getFrame() >= 14) {
             field_0x7a8.y = 6150.0f;
-            cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 40.0f, 10.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x7a8, 0.8f, 40.0f, 10.0f), cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 40.0f, 10.0f));
         }
 
         if (!mpModelMorf->isStop()) {
@@ -2995,7 +3392,7 @@ void daB_DR_c::executePillarWait() {
         setBck(ANM_DR_HOVERING, 2, 3.0f, 1.0f);
         mMoveMode++;
     case 4:
-        cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 20.0f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x7a8, 0.8f, 20.0f, 5.0f), cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 20.0f, 5.0f));
 
         if (!(mAcch.GetGroundH() > 1000.0f)) {
             if (home.pos.y + l_HIO.breath_attack_threshold <= player->current.pos.y) {
@@ -3013,15 +3410,25 @@ void daB_DR_c::executePillarWait() {
     sp14.y += -200.0f;
 
     mPillarCc.SetC(sp14);
+#if TARGET_PC  // enemy attribute integration
+    mPillarCc.SetH(actor_attr::enemy_size_value(this, 1000.0f));
+    mPillarCc.SetR(actor_attr::enemy_size_value(this, 400.0f));
+#else
     mPillarCc.SetH(1000.0f);
     mPillarCc.SetR(400.0f);
+#endif
     mPillarCc.SetAtVec(at_vec);
     dComIfG_Ccsp()->Set(&mPillarCc);
 
-    cLib_addCalc0(&speedF, 0.8f, 5.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc0(this, &speedF, 0.8f, 5.0f), cLib_addCalc0(&speedF, 0.8f, 5.0f));
     sp14 = home.pos - current.pos;
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(this, &current.angle.y, (s16)sp14.atan2sX_Z(), 10, 0x400);
+    actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, 10, 0x400);
+#else
     cLib_addCalcAngleS2(&current.angle.y, (s16)sp14.atan2sX_Z(), 10, 0x400);
     cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 10, 0x400);
+#endif
 }
 
 bool daB_DR_c::startDemoCheck() {
@@ -3125,6 +3532,7 @@ void daB_DR_c::executeDamageDemo() {
             shape_angle.y = current.angle.y = home.angle.y;
             current.pos.x = home.pos.x;
             current.pos.z = home.pos.z;
+            IF_DUSK(field_0x7e0 = 0;)
             daPy_getPlayerActorClass()->setPlayerPosAndAngle(&player->current.pos, home.angle.y, 0);
             setBck(ANM_DR_IMPACT, 0, 3.0f, 1.0f);
             mMoveMode++;
@@ -3133,12 +3541,12 @@ void daB_DR_c::executeDamageDemo() {
     case 11:
         if (mAnm == ANM_DR_BOOT_C) {
             if ((int)mpModelMorf->getFrame() >= 34) {
-                cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f), cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f));
             }
 
             if (mpModelMorf->isStop()) {
                 setBck(ANM_DR_DOWN_WAIT, 2, 3.0f, 1.0f);
-                mTimer[0] = 35;
+                mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 35), 35);
             }
         }
 
@@ -3156,10 +3564,10 @@ void daB_DR_c::executeDamageDemo() {
     case 12:
         if (mAnm == ANM_DR_BOOT_C) {
             if ((int)mpModelMorf->getFrame() >= 34) {
-                cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f), cLib_addCalc2(&mDemoCamCenter.y, player->current.pos.y, 0.7f, 150.0f));
             }
 
-            mTimer[0] = 50;
+            mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 50), 50);
 
             if (!mpModelMorf->isStop()) {
                 break;
@@ -3168,14 +3576,14 @@ void daB_DR_c::executeDamageDemo() {
 
         if (mAnm != ANM_DR_DOWN_WAIT) {
             setBck(ANM_DR_DOWN_WAIT, 2, 10.0f, 1.0f);
-            mTimer[0] = 35;
+            mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 35), 35);
         }
 
         if (cLib_calcTimer<int>(&mTimer[0]) != 0) {
             break;
         }
 
-        mTimer[0] = 70;
+        mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 70), 70);
         mMoveMode++;
     case 13:
         if (cLib_calcTimer<int>(&mTimer[0]) == 0) {
@@ -3184,7 +3592,7 @@ void daB_DR_c::executeDamageDemo() {
             dComIfGp_event_reset();
  
             field_0x7d7 = 1;
-            mTimer[0] = 35;
+            mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 35), 35);
             setActionMode(ACTION_TAIL_HIT, 20);
         }
     }
@@ -3213,7 +3621,12 @@ void daB_DR_c::executeDamageDemo() {
     }
 
     if (mAnm == ANM_DR_BOOT_C) {
+#if TARGET_PC  // enemy attribute integration
+        const bool reached_armor_break_frame = mpModelMorf->checkFrame(45.0f) || (field_0x7d1 == 0 && mpModelMorf->getFrame() >= 45.0f);
+        if (reached_armor_break_frame) {
+#else
         if (mpModelMorf->checkFrame(45.0f)) {
+#endif
             if (field_0x7d1 == 0) {
                 mSound.startCreatureSound(Z2SE_EN_DR_CRASH, 0, -1);
                 field_0x7d1 = 1;
@@ -3312,10 +3725,14 @@ void daB_DR_c::executeBullet() {
     switch (mMoveMode) {
     case 0:
         field_0x730 = 100.0f;
-        speedF = 100.0f;
+        // Keep vanilla projectile speed unchanged and apply half of the
+        // movement speed difference at other settings.
+        speedF = DUSK_IF_ELSE(100.0f + (actor_attr::enemy_action_step(this, 100.0f) - 100.0f) * 0.2f, 100.0f);
         mAllClr();
 
-        mTimer[0] = data_805C7974;
+        // Keep the shot's travel distance when the projectile speed boost is
+        // smaller than the boss's action speed boost.
+        mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, data_805C7974 * actor_attr::enemy_action_step(this, 100.0f) / speedF), data_805C7974);
         mMoveMode++;
         return;
     case 1:
@@ -3339,13 +3756,42 @@ void daB_DR_c::executeBullet() {
         mae.z = speedF;
         MtxPosition(&mae, &speed);
 
-        field_0x730 += 10.0f;
+        field_0x730 += DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 10.0f), 10.0f);
         if (field_0x730 > 100.0f) {
             field_0x730 = 100.0f;
         }
 
+#if TARGET_PC  // enemy attribute integration
+        const f32 breathHitRadius = actor_attr::enemy_size_value(this, field_0x730);
+
+#endif
         mBreathAtCc.SetC(current.pos);
+#if TARGET_PC  // enemy attribute integration
+        if (actor_attr::enemy_action_time_speed(this) > 1.0f) {
+            // This is a sphere, so a fast projectile can pass through Link
+            // between collision updates. Sweep its upcoming step against
+            // Link's movement, then place the normal attack sphere at Link's
+            // current body position only when the two paths crossed.
+            daPy_py_c* player = daPy_getPlayerActorClass();
+            const cXyz playerCenter = player->current.pos + (player->eyePos - player->current.pos) * 0.5f;
+            const cXyz playerMotion = player->current.pos - player->old.pos;
+            const cXyz relativeStart = current.pos - (playerCenter - playerMotion);
+            const cXyz relativeStep = speed - playerMotion;
+            const f32 stepLenSq = relativeStep.x * relativeStep.x + relativeStep.y * relativeStep.y + relativeStep.z * relativeStep.z;
+            if (stepLenSq > 0.0001f) {
+                const f32 t = -(relativeStart.x * relativeStep.x + relativeStart.y * relativeStep.y + relativeStart.z * relativeStep.z) / stepLenSq;
+                if (t >= 0.0f && t <= 1.0f) {
+                    const cXyz separation = relativeStart + relativeStep * t;
+                    if (separation.x * separation.x + separation.y * separation.y + separation.z * separation.z <= breathHitRadius * breathHitRadius) {
+                        mBreathAtCc.SetC(playerCenter);
+                    }
+                }
+            }
+        }
+        mBreathAtCc.SetR(breathHitRadius);
+#else
         mBreathAtCc.SetR(field_0x730);
+#endif
         dComIfG_Ccsp()->Set(&mBreathAtCc);
     }
 }
@@ -3363,12 +3809,16 @@ void daB_DR_c::executeParts() {
         speed.y += cM_rndFX(10.0f + ZREG_F(11));
 
         field_0x752 = cM_rndF(2048.0f + ZREG_F(9));
-        mTimer[0] = 100;
+        mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 100), 100);
         gravity = -3.0f + ZREG_F(12);
         mMoveMode++;
         break;
     case 1:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_angle_add(this, shape_angle.x , field_0x752);
+#else
         shape_angle.x += field_0x752;
+#endif
         if (!mAcch.ChkGroundHit()) {
             if (cLib_calcTimer<int>(&mTimer[0]) == 0) {
                 fopAcM_delete(this);
@@ -3379,14 +3829,20 @@ void daB_DR_c::executeParts() {
         field_0x752 *= 2;
         mMoveMode++;
     case 2:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_angle_add(this, shape_angle.x , field_0x752);
+        actor_attr::enemy_add_action_calc0(this, &speedF, 0.7f, 1.0f + ZREG_F(15));
+        actor_attr::enemy_add_action_angle(this, &field_0x752, 0, 8, speedF);
+#else
         shape_angle.x += field_0x752;
         cLib_addCalc0(&speedF, 0.7f, 1.0f + ZREG_F(15));
         cLib_addCalcAngleS2(&field_0x752, 0, 8, speedF);
+#endif
         if (speedF > 0.2f) {
             break;
         }
         speedF = 0.0f;
-        mTimer[0] = 10;
+        mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
         mMoveMode++;
     case 3:
         if (cLib_calcTimer<int>(&mTimer[0]) == 0) {
@@ -3396,7 +3852,7 @@ void daB_DR_c::executeParts() {
         break;
     case 10:
         speedF = 40.0f + ZREG_F(13) + cM_rndF(10.0f + ZREG_F(14));
-        mTimer[0] = 50;
+        mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 50), 50);
         ANGLE_ADD(current.angle.x, cM_rndFX(16384.0f));
 
         mae = camera->view.lookat.center - current.pos;
@@ -3508,8 +3964,13 @@ void daB_DR_c::action() {
 
     if (mActionMode != ACTION_GLIDER_ATTACK || mMoveMode == 1000) {
         if (current.angle.x != 0 || shape_angle.x != 0) {
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_add_action_angle(this, &current.angle.x, 0, 8, 0x400);
+            actor_attr::enemy_add_action_angle(this, &shape_angle.x, current.angle.x, 8, 0x400);
+#else
             cLib_addCalcAngleS2(&current.angle.x, 0, 8, 0x400);
             cLib_addCalcAngleS2(&shape_angle.x, current.angle.x, 8, 0x400);
+#endif
         }
         field_0x74e = 0;
     } else {
@@ -3522,7 +3983,7 @@ void daB_DR_c::action() {
         }
     }
 
-    cLib_addCalcAngleS2(&shape_angle.z, field_0x74e, NREG_S(6) + 40, NREG_S(7) + 0x400);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.z, field_0x74e, NREG_S(6) + 40, NREG_S(7) + 0x400), cLib_addCalcAngleS2(&shape_angle.z, field_0x74e, NREG_S(6) + 40, NREG_S(7) + 0x400));
 
     if (BREG_S(1) != 0) {
         mWeekCc.OnTgSetBit();
@@ -3530,7 +3991,7 @@ void daB_DR_c::action() {
         speed.zero();
     }
 
-    fopAcM_posMoveF(this, mColliderStts.GetCCMoveP());
+    DUSK_IF_ELSE(actor_attr::enemy_action_pos_move_f(this, mColliderStts.GetCCMoveP()), fopAcM_posMoveF(this, mColliderStts.GetCCMoveP()));
 
     if (mActionMode != ACTION_BREATH_ATTACK && mActionMode != ACTION_BREATH_ATTACK2) {
         mHeadAngleSet();
@@ -3553,7 +4014,7 @@ void daB_DR_c::action_fire() {
 
 void daB_DR_c::action_parts() {
     executeParts();
-    fopAcM_posMoveF(this, mColliderStts.GetCCMoveP());
+    DUSK_IF_ELSE(actor_attr::enemy_action_pos_move_f(this, mColliderStts.GetCCMoveP()), fopAcM_posMoveF(this, mColliderStts.GetCCMoveP()));
     mAcch.CrrPos(dComIfG_Bgsp());
     mSound.framework(0, dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
 }
@@ -3562,7 +4023,11 @@ void daB_DR_c::mtx_set() {
     mDoMtx_stack_c::transS(current.pos);
     mDoMtx_stack_c::transM(mBoot_c_trance.x, mBoot_c_trance.y, mBoot_c_trance.z);
     mDoMtx_stack_c::ZXYrotM(shape_angle);
+#if TARGET_PC  // enemy attribute integration
+    mDoMtx_stack_c::scaleM((l_HIO.model_size) * actor_attr::enemy_size_multiplier(this), (l_HIO.model_size) * actor_attr::enemy_size_multiplier(this), (l_HIO.model_size) * actor_attr::enemy_size_multiplier(this));
+#else
     mDoMtx_stack_c::scaleM(l_HIO.model_size, l_HIO.model_size, l_HIO.model_size);
+#endif
     mpModelMorf->getModel()->setBaseTRMtx(mDoMtx_stack_c::get());
     mpModelMorf->modelCalc();
 
@@ -3581,9 +4046,9 @@ void daB_DR_c::mtx_set() {
         field_0x7a8.y = var_f31;
     
         if ((int)mpModelMorf->getFrame() < 35.0f + JREG_F(5)) {
-            cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 10.0f + JREG_F(6), 5.0f + JREG_F(7));
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x7a8, 0.8f, 10.0f + JREG_F(6), 5.0f + JREG_F(7)), cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 10.0f + JREG_F(6), 5.0f + JREG_F(7)));
         } else {
-            cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 20.0f + JREG_F(8), 5.0f + JREG_F(9));
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x7a8, 0.8f, 20.0f + JREG_F(8), 5.0f + JREG_F(9)), cLib_addCalcPos(&current.pos, field_0x7a8, 0.8f, 20.0f + JREG_F(8), 5.0f + JREG_F(9)));
         }
 
         if (current.pos.y < field_0x7a8.y) {
@@ -3623,7 +4088,11 @@ void daB_DR_c::mtx_set() {
 void daB_DR_c::parts_mtx_set() {
     mDoMtx_stack_c::transS(current.pos);
     mDoMtx_stack_c::ZXYrotM(shape_angle);
+#if TARGET_PC  // enemy attribute integration
+    mDoMtx_stack_c::scaleM(actor_attr::enemy_size_multiplier(this, scale));
+#else
     mDoMtx_stack_c::scaleM(scale.x, scale.y, scale.z);
+#endif
     mpPartModel->setBaseTRMtx(mDoMtx_stack_c::get());
 }
 
@@ -3645,13 +4114,13 @@ void daB_DR_c::cc_set() {
     }
 
     attention_info.position = eyePos;
-    attention_info.position.y += 100.0f;
+    attention_info.position.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 100.0f), 100.0f);
 
     mDoMtx_stack_c::copy(model_p->getAnmMtx(0x31));
     mae.set(0.0f, 0.0f, 50.0f);
     mDoMtx_stack_c::multVec(&mae, &ato);
     mTailCc.SetC(ato);
-    mTailCc.SetR(250.0f);
+    mTailCc.SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 250.0f), 250.0f));
     dComIfG_Ccsp()->Set(&mTailCc);
 
     mDoMtx_stack_c::copy(model_p->getAnmMtx(0x13));
@@ -3715,9 +4184,9 @@ void daB_DR_c::cc_set() {
     }
 
     if (var_r27 == 0) {
-        cLib_addCalc(&field_0x738, 0.6f, 0.05f, 0.003f, 0.00001f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc(this, &field_0x738, 0.6f, 0.05f, 0.003f, 0.00001f), cLib_addCalc(&field_0x738, 0.6f, 0.05f, 0.003f, 0.00001f));
     } else {
-        cLib_addCalc(&field_0x738, 0.9f, 0.5f, 0.2f, 0.001f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc(this, &field_0x738, 0.9f, 0.5f, 0.2f, 0.001f), cLib_addCalc(&field_0x738, 0.9f, 0.5f, 0.2f, 0.001f));
         dKyw_evt_wind_set(0, shape_angle.y);
     }
 
@@ -3746,8 +4215,13 @@ void daB_DR_c::cc_set() {
     mae.set(-200.0f + WREG_F(2), WREG_F(3), WREG_F(4));
     mDoMtx_stack_c::multVec(&mae, &ato);
     mWeekCc.SetC(ato);
+#if TARGET_PC  // enemy attribute integration
+    mWeekCc.SetH(actor_attr::enemy_size_value(this, 300.0f + WREG_F(5)));
+    mWeekCc.SetR(actor_attr::enemy_size_value(this, 150.0f + WREG_F(6)));
+#else
     mWeekCc.SetH(300.0f + WREG_F(5));
     mWeekCc.SetR(150.0f + WREG_F(6));
+#endif
     dComIfG_Ccsp()->Set(&mWeekCc);
 }
 
@@ -3776,8 +4250,13 @@ void daB_DR_c::down_cc_set() {
         mDoMtx_stack_c::multVec(&mae, &ato);
 
         mDownCc[i].SetC(ato);
+#if TARGET_PC  // enemy attribute integration
+        mDownCc[i].SetH(actor_attr::enemy_size_value(this, DOWN_CYL_DT[i].height));
+        mDownCc[i].SetR(actor_attr::enemy_size_value(this, DOWN_CYL_DT[i].radius));
+#else
         mDownCc[i].SetH(DOWN_CYL_DT[i].height);
         mDownCc[i].SetR(DOWN_CYL_DT[i].radius);
+#endif
         dComIfG_Ccsp()->Set(&mDownCc[i]);
     }
 
@@ -3805,7 +4284,7 @@ void daB_DR_c::down_cc_set() {
         mDoMtx_stack_c::multVec(&mae, &ato);
 
         mDownSphCc[i].SetC(ato);
-        mDownSphCc[i].SetR(DOWN_SPH_DT[i].radius);
+        mDownSphCc[i].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, DOWN_SPH_DT[i].radius), DOWN_SPH_DT[i].radius));
         dComIfG_Ccsp()->Set(&mDownSphCc[i]);
     }
 }
@@ -3912,7 +4391,11 @@ int daB_DR_c::execute() {
                     mpModelMorf->play(0, dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
                     mDoMtx_stack_c::transS(current.pos);
                     mDoMtx_stack_c::ZXYrotM(shape_angle);
+#if TARGET_PC  // enemy attribute integration
+                    mDoMtx_stack_c::scaleM((l_HIO.model_size) * actor_attr::enemy_size_multiplier(this), (l_HIO.model_size) * actor_attr::enemy_size_multiplier(this), (l_HIO.model_size) * actor_attr::enemy_size_multiplier(this));
+#else
                     mDoMtx_stack_c::scaleM(l_HIO.model_size, l_HIO.model_size, l_HIO.model_size); 
+#endif
                     mpModelMorf->getModel()->setBaseTRMtx(mDoMtx_stack_c::get());
                     mpModelMorf->modelCalc();
 
@@ -4000,7 +4483,7 @@ int daB_DR_c::CreateHeap() {
     J3DModelData* modelData = (J3DModelData*)dComIfG_getObjectRes("B_DR", 0x49);
     JUT_ASSERT(6324, modelData != NULL);
     
-    mpModelMorf = JKR_NEW mDoExt_McaMorfSO(modelData, NULL, NULL, (J3DAnmTransform*)dComIfG_getObjectRes("B_DR", 0x2F), 2, 1.0f, 0, -1, &mSound, 0, 0x11000084);
+    mpModelMorf = JKR_NEW mDoExt_McaMorfSO(modelData, NULL, NULL, (J3DAnmTransform*)dComIfG_getObjectRes("B_DR", 0x2F), 2, DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 1.0f), 1.0f), 0, -1, &mSound, 0, 0x11000084);
     if (mpModelMorf == NULL || mpModelMorf->getModel() == NULL) {
         return 0;
     }
@@ -4011,7 +4494,7 @@ int daB_DR_c::CreateHeap() {
     }
 
     J3DAnmTevRegKey* pbrk = (J3DAnmTevRegKey*)dComIfG_getObjectRes("B_DR", 0x51);
-    if (!mpCoreBrk->init(mpModelMorf->getModel()->getModelData(), pbrk, 1, 2, 1.0f, 0, -1)) {
+    if (!mpCoreBrk->init(mpModelMorf->getModel()->getModelData(), pbrk, 1, 2, DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 1.0f), 1.0f), 0, -1)) {
         return 0;
     }
 
@@ -4069,7 +4552,9 @@ int daB_DR_c::create() {
             if (arg0 == 0xA) {
                 mColliderStts.Init(0xFF, 0, this);
                 mBreathAtCc.Set(cc_dr_breath_at_src);
+                IF_DUSK(mBreathAtCc.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mBreathAtCc.GetAtAtp()));)
                 mBreathAtCc.SetStts(&mColliderStts);
+                IF_DUSK(mBreathAtCc.SetAtAtp(actor_attr::enemy_attack_power_byte(this, 4.0f));)
                 setActionMode(0xE, 0);
             } else {
                 static u32 mParts_EstimateSizeDt[] = {0x1980, 0x1990, 0xD50, 0xD40, 0xD40, 0xD40};
@@ -4078,7 +4563,11 @@ int daB_DR_c::create() {
                 }
 
                 mAcch.Set(fopAcM_GetPosition_p(this), fopAcM_GetOldPosition_p(this), this, 1, &mAcchCir, fopAcM_GetSpeed_p(this), NULL, NULL);
+#if TARGET_PC  // enemy attribute integration
+                mAcchCir.SetWall(actor_attr::enemy_size_value(this, 20.0f), actor_attr::enemy_size_value(this, 40.0f));
+#else
                 mAcchCir.SetWall(20.0f, 40.0f);
+#endif
                 mAcch.CrrPos(dComIfG_Bgsp());
                 gravity = -3.0f;
 
@@ -4140,8 +4629,13 @@ int daB_DR_c::create() {
             dComIfGs_offSaveDunSwitch(22);
             onWolfNoLock();
 
+#if TARGET_PC  // enemy attribute integration
+            health = actor_attr::enemy_health_value(this, 24);
+            field_0x560 = health;
+#else
             health = 24;
             field_0x560 = 24;
+#endif
 
             if (!hio_set) {
                 hio_set = true;
@@ -4161,42 +4655,79 @@ int daB_DR_c::create() {
             fopAcM_SetMax(this, 20000.0f, 20000.0f, 20000.0f);
 
             mAcch.Set(fopAcM_GetPosition_p(this), fopAcM_GetOldPosition_p(this), this, 1, &mAcchCir, fopAcM_GetSpeed_p(this), NULL, NULL);
+#if TARGET_PC  // enemy attribute integration
+            mAcchCir.SetWall(actor_attr::enemy_size_value(this, 0.0f), actor_attr::enemy_size_value(this, 300.0f));
+#else
             mAcchCir.SetWall(0.0f, 300.0f);
+#endif
             mAcch.CrrPos(dComIfG_Bgsp());
 
             mColliderStts.Init(0xFF, 0, this);
             mPillarCc.Set(cc_pillar_src);
+#if TARGET_PC  // enemy attribute integration
+            mPillarCc.SetR(actor_attr::enemy_size_value(this, mPillarCc.GetR()));
+            mPillarCc.SetH(actor_attr::enemy_size_value(this, mPillarCc.GetH()));
+            mPillarCc.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mPillarCc.GetAtAtp()));
+#endif
             mPillarCc.SetStts(&mColliderStts);
 
             mWeekCc.Set(cc_dr_week_src);
+#if TARGET_PC  // enemy attribute integration
+
+            mWeekCc.SetR(actor_attr::enemy_size_value(this, mWeekCc.GetR()));
+
+            mWeekCc.SetH(actor_attr::enemy_size_value(this, mWeekCc.GetH()));
+
+            mWeekCc.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mWeekCc.GetAtAtp()));
+#endif
             mWeekCc.SetStts(&mColliderStts);
             mWeekCc.OffTgSetBit();
 
             mWindAtCc.Set(cc_dr_wind_at_src);
+            IF_DUSK(mWindAtCc.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mWindAtCc.GetAtAtp()));)
             mWindAtCc.SetStts(&mColliderStts);
 
             mWindAtCc2.Set(cc_dr_wind_at_src);
+            IF_DUSK(mWindAtCc2.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mWindAtCc2.GetAtAtp()));)
             mWindAtCc2.SetStts(&mColliderStts);
 
             mWindAtCc3.Set(cc_dr_wind_at_src);
+            IF_DUSK(mWindAtCc3.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mWindAtCc3.GetAtAtp()));)
             mWindAtCc3.SetStts(&mColliderStts);
 
             mTailCc.Set(cc_dr_tail_src);
+#if TARGET_PC  // enemy attribute integration
+
+            mTailCc.SetR(actor_attr::enemy_size_value(this, mTailCc.GetR()));
+
+            mTailCc.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mTailCc.GetAtAtp()));
+#endif
             mTailCc.SetStts(&mColliderStts);
 
             for (int i = 0; i < 5; i++) {
                 mDownCc[i].Set(cc_down_src);
+#if TARGET_PC  // enemy attribute integration
+                mDownCc[i].SetR(actor_attr::enemy_size_value(this, mDownCc[i].GetR()));
+                mDownCc[i].SetH(actor_attr::enemy_size_value(this, mDownCc[i].GetH()));
+                mDownCc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mDownCc[i].GetAtAtp()));
+#endif
                 mDownCc[i].SetStts(&mColliderStts);
             }
 
             for (int i = 0; i < 9; i++) {
                 mDownSphCc[i].Set(cc_downSph_src);
+#if TARGET_PC  // enemy attribute integration
+                mDownSphCc[i].SetR(actor_attr::enemy_size_value(this, mDownSphCc[i].GetR()));
+                mDownSphCc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mDownSphCc[i].GetAtAtp()));
+#endif
                 mDownSphCc[i].SetStts(&mColliderStts);
             }
 
             for (int i = 0; i < 2; i++) {
                 mFootAtCc[i].Set(cc_dr_foot_at_src);
+                IF_DUSK(mFootAtCc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mFootAtCc[i].GetAtAtp()));)
                 mFootAtCc[i].SetStts(&mColliderStts);
+                IF_DUSK(mFootAtCc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(this, 4.0f));)
             }
 
             field_0x784.set(current.pos);
@@ -4245,7 +4776,7 @@ int daB_DR_c::create() {
                 if (cDmr_SkipInfo == 0 && !dComIfGs_isZoneSwitch(0, fopAcM_GetRoomNo(this))) {
                     arg0 = 0xFF;
                     field_0x7d5 = 0xB;
-                    mTimer[0] = 2;
+                    mTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 2), 2);
 
                     if (BREG_S(5) == 0) {
                         parentActorID = fopAcM_createChild(fpcNm_L7ODR_e, fopAcM_GetID(this), 0, &current.pos, fopAcM_GetRoomNo(this), &shape_angle, NULL, -1, NULL);
