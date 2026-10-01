@@ -13,6 +13,119 @@
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/interp/samples.h"
 #include "dusk/settings.h"
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+static f32 hookshot_lv7_boss_speed_multiplier() {
+    if (fopAc_ac_c* argorok = fopAcM_SearchByName(fpcNm_B_DR_e)) {
+        return actor_attr::enemy_action_speed_multiplier(static_cast<daB_DR_c*>(argorok));
+    }
+
+    return 1.0f;
+}
+
+static f32 hookshot_underwater_boss_speed_multiplier() {
+    if (fopAc_ac_c* morpheel = fopAcM_SearchByName(fpcNm_B_OB_e)) {
+        const f32 speed = actor_attr::enemy_action_speed_multiplier(morpheel);
+        return speed < 1.0f ? 1.0f : speed;
+    }
+
+    // Zant's underwater/Morpheel-style phase uses the separate B_ZANTZ
+    // mobile actor.  Its presence is a much more reliable phase test than
+    // Link's swim-hookshot mode flag.  Prefer the main Zant actor's random
+    // movement multiplier when it is still loaded; otherwise fall back to
+    // the mobile actor itself.
+    if (fopAc_ac_c* zantMobile = fopAcM_SearchByName(fpcNm_B_ZANTZ_e)) {
+        if (fopAc_ac_c* zant = fopAcM_SearchByName(fpcNm_B_ZANT_e)) {
+            const f32 speed = actor_attr::enemy_action_speed_multiplier(zant);
+            return speed < 1.0f ? 1.0f : speed;
+        }
+
+        const f32 speed = actor_attr::enemy_action_speed_multiplier(zantMobile);
+        return speed < 1.0f ? 1.0f : speed;
+    }
+
+    return 1.0f;
+}
+
+
+static bool hookshot_clamp_underwater_zant_crossing(const cXyz& start, cXyz* end, fopAc_ac_c* targetedActor) {
+    // Only the underwater Zant phase needs this high-speed anti-tunnelling
+    // guard.  The separate B_ZANTZ actor is the reliable phase marker.
+    if (end == NULL || targetedActor == NULL || fopAcM_SearchByName(fpcNm_B_ZANTZ_e) == NULL || fopAcM_GetName(targetedActor) != fpcNm_B_ZANT_e) {
+        return false;
+    }
+
+    cXyz segment = *end - start;
+    const f32 segmentLenSq = segment.x * segment.x + segment.y * segment.y + segment.z * segment.z;
+    if (segmentLenSq <= 0.0001f) {
+        return false;
+    }
+
+    // Sweep the frame's entire hookshot step against Zant instead of relying
+    // on a single end-of-frame collision sample.  The radius is deliberately
+    // modest: it only prevents a fast step from crossing the boss between
+    // frames; the normal hookshot collider still decides the actual catch.
+    const cXyz target = targetedActor->eyePos;
+    cXyz toTarget = target - start;
+    f32 t = (toTarget.x * segment.x + toTarget.y * segment.y + toTarget.z * segment.z) / segmentLenSq;
+    if (t < 0.0f || t > 1.0f) {
+        return false;
+    }
+
+    cXyz closest = start + segment * t;
+    const cXyz delta = target - closest;
+    const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(targetedActor);
+    const f32 sweepRadius = 90.0f * sizeMultiplier;
+    if (delta.x * delta.x + delta.y * delta.y + delta.z * delta.z > sweepRadius * sweepRadius) {
+        return false;
+    }
+
+    // Stop on the near edge of the swept hit region rather than allowing the
+    // tip to appear on Zant's far side.  This preserves the randomized launch
+    // speed while giving the ordinary collision system a stable frame to hit.
+    const f32 segmentLen = JMAFastSqrt(segmentLenSq);
+    const f32 backoffT = sweepRadius / segmentLen;
+    const f32 stopT = (t > backoffT) ? (t - backoffT) : 0.0f;
+    *end = start + segment * stopT;
+    return true;
+}
+
+static bool hookshot_clamp_lv7_peahat_crossing(const cXyz& start, cXyz* end, fopAc_ac_c* targetedActor) {
+    if (end == NULL || targetedActor == NULL || fopAcM_GetName(targetedActor) != fpcNm_E_PH_e) {
+        return false;
+    }
+
+    // In Argorok's room both the clawshot and the rising peahat can move
+    // several times farther per frame. Compare their paths relative to one
+    // another, using the peahat's position change to estimate its previous
+    // hook target. A tip that crosses the peahat between collision updates
+    // should get a frame inside its current target area.
+    const cXyz targetMotion = targetedActor->current.pos - targetedActor->old.pos;
+    const cXyz relativeStart = start - (targetedActor->eyePos - targetMotion);
+    const cXyz relativeStep = (*end - start) - targetMotion;
+    const f32 relativeStepLenSq = relativeStep.x * relativeStep.x + relativeStep.y * relativeStep.y + relativeStep.z * relativeStep.z;
+    if (relativeStepLenSq <= 0.0001f) {
+        return false;
+    }
+
+    const f32 t = -relativeStart.inprod(relativeStep) / relativeStepLenSq;
+    if (t < 0.0f || t > 1.0f) {
+        return false;
+    }
+
+    const cXyz closest = relativeStart + relativeStep * t;
+    const f32 radius = 60.0f * actor_attr::enemy_size_multiplier(targetedActor);
+    if (closest.x * closest.x + closest.y * closest.y + closest.z * closest.z > radius * radius) {
+        return false;
+    }
+
+    // Keep the tip at the peahat's current hook target for the normal
+    // collision callback; the sweep itself does not force a catch.
+    *end = targetedActor->eyePos;
+    return true;
+}
 
 static const int HS_CHAIN_MAX_LINKS = 600;
 #endif
@@ -932,13 +1045,20 @@ void daAlink_c::setHookshotPos() {
         max_length = mpHIO->mItem.mHookshot.m.mMaxLength;
     }
 
-    #if TARGET_PC
+#if TARGET_PC  // enemy attribute integration
     if (dusk::getSettings().game.superClawshot) {
         return_speed = 2870.0f;
         shoot_speed = 2870.0f;
         max_length = 69420.0f;
     }
-    #endif
+
+    // Follow Argorok's movement speed throughout his room; keep the existing
+    // underwater boss adjustment everywhere else. The speed is 1 if Argorok
+    // is not active, so unrelated room behavior remains unchanged.
+    const f32 boss_hookshot_speed = checkLv7BossRoom() ? hookshot_lv7_boss_speed_multiplier() : hookshot_underwater_boss_speed_multiplier();
+    shoot_speed *= boss_hookshot_speed;
+
+#endif
 
     if (mItemMode == HS_MODE_RETURN_e) {
         if (targetAc_p != NULL) {
@@ -948,12 +1068,15 @@ void daAlink_c::setHookshotPos() {
                 return_speed = mpHIO->mItem.mHookshot.m.mStickReturnSpeed;
             }
         }
+#if TARGET_PC  // enemy attribute integration
 
-        #if TARGET_PC
         if (dusk::getSettings().game.superClawshot) {
             return_speed = 500.0f;
         }
-        #endif
+
+        return_speed *= boss_hookshot_speed;
+#endif
+
 
         if (checkModeFlg(0x400)) {
             return_speed += current.pos.abs(field_0x3798);
@@ -1091,6 +1214,13 @@ void daAlink_c::setHookshotPos() {
 
                 if (checkModeFlg(0x400)) {
                     mHookshotTopPos += current.pos - field_0x3798;
+#if TARGET_PC  // enemy attribute integration
+                }
+
+                hookshot_clamp_underwater_zant_crossing(sp194, &mHookshotTopPos, mTargetedActor);
+                if (checkLv7BossRoom()) {
+                    hookshot_clamp_lv7_peahat_crossing(sp194, &mHookshotTopPos, mTargetedActor);
+#endif
                 }
 
                 cXyz sp17C = mHookshotTopPos - mHeldItemRootPos;
@@ -1602,13 +1732,19 @@ int daAlink_c::procHookshotFly() {
     } else {
         mProcVar0.field_0x3008 = 0;
         f32 temp_f31 = field_0x37d4.abs();
-        f32 temp_f30 = mpHIO->mItem.mHookshot.m.mStickReturnSpeed + spAC.abs(mHookshotTopPos);
+        f32 pull_speed = mpHIO->mItem.mHookshot.m.mStickReturnSpeed;
 
         #if TARGET_PC
         if (dusk::getSettings().game.superClawshot) {
-            temp_f30 = 500.0f + spAC.abs(mHookshotTopPos);
+            pull_speed = 500.0f;
+        }
+        // The clawshot tip is already speed-matched in setHookshotPos();
+        // Link's pull toward Argorok or a peahat needs to match as well.
+        if (checkLv7BossRoom()) {
+            pull_speed *= hookshot_lv7_boss_speed_multiplier();
         }
         #endif
+        f32 temp_f30 = pull_speed + spAC.abs(mHookshotTopPos);
 
         if (temp_f31 < temp_f30 || mProcVar1.field_0x300a == 0) {
             setHookshotReturnEnd();
@@ -1743,6 +1879,14 @@ int daAlink_c::procHookshotRoofWaitInit(BOOL param_0, fopAc_ac_c* param_1, int p
 
         mProcVar2.field_0x300c = 0;
         setSingleAnimeParam(anm, &mpHIO->mItem.mHookshot.m.mRoofHangAnm);
+#if TARGET_PC  // enemy attribute integration
+        if (param_1 != NULL && fopAcM_GetName(param_1) == fpcNm_E_PH_e && checkLv7BossRoom()) {
+            // This arrival animation gates the next clawshot shot. Match its
+            // playback rate to Argorok so the cancel frame and animation end
+            // become reachable at the same relative action speed.
+            mUnderFrameCtrl[0].setRate(mUnderFrameCtrl[0].getRate() * hookshot_lv7_boss_speed_multiplier());
+        }
+#endif
     } else {
         setHookshotRoofWaitAnime();
         mProcVar2.field_0x300c = 1;

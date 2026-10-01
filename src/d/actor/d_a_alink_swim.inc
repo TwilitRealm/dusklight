@@ -1396,6 +1396,13 @@ int daAlink_c::procSwimDamageInit(dCcD_GObjInf* i_hitObj) {
         scale = mpHIO->mDamage.mDamSwim.m.mMaxSpeed;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    l_enemySwimKnockbackMultiplier = getEnemyPlayerKnockbackMultiplier(i_hitObj);
+    if (l_enemySwimKnockbackMultiplier != 1.0f) {
+        scale *= l_enemySwimKnockbackMultiplier;
+    }
+
+#endif
     field_0x3750 = dmg_vec->normZP();
     field_0x3750 *= scale;
 

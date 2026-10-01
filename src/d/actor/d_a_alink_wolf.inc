@@ -5,6 +5,10 @@
 
 #include "JSystem/J3DGraphBase/J3DMaterial.h"
 #include "d/actor/d_a_alink.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#include "dusk/logging.h"
+#endif
 #include "d/actor/d_a_e_pm.h"
 #include "d/actor/d_a_e_yc.h"
 #include "d/actor/d_a_e_ymb.h"
@@ -32,6 +36,41 @@
 #include "d/d_msg_object.h"
 #include "f_op/f_op_kankyo_mng.h"
 #include "m_Do/m_Do_controller_pad.h"
+
+#if TARGET_PC
+namespace {
+
+static f32 s_wolfGanonGrabSpeedMul = 1.0f;
+
+static f32 wolf_ganon_grab_speed_from_actor(const fopAc_ac_c* actor) {
+    if (actor == NULL || fopAcM_GetGroup(actor) != fopAc_ENEMY_e) {
+        return 1.0f;
+    }
+
+    return dusk::mods::svc::actor_attr::resolve_multiplier(actor, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+}
+
+static dusk::mods::svc::actor_attr::ActionAnimationParams wolf_ganon_grab_anm_params() {
+    return dusk::mods::svc::actor_attr::action_animation_params(3.0f, 1.0f, s_wolfGanonGrabSpeedMul);
+}
+
+static bool wolf_ganon_grab_speed_is_scaled() {
+    return s_wolfGanonGrabSpeedMul != 1.0f;
+}
+
+static void wolf_ganon_grab_clear_speed() {
+    s_wolfGanonGrabSpeedMul = 1.0f;
+}
+
+}  // namespace
+
+// Midna's own actor owns the final visual throw animation.  Expose the
+// already-cached Beast Ganon grab speed so d_a_midna.cpp can keep that final
+// animation on the exact same action clock.
+f32 daAlink_getWolfGanonGrabSpeedMul() {
+    return s_wolfGanonGrabSpeedMul;
+}
+#endif
 
 // Forward declarations (for clangd)
 int daAlink_kandelaarModelCallBack(J3DJoint* param_0, int param_1);
@@ -4009,7 +4048,7 @@ int daAlink_c::procWolfHowlDemoInit() {
             if (mZ2WolfHowlMgr.getCorrectCurveID() != 9) {
                 mZ2WolfHowlMgr.setCorrectCurve(-1);
             }
-            #else
+#else
             mZ2WolfHowlMgr.setCorrectCurve(-1);
             #endif
         }
@@ -4018,7 +4057,7 @@ int daAlink_c::procWolfHowlDemoInit() {
         if (mZ2WolfHowlMgr.getCorrectCurveID() != 9) {
             mZ2WolfHowlMgr.setCorrectCurve(-1);
         }
-        #else
+#else
         mZ2WolfHowlMgr.setCorrectCurve(-1);
         #endif
     }
@@ -5729,6 +5768,13 @@ int daAlink_c::procWolfDamageInit(dCcD_GObjInf* i_hitObj) {
         mNormalSpeed = mpHIO->mWolf.mWlMove.m.mMaxSpeed;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    l_enemyDamageKnockbackMultiplier = getEnemyPlayerKnockbackMultiplier(i_hitObj);
+    if (l_enemyDamageKnockbackMultiplier != 1.0f) {
+        mNormalSpeed *= l_enemyDamageKnockbackMultiplier;
+    }
+
+#endif
     field_0x3588 = l_wolfBaseAnime;
 
     if (i_hitObj == NULL || (i_hitObj->GetTgHitGObj() != NULL && i_hitObj->GetTgHitGObj()->GetAtMtrl() == dCcD_MTRL_ICE)) {
@@ -5754,7 +5800,11 @@ int daAlink_c::procWolfDamageInit(dCcD_GObjInf* i_hitObj) {
 int daAlink_c::procWolfDamage() {
     daPy_frameCtrl_c* frameCtrl_p = mUnderFrameCtrl;
 
+#if TARGET_PC  // enemy attribute integration
+    cLib_chaseF(&mNormalSpeed, 0.0f, scaleEnemyPlayerKnockbackStep(mpHIO->mWolf.mWlDamage.mNormal.m.mDeceleration, l_enemyDamageKnockbackMultiplier));
+#else
     cLib_chaseF(&mNormalSpeed, 0.0f, mpHIO->mWolf.mWlDamage.mNormal.m.mDeceleration);
+#endif
     field_0x2f99 = 5;
 
     if (checkFreezeDamage()) {
@@ -6832,6 +6882,11 @@ int daAlink_c::procWolfSwimEndWait() {
 
 bool daAlink_c::onWolfEnemyBiteAll(fopAc_ac_c* i_enemy, daPy_py_c::daPy_FLG2 i_flag) {
     if (field_0x281c.getActor() != NULL) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        if (i_flag == FLG2_WOLF_ENEMY_HANG_BITE) {
+            DuskLog.info("[WOLF HANG] REQUEST_REJECT reason=OWNER_EXISTS requested={} id={} " "owner={} ownerId={} cut={} proc={}", i_enemy != NULL ? static_cast<int>(fopAcM_GetName(i_enemy)) : -1, i_enemy != NULL ? static_cast<u32>(fopAcM_GetID(i_enemy)) : 0, static_cast<int>(fopAcM_GetName(field_0x281c.getActor())), static_cast<u32>(fopAcM_GetID(field_0x281c.getActor())), static_cast<int>(mCutType), static_cast<int>(mProcID));
+        }
+#endif
         return 0;
     }
 
@@ -6845,16 +6900,33 @@ bool daAlink_c::onWolfEnemyBiteAll(fopAc_ac_c* i_enemy, daPy_py_c::daPy_FLG2 i_f
             return 0;
         }
     } else if (mCutType != CUT_TYPE_WOLF_JUMP) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        if (i_flag == FLG2_WOLF_ENEMY_HANG_BITE) {
+            DuskLog.info("[WOLF HANG] REQUEST_REJECT reason=CUT_TYPE target={} id={} cut={} proc={}", i_enemy != NULL ? static_cast<int>(fopAcM_GetName(i_enemy)) : -1, i_enemy != NULL ? static_cast<u32>(fopAcM_GetID(i_enemy)) : 0, static_cast<int>(mCutType), static_cast<int>(mProcID));
+        }
+#endif
         return 0;
     }
 
     onNoResetFlg2(i_flag);
     field_0x281c.setData(i_enemy);
 
+#if TARGET_PC  // wolf hang-bite diagnostic
+    if (i_flag == FLG2_WOLF_ENEMY_HANG_BITE) {
+        const f32 targetSize = dusk::mods::svc::actor_attr::resolve_multiplier(i_enemy, ACTOR_ATTRIBUTE_SIZE);
+        DuskLog.info("[WOLF HANG] REQUEST_ACCEPT target={} id={} size={:.3f} cut={} proc={} " "ground={} link=({:.2f},{:.2f},{:.2f}) targetPos=({:.2f},{:.2f},{:.2f})", i_enemy != NULL ? static_cast<int>(fopAcM_GetName(i_enemy)) : -1, i_enemy != NULL ? static_cast<u32>(fopAcM_GetID(i_enemy)) : 0, targetSize, static_cast<int>(mCutType), static_cast<int>(mProcID), mLinkAcch.ChkGroundHit(), current.pos.x, current.pos.y, current.pos.z, i_enemy != NULL ? i_enemy->current.pos.x : 0.0f, i_enemy != NULL ? i_enemy->current.pos.y : 0.0f, i_enemy != NULL ? i_enemy->current.pos.z : 0.0f);
+    }
+#endif
     return 1;
 }
 
 void daAlink_c::resetWolfEnemyBiteAll() {
+#if TARGET_PC  // wolf hang-bite diagnostic
+    fopAc_ac_c* target = field_0x281c.getActor();
+    if (target != NULL || checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE)) {
+        DuskLog.info("[WOLF HANG] RESET target={} id={} size={:.3f} proc={} cut={} hangFlag={}", target != NULL ? static_cast<int>(fopAcM_GetName(target)) : -1, target != NULL ? static_cast<u32>(fopAcM_GetID(target)) : 0, dusk::mods::svc::actor_attr::resolve_multiplier(target, ACTOR_ATTRIBUTE_SIZE), static_cast<int>(mProcID), static_cast<int>(mCutType), checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE));
+    }
+#endif
     field_0x281c.clearData();
     offNoResetFlg2(daPy_FLG2(FLG2_WOLF_ENEMY_HANG_BITE | FLG2_UNK_10 | FLG2_UNK_8));
 }
@@ -7077,9 +7149,28 @@ BOOL daAlink_c::checkWolfAttackAction() {
 }
 
 void daAlink_c::setWolfEnemyThrowUpperAnime(daAlink_c::daAlink_WANM i_anmID, f32 param_1) {
+#if TARGET_PC  // enemy attribute integration
+
+    fopAc_ac_c* grabbedEnemy = field_0x281c.getActor();
+
+    f32 enemySpeedMul = 1.0f;
+    if (grabbedEnemy != NULL && fopAcM_GetGroup(grabbedEnemy) == fopAc_ENEMY_e) {
+        enemySpeedMul = dusk::mods::svc::actor_attr::resolve_multiplier(grabbedEnemy, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+    }
+
+    #if DEBUG
+    const f32 vanillaThrowSpeed = mpHIO->mWolf.mWlAttack.mWlAtBite.m.mEnemyBiteThrowAnmSpeed;
+    #else
+    const f32 vanillaThrowSpeed = daAlinkHIO_wlAtBite_c0::m.mEnemyBiteThrowAnmSpeed;
+    #endif
+#endif
+
     setUpperAnime(
         i_anmID == WANM_FLING_LEFT ? (u16)dRes_ID_ALANM_BCK_WL_FLINGNECKL_e : (u16)dRes_ID_ALANM_BCK_WL_FLINGNECKR_e,
         UPPER_2,
+#if TARGET_PC  // enemy attribute integration
+        vanillaThrowSpeed * enemySpeedMul,
+#else
         // Fakematch, should be
         // mpHIO->mWolf.mWlAttack.mWlAtBite.m.mEnemyBiteThrowAnmSpeed,
         #if DEBUG
@@ -7087,6 +7178,7 @@ void daAlink_c::setWolfEnemyThrowUpperAnime(daAlink_c::daAlink_WANM i_anmID, f32
         #else
         daAlinkHIO_wlAtBite_c0::m.mEnemyBiteThrowAnmSpeed,
         #endif
+#endif
         param_1,
         -1,
         -1.0f
@@ -7097,16 +7189,66 @@ BOOL daAlink_c::setWolfEnemyHangBitePos(fopEn_enemy_c* i_enemy) {
     if (i_enemy != NULL) {
         cXyz old_pos = current.pos = i_enemy->getDownPos();
 
+#if TARGET_PC  // enemy attribute integration
+        const f32 targetSize = dusk::mods::svc::actor_attr::resolve_multiplier(i_enemy, ACTOR_ATTRIBUTE_SIZE);
+
+        const f32 hangPosScale = targetSize < 1.0f ? targetSize : 1.0f;
+
+        current.pos.x -= 60.0f * hangPosScale * cM_ssin(shape_angle.y);
+        current.pos.y -= 135.0f * hangPosScale;
+        current.pos.z -= 60.0f * hangPosScale * cM_scos(shape_angle.y);
+#else
         current.pos.x -= 60.0f * cM_ssin(shape_angle.y);
         current.pos.y -= 135.0f;
         current.pos.z -= 60.0f * cM_scos(shape_angle.y);
+#endif
 
-        if (commonLineCheck(&field_0x3540, &current.pos)) {
+        bool blocked = commonLineCheck(&field_0x3540, &current.pos);
+
+#if TARGET_PC  // small-enemy wolf hang floor correction
+        if (blocked && targetSize < 1.0f) {
+            cM3dGPla hitPlane;
+            const bool havePlane = dComIfG_Bgsp().GetTriPla(mLinkLinChk, &hitPlane);
+
+            const cXyz firstHit = mLinkLinChk.GetCross();
+
+            // A small enemy can put the scaled hanging position underneath
+            // the floor.  Don't detach Wolf Link for that: raise only the Y
+            // position enough to remain above the floor.
+            //
+            // Still reject walls, ceilings, and other obstruction types.
+            if (havePlane && hitPlane.mNormal.y > 0.5f && current.pos.y < firstHit.y) {
+                const f32 requestedY = current.pos.y;
+
+                // Small margin prevents numerical contact with the same
+                // ground triangle on the following frame.
+                current.pos.y = firstHit.y + 5.0f;
+
+                // Re-run the obstruction test.  If something other than the
+                // floor is genuinely blocking this position, preserve the
+                // vanilla rejection behavior.
+                blocked = commonLineCheck(&field_0x3540, &current.pos);
+
+                if (!blocked) {
+                    DuskLog.info("[WOLF HANG] FLOOR_CLAMP target={} id={} size={:.3f} " "requestedY={:.2f} floorY={:.2f} clampedY={:.2f}", static_cast<int>(fopAcM_GetName(i_enemy)), static_cast<u32>(fopAcM_GetID(i_enemy)), targetSize, requestedY, firstHit.y, current.pos.y);
+                }
+            }
+        }
+#endif
+
+        if (blocked) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+            cM3dGPla hitPlane;
+            const bool havePlane = dComIfG_Bgsp().GetTriPla(mLinkLinChk, &hitPlane);
+
+            DuskLog.info("[WOLF HANG] POSITION_REJECT target={} id={} size={:.3f} " "link=({:.2f},{:.2f},{:.2f}) " "desired=({:.2f},{:.2f},{:.2f}) " "down=({:.2f},{:.2f},{:.2f}) " "hit=({:.2f},{:.2f},{:.2f}) " "plane={} normal=({:.3f},{:.3f},{:.3f})", static_cast<int>(fopAcM_GetName(i_enemy)), static_cast<u32>(fopAcM_GetID(i_enemy)), targetSize, field_0x3540.x, field_0x3540.y, field_0x3540.z, current.pos.x, current.pos.y, current.pos.z, old_pos.x, old_pos.y, old_pos.z, mLinkLinChk.GetCross().x, mLinkLinChk.GetCross().y, mLinkLinChk.GetCross().z, havePlane, havePlane ? hitPlane.mNormal.x : 0.0f, havePlane ? hitPlane.mNormal.y : 0.0f, havePlane ? hitPlane.mNormal.z : 0.0f);
+#endif
+
             current.pos = old_pos;
             return FALSE;
-        } else {
-            return TRUE;
         }
+
+        return TRUE;
     }
 
     return FALSE;
@@ -7437,10 +7579,22 @@ int daAlink_c::procWolfJumpAttack() {
     }
 
     if (mLinkAcch.ChkGroundHit() && checkWolfLandAction(0)) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        if (checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE)) {
+            fopAc_ac_c* target = field_0x281c.getActor();
+            DuskLog.info("[WOLF HANG] POUNCE_EXIT reason=LAND_ACTION target={} id={} size={:.3f} " "procAfter={} linkY={:.2f} targetY={:.2f}", target != NULL ? static_cast<int>(fopAcM_GetName(target)) : -1, target != NULL ? static_cast<u32>(fopAcM_GetID(target)) : 0, dusk::mods::svc::actor_attr::resolve_multiplier(target, ACTOR_ATTRIBUTE_SIZE), static_cast<int>(mProcID), current.pos.y, target != NULL ? target->current.pos.y : 0.0f);
+        }
+#endif
         return 1;
     }
 
     if (mLinkAcch.ChkGroundHit() && checkSlideAction()) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        if (checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE)) {
+            fopAc_ac_c* target = field_0x281c.getActor();
+            DuskLog.info("[WOLF HANG] POUNCE_EXIT reason=SLIDE_ACTION target={} id={} size={:.3f} " "procAfter={} linkY={:.2f} targetY={:.2f}", target != NULL ? static_cast<int>(fopAcM_GetName(target)) : -1, target != NULL ? static_cast<u32>(fopAcM_GetID(target)) : 0, dusk::mods::svc::actor_attr::resolve_multiplier(target, ACTOR_ATTRIBUTE_SIZE), static_cast<int>(mProcID), current.pos.y, target != NULL ? target->current.pos.y : 0.0f);
+        }
+#endif
         dComIfGp_getVibration().StartShock(1, 15, cXyz(0.0f, 1.0f, 0.0f));
         return 1;
     }
@@ -7458,6 +7612,12 @@ int daAlink_c::procWolfJumpAttack() {
     field_0x2f99 = 7;
 
     if (mLinkAcch.ChkGroundHit()) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        if (checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE)) {
+            fopAc_ac_c* target = field_0x281c.getActor();
+            DuskLog.info("[WOLF HANG] POUNCE_EXIT reason=GROUND_BEFORE_HANG target={} id={} " "size={:.3f} linkY={:.2f} targetY={:.2f} jumpMode={} jumpSub={}", target != NULL ? static_cast<int>(fopAcM_GetName(target)) : -1, target != NULL ? static_cast<u32>(fopAcM_GetID(target)) : 0, dusk::mods::svc::actor_attr::resolve_multiplier(target, ACTOR_ATTRIBUTE_SIZE), current.pos.y, target != NULL ? target->current.pos.y : 0.0f, mProcVar1.field_0x300a, mProcVar5.field_0x3012);
+        }
+#endif
         dComIfGp_getVibration().StartShock(1, 15, cXyz(0.0f, 1.0f, 0.0f));
 
         if (checkNoResetFlg2(FLG2_UNK_8)) {
@@ -7473,6 +7633,10 @@ int daAlink_c::procWolfJumpAttack() {
     }
 
     if (checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE)) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        fopAc_ac_c* target = field_0x281c.getActor();
+        DuskLog.info("[WOLF HANG] POUNCE_TO_HANG target={} id={} size={:.3f} ground={} " "link=({:.2f},{:.2f},{:.2f}) targetY={:.2f}", target != NULL ? static_cast<int>(fopAcM_GetName(target)) : -1, target != NULL ? static_cast<u32>(fopAcM_GetID(target)) : 0, dusk::mods::svc::actor_attr::resolve_multiplier(target, ACTOR_ATTRIBUTE_SIZE), mLinkAcch.ChkGroundHit(), current.pos.x, current.pos.y, current.pos.z, target != NULL ? target->current.pos.y : 0.0f);
+#endif
         return procWolfEnemyHangBiteInit();
     }
 
@@ -8297,8 +8461,22 @@ int daAlink_c::procWolfEnemyThrowInit(int param_0) {
         start_frame = 3.0f;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    fopAc_ac_c* grabbedEnemy = field_0x281c.getActor();
+
+    f32 enemySpeedMul = 1.0f;
+    if (grabbedEnemy != NULL && fopAcM_GetGroup(grabbedEnemy) == fopAc_ENEMY_e) {
+        enemySpeedMul = dusk::mods::svc::actor_attr::resolve_multiplier(grabbedEnemy, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+    }
+
+    const dusk::mods::svc::actor_attr::ActionAnimationParams throwAnm = dusk::mods::svc::actor_attr::action_animation_params(mpHIO->mWolf.mWlAttack.mWlAtBite.m.mEnemyBiteThrowInterpolation, mpHIO->mWolf.mWlAttack.mWlAtBite.m.mEnemyBiteThrowAnmSpeed, enemySpeedMul);
+
+    setSingleAnimeWolf(anm, throwAnm.playbackSpeed, start_frame, -1,
+                       throwAnm.morph);
+#else
     setSingleAnimeWolf(anm, mpHIO->mWolf.mWlAttack.mWlAtBite.m.mEnemyBiteThrowAnmSpeed, start_frame, -1,
                        mpHIO->mWolf.mWlAttack.mWlAtBite.m.mEnemyBiteThrowInterpolation);
+#endif
     setWolfEnemyThrowUpperAnime(anm, start_frame);
     field_0x3588 = l_wolfBaseAnime;
     mNormalSpeed = 0.0f;
@@ -8333,7 +8511,14 @@ int daAlink_c::procWolfEnemyHangBiteInit() {
     speed.y = 0.0f;
     setSpecialGravity(0.0f, maxFallSpeed, 0);
 
-    if (!setWolfEnemyHangBitePos((fopEn_enemy_c*)field_0x281c.getActor())) {
+    fopEn_enemy_c* enemy_p = (fopEn_enemy_c*)field_0x281c.getActor();
+#if TARGET_PC  // wolf hang-bite diagnostic
+    DuskLog.info("[WOLF HANG] INIT target={} id={} size={:.3f} hangFlag={} timerVanilla={} " "ground={} link=({:.2f},{:.2f},{:.2f})", enemy_p != NULL ? static_cast<int>(fopAcM_GetName(enemy_p)) : -1, enemy_p != NULL ? static_cast<u32>(fopAcM_GetID(enemy_p)) : 0, dusk::mods::svc::actor_attr::resolve_multiplier(enemy_p, ACTOR_ATTRIBUTE_SIZE), checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE), mpHIO->mWolf.mWlAttack.mWlAtBite.m.mBiteAttachTime, mLinkAcch.ChkGroundHit(), current.pos.x, current.pos.y, current.pos.z);
+#endif
+    if (!setWolfEnemyHangBitePos(enemy_p)) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        DuskLog.info("[WOLF HANG] INIT_EXIT reason=POSITION_REJECT");
+#endif
         return procWolfJumpAttackKickInit();
     } else {
         current.angle.y = shape_angle.y;
@@ -8355,7 +8540,15 @@ int daAlink_c::procWolfEnemyHangBite() {
     daPy_frameCtrl_c* frameCtrl_p = mUnderFrameCtrl;
 
     fopEn_enemy_c* enemy_p = (fopEn_enemy_c*)field_0x281c.getActor();
+#if TARGET_PC  // wolf hang-bite diagnostic
+    if (!checkNoResetFlg2(FLG2_WOLF_ENEMY_HANG_BITE)) {
+        DuskLog.info("[WOLF HANG] ACTIVE_FLAG_CLEARED target={} id={} size={:.3f} timer={} " "phase={} anmFrame={:.2f} anmRate={:.3f}", enemy_p != NULL ? static_cast<int>(fopAcM_GetName(enemy_p)) : -1, enemy_p != NULL ? static_cast<u32>(fopAcM_GetID(enemy_p)) : 0, dusk::mods::svc::actor_attr::resolve_multiplier(enemy_p, ACTOR_ATTRIBUTE_SIZE), mProcVar0.field_0x3008, mProcVar2.field_0x300c, frameCtrl_p->getFrame(), frameCtrl_p->getRate());
+    }
+#endif
     if (!setWolfEnemyHangBitePos(enemy_p)) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+        DuskLog.info("[WOLF HANG] ACTIVE_EXIT reason=POSITION_REJECT timer={} phase={} " "anmFrame={:.2f} anmRate={:.3f}", mProcVar0.field_0x3008, mProcVar2.field_0x300c, frameCtrl_p->getFrame(), frameCtrl_p->getRate());
+#endif
         return procWolfJumpAttackKickInit();
     }
 
@@ -8379,11 +8572,17 @@ int daAlink_c::procWolfEnemyHangBite() {
                 mProcVar3.field_0x300e = 0;
                 mProcVar2.field_0x300c = 1;
             } else if (mProcVar0.field_0x3008 == 0) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+                DuskLog.info("[WOLF HANG] ACTIVE_EXIT reason=PREP_TIMEOUT phase={} anmFrame={:.2f} " "anmRate={:.3f} holdToMash={} inputLatched={}", mProcVar2.field_0x300c, frameCtrl_p->getFrame(), frameCtrl_p->getRate(), holdToMash, mProcVar3.field_0x300e);
+#endif
                 return procWolfJumpAttackKickInit();
             }
         }
     } else {
         if (mProcVar0.field_0x3008 == 0) {
+#if TARGET_PC  // wolf hang-bite diagnostic
+            DuskLog.info("[WOLF HANG] ACTIVE_EXIT reason=ACTIVE_TIMEOUT phase={} anmFrame={:.2f} " "anmRate={:.3f} holdToMash={} inputLatched={}", mProcVar2.field_0x300c, frameCtrl_p->getFrame(), frameCtrl_p->getRate(), holdToMash, mProcVar3.field_0x300e);
+#endif
             return procWolfJumpAttackKickInit();
         }
 
@@ -8800,13 +8999,44 @@ int daAlink_c::procWolfGanonCatchInit() {
     commonProcInit(PROC_WOLF_GANON_CATCH);
     field_0x280c.setData(field_0x27f4);
     static_cast<fopEn_enemy_c*>(field_0x27f4)->setThrowModeCatch();
+#if TARGET_PC  // enemy attribute integration
+
+    // Cache Beast Ganon's movement-speed multiplier for the ENTIRE Midna
+    // catch/throw sequence.  The enemy changes throw state partway through,
+    // but Link/Midna still have START and END follow-through animations left.
+    s_wolfGanonGrabSpeedMul = wolf_ganon_grab_speed_from_actor(field_0x27f4);
+
+    if (wolf_ganon_grab_speed_is_scaled()) {
+        const dusk::mods::svc::actor_attr::ActionAnimationParams params = wolf_ganon_grab_anm_params();
+        setSingleAnimeWolf(WANM_PIG_GANON_CATCH_ST, params.playbackSpeed, 0.0f, -1, params.morph);
+    } else {
+#endif
     setSingleAnimeWolfBase(WANM_PIG_GANON_CATCH_ST);
+#if TARGET_PC  // enemy attribute integration
+    }
+#endif
 
     shape_angle.y = cLib_targetAngleY(&current.pos, &field_0x27f4->current.pos);
     current.angle.y = shape_angle.y + 0x8000;
 
+#if TARGET_PC  // enemy attribute integration
+    if (wolf_ganon_grab_speed_is_scaled()) {
+        // Scale both velocity and acceleration so this approach/deceleration
+        // occupies the same action-time and approximately the same distance.
+        mNormalSpeed = dusk::mods::svc::actor_attr::action_step(50.0f, s_wolfGanonGrabSpeedMul);
+        mProcVar5.field_0x3012 = dusk::mods::svc::actor_attr::sync_timer(30.0f, s_wolfGanonGrabSpeedMul);
+    } else {
+
+#endif
     mNormalSpeed = 50.0f;
     mProcVar5.field_0x3012 = 30;
+#if TARGET_PC  // enemy attribute integration
+    }
+
+    // 0 = throw START animation; 1 = throw END animation.
+    // This prevents the END animation from being restarted every time it ends.
+    mProcVar1.field_0x300a = 0;
+#endif
     mProcVar2.field_0x300c = 0;
     mProcVar3.field_0x300e = 0;
     setFootEffectProcType(0);
@@ -8821,12 +9051,18 @@ int daAlink_c::procWolfGanonCatch() {
     if (mProcVar2.field_0x300c == 0) {
         fopEn_enemy_c* ganon_p = (fopEn_enemy_c*)field_0x280c.getActor();
         if (ganon_p == NULL) {
+#if TARGET_PC  // enemy attribute integration
+            wolf_ganon_grab_clear_speed();
+#endif
             resetSpecialEvent();
             procWolfWaitInit();
             return 1;
         }
 
         if (!doButton() || !mLinkAcch.ChkGroundHit()) {
+#if TARGET_PC  // enemy attribute integration
+            wolf_ganon_grab_clear_speed();
+#endif
             resetSpecialEvent();
             ganon_p->setThrowModeDash();
             procWolfWaitInit();
@@ -8834,7 +9070,16 @@ int daAlink_c::procWolfGanonCatch() {
         }
 
         if (checkAnmEnd(frameCtrl_p)) {
+#if TARGET_PC  // enemy attribute integration
+            if (wolf_ganon_grab_speed_is_scaled()) {
+                const dusk::mods::svc::actor_attr::ActionAnimationParams params = wolf_ganon_grab_anm_params();
+                setSingleAnimeWolf(WANM_PIG_GANON_CATCH_END, params.playbackSpeed, 0.0f, -1, params.morph);
+            } else {
+#endif
             setSingleAnimeWolfBase(WANM_PIG_GANON_CATCH_END);
+#if TARGET_PC  // enemy attribute integration
+            }
+#endif
         }
 
         if (checkInputOnR()) {
@@ -8844,30 +9089,91 @@ int daAlink_c::procWolfGanonCatch() {
             }
         }
 
+#if TARGET_PC  // enemy attribute integration
+        const f32 chaseStep = wolf_ganon_grab_speed_is_scaled() ? 1.0f * s_wolfGanonGrabSpeedMul * s_wolfGanonGrabSpeedMul : 1.0f;
+
+        if (cLib_chaseF(&mNormalSpeed, 0.0f, chaseStep)) {
+#else
         if (cLib_chaseF(&mNormalSpeed, 0.0f, 1.0f)) {
+#endif
             if (mProcVar5.field_0x3012 != 0) {
                 mProcVar5.field_0x3012--;
             } else {
                 if (mProcVar4.field_0x3010 == DIR_LEFT) {
+#if TARGET_PC  // enemy attribute integration
+                    if (wolf_ganon_grab_speed_is_scaled()) {
+                        const dusk::mods::svc::actor_attr::ActionAnimationParams params = wolf_ganon_grab_anm_params();
+                        setSingleAnimeWolf(WANM_PIG_GANON_THROW_LEFT_START, params.playbackSpeed, 0.0f, -1, params.morph);
+                    } else {
+#endif
                     setSingleAnimeWolfBase(WANM_PIG_GANON_THROW_LEFT_START);
+#if TARGET_PC  // enemy attribute integration
+                    }
+#endif
                     ganon_p->setThrowModeThrowLeft();
                 } else if (mProcVar4.field_0x3010 == DIR_RIGHT) {
+#if TARGET_PC  // enemy attribute integration
+                    if (wolf_ganon_grab_speed_is_scaled()) {
+                        const dusk::mods::svc::actor_attr::ActionAnimationParams params = wolf_ganon_grab_anm_params();
+                        setSingleAnimeWolf(WANM_PIG_GANON_THROW_RIGHT_START, params.playbackSpeed, 0.0f, -1, params.morph);
+                    } else {
+#endif
                     setSingleAnimeWolfBase(WANM_PIG_GANON_THROW_RIGHT_START);
+#if TARGET_PC  // enemy attribute integration
+                    }
+#endif
                     ganon_p->setThrowModeThrowRight();
                 } else {
+#if TARGET_PC  // enemy attribute integration
+                    wolf_ganon_grab_clear_speed();
+#endif
                     resetSpecialEvent();
                     ganon_p->setThrowModeDash();
                     procWolfWaitInit();
                     return 1;
                 }
 
+#if TARGET_PC  // enemy attribute integration
+                mProcVar1.field_0x300a = 0;
+
+#endif
                 mProcVar2.field_0x300c = 1;
                 current.angle.y = shape_angle.y;
             }
+#if TARGET_PC  // enemy attribute integration
+        } else if (mNormalSpeed > (wolf_ganon_grab_speed_is_scaled() ? 5.0f * s_wolfGanonGrabSpeedMul : 5.0f)) {
+#else
         } else if (mNormalSpeed > 5.0f) {
+#endif
             field_0x2f9d = 0x60;
         }
     } else {
+#if TARGET_PC  // enemy attribute integration
+        if (wolf_ganon_grab_speed_is_scaled()) {
+            // The throw has two distinct pieces: *_START and *_END.
+            // Start END exactly once, then keep the inherited speed until END
+            // has fully completed.  Ganon may signal setEndGanonThrow() before
+            // Link/Midna's visible follow-through is finished.
+            if (mProcVar1.field_0x300a == 0 && checkAnmEnd(frameCtrl_p)) {
+                const dusk::mods::svc::actor_attr::ActionAnimationParams params = wolf_ganon_grab_anm_params();
+
+                if (mProcVar4.field_0x3010 == DIR_LEFT) {
+                    setSingleAnimeWolf(WANM_PIG_GANON_THROW_LEFT_END, params.playbackSpeed, 0.0f, -1, params.morph);
+                } else {
+                    setSingleAnimeWolf(WANM_PIG_GANON_THROW_RIGHT_END, params.playbackSpeed, 0.0f, -1, params.morph);
+                }
+
+                mProcVar1.field_0x300a = 1;
+            }
+
+            if (mProcVar1.field_0x300a != 0 && mProcVar3.field_0x300e != 0 && checkAnmEnd(frameCtrl_p)) {
+                wolf_ganon_grab_clear_speed();
+                resetSpecialEvent();
+                procWolfWaitInit();
+            }
+        } else {
+            // Preserve the exact vanilla path at 100% movement speed.
+#endif
         if (checkAnmEnd(frameCtrl_p)) {
             if (mProcVar4.field_0x3010 == DIR_LEFT) {
                 setSingleAnimeWolfBase(WANM_PIG_GANON_THROW_LEFT_END);
@@ -8877,8 +9183,14 @@ int daAlink_c::procWolfGanonCatch() {
         }
 
         if (mProcVar3.field_0x300e != 0) {
+#if TARGET_PC  // enemy attribute integration
+                wolf_ganon_grab_clear_speed();
+#endif
             resetSpecialEvent();
             procWolfWaitInit();
+#if TARGET_PC  // enemy attribute integration
+        }
+#endif
         }
     }
 

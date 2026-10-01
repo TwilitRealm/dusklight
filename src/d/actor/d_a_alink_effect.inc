@@ -1566,9 +1566,13 @@ void daAlink_c::setMetamorphoseEffectStartLink() {
     }
     #endif
 
-    #if TARGET_PC
+#if TARGET_PC  // enemy attribute integration
+    if (emitter != NULL) {
+#endif
     emitter->setGlobalParticleScale(mDoGph_gInf_c::getScale(), 1.0f);
-    #endif
+#if TARGET_PC  // enemy attribute integration
+    }
+#endif
 }
 
 void daAlink_c::setMetamorphoseEffect() {
