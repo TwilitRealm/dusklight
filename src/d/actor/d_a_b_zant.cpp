@@ -5,19 +5,40 @@
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
+#if TARGET_PC  // additional actor attribute integration
+#include <algorithm>
+#include <cmath>
+#include "JSystem/JAudio2/JAUSectionHeap.h"
+#include "SSystem/SComponent/c_math.h"
+#include "Z2AudioLib/Z2Instances.h"
+#include "d/actor/d_a_alink.h"
+#endif
 #include "d/actor/d_a_b_zant.h"
 #include "d/actor/d_a_b_zant_mobile.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "d/actor/d_a_mirror.h"
+#endif
 #include "d/actor/d_a_nbomb.h"
 #include "d/actor/d_a_obj_pillar.h"
 #include "d/d_com_inf_game.h"
+#if !TARGET_PC
 #include "d/actor/d_a_alink.h"
 #include "d/actor/d_a_mirror.h"
+#endif
 #include "d/d_s_play.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 #include "f_op/f_op_msg_mng.h"
+#if TARGET_PC  // additional actor attribute integration
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+#else
 #include "SSystem/SComponent/c_math.h"
 #include "Z2AudioLib/Z2Instances.h"
 #include "JSystem/JAudio2/JAUSectionHeap.h"
 #include <cmath>
+#endif
 
 enum Joint {
     /* 0x00 */ JNT_CENTER,
@@ -311,7 +332,17 @@ static int daB_ZANT_Draw(daB_ZANT_c* i_this) {
 }
 
 void daB_ZANT_c::setBck(int i_resID, u8 i_attr, f32 i_morf, f32 i_speed) {
+#if TARGET_PC  // enemy attribute integration
+
+    const actor_attr::ActionAnimationParams actorAttributeAnimation =
+        actor_attr::enemy_animation_params(this, i_morf, i_speed);
+    i_morf = actorAttributeAnimation.morph;
+    i_speed = actorAttributeAnimation.playbackSpeed;
+    mpModelMorf->setAnm((J3DAnmTransform*)dComIfG_getObjectRes("B_zan", i_resID), i_attr, i_morf,
+        i_speed, 0.0f, -1.0f);
+#else
     mpModelMorf->setAnm((J3DAnmTransform*)dComIfG_getObjectRes("B_zan", i_resID), i_attr, i_morf, i_speed, 0.0f, -1.0f);
+#endif
 }
 
 bool daB_ZANT_c::checkBck(int i_resID) {
@@ -453,7 +484,7 @@ void daB_ZANT_c::damage_check() {
             int dmg_amount = 0;
 
             if (field_0x702 != 0) {
-                health = 280;
+                health = DUSK_IF_ELSE(actor_attr::enemy_health_value(this, 280), 280);
                 cc_at_check(this, &mAtInfo);
             } else {
                 cc_at_check(this, &mAtInfo);
@@ -467,13 +498,13 @@ void daB_ZANT_c::damage_check() {
             }
 
             if (mAtInfo.mpCollider->ChkAtType(AT_TYPE_WOLF_ATTACK | AT_TYPE_WOLF_CUT_TURN | AT_TYPE_10000000 | AT_TYPE_MIDNA_LOCK)) {
-                field_0x6e4 = 20;
+				field_0x6e4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
             } else {
-                field_0x6e4 = 10;
+                field_0x6e4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
             }
 
             if (mAtInfo.mAttackPower <= 1) {
-                field_0x6e4 = 10;
+                field_0x6e4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
             }
 
             mTakenBigDmg = checkBigDamage();
@@ -488,7 +519,7 @@ void daB_ZANT_c::damage_check() {
                         setDamageSe(&tg_hit_sph, dmg_amount);
 
                         if (mAction != ACT_DAMAGE) {
-                            field_0x6f4 = 100;
+                            field_0x6f4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 100), 100);
                         }
 
                         setActionMode(ACT_DAMAGE, pl_cut_LRC(player->getCutType()));
@@ -518,7 +549,7 @@ void daB_ZANT_c::damage_check() {
                     setDamageSe(&tg_hit_sph, dmg_amount);
 
                     if (mAction != ACT_DAMAGE) {
-                        field_0x6f4 = 100;
+                        field_0x6f4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 100), 100);
                     }
 
                     setActionMode(ACT_DAMAGE, pl_cut_LRC(player->getCutType()));
@@ -540,7 +571,7 @@ void daB_ZANT_c::damage_check() {
                     setDamageSe(&tg_hit_sph, dmg_amount);
 
                     if (mAction != ACT_DAMAGE) {
-                        field_0x6f4 = 100;
+                        field_0x6f4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 100), 100);
                     }
 
                     setActionMode(ACT_DAMAGE, pl_cut_LRC(player->getCutType()));
@@ -629,7 +660,7 @@ void daB_ZANT_c::ice_damage_check() {
             int tg_idx = iron_tg_cc[i];
 
             if (mFootCc[tg_idx].ChkTgHit()) {
-                field_0x6e4 = 10;
+                field_0x6e4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
                 mAtInfo.mpCollider = mFootCc[tg_idx].GetTgHitObj();
 
                 if (!mFootCc[tg_idx].ChkTgShield()) {
@@ -677,13 +708,13 @@ void daB_ZANT_c::ice_damage_check() {
                     }
 
                     if (mAtInfo.mpCollider->ChkAtType(AT_TYPE_WOLF_ATTACK | AT_TYPE_WOLF_CUT_TURN | AT_TYPE_10000000 | AT_TYPE_MIDNA_LOCK)) {
-                        field_0x6e4 = 20;
+                        field_0x6e4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
                     } else {
-                        field_0x6e4 = 10;
+                        field_0x6e4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
                     }
 
                     if (mAtInfo.mAttackPower <= 1) {
-                        field_0x6e4 = 10;
+                        field_0x6e4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
                     }
 
                     mTakenBigDmg = checkBigDamage();
@@ -717,6 +748,22 @@ void daB_ZANT_c::ice_damage_check() {
 }
 
 bool daB_ZANT_c::setNextDamageMode(BOOL i_checkHealth) {
+#if TARGET_PC  // enemy attribute integration
+
+    // Phase progression stays cycle-based. Derive the randomized health
+    // multiplier from Zant's stored maximum HP (600 is his vanilla maximum),
+    // rather than re-querying a phase-local 280 HP value. For rolls above
+    // vanilla, add 50% of the health multiplier to the vanilla two cycles and
+    // round it. This makes a 400% HP Zant require exactly four completed
+    // damage/stun cycles before changing phase.
+    const f32 health_mul = (f32)field_0x560 / 600.0f;
+    int required_cycles = 2;
+    if (health_mul > 1.0f) {
+        required_cycles += (int)std::floor((health_mul * 0.5f) + 0.5f);
+    }
+
+    if (health <= 0) {
+#else
     if (i_checkHealth) {
         if (mFightCycle == 0 && health < 140) {
             mFightCycle++;
@@ -731,12 +778,32 @@ bool daB_ZANT_c::setNextDamageMode(BOOL i_checkHealth) {
             return true;
         }
     } else if (health <= 0 || mTakenBigDmg) {
+#endif
         mSound.startCreatureVoice(Z2SE_EN_ZAN_V_DMG, -1);
         mFightCycle = 0;
         setActionMode(ACT_ROOM_CHANGE, 0);
         return true;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    if (!i_checkHealth && mTakenBigDmg) {
+        mSound.startCreatureVoice(Z2SE_EN_ZAN_V_DMG, -1);
+
+        if ((int)mFightCycle + 1 >= required_cycles) {
+            mFightCycle = 0;
+            setActionMode(ACT_ROOM_CHANGE, 0);
+        } else {
+            mFightCycle++;
+            setBaseActionMode(2);
+        }
+        return true;
+    }
+
+    // Do not grant the vanilla half-health "free" cycle here. With randomized
+    // health, phase progression is strictly based on completed damage/stun
+    // cycles so a 400% health roll that requires four cycles really takes four.
+
+#endif
     return false;
 }
 
@@ -1013,7 +1080,7 @@ void daB_ZANT_c::executeSmallAttack() {
             }
         }
 
-        cLib_addCalcAngleS(&shape_angle.y, aim_target_angle, 8, 0x400, 0x80);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, aim_target_angle, 8, 0x400, 0x80), cLib_addCalcAngleS(&shape_angle.y, aim_target_angle, 8, 0x400, 0x80));
         if (mpModelMorf->isStop()) {
             f32 anm_speed = l_HIO.mAttackAnmSpeed;
             if (mFightPhase == PHASE_OI) {
@@ -1031,7 +1098,7 @@ void daB_ZANT_c::executeSmallAttack() {
         }
         break;
     case 3:
-        cLib_addCalcAngleS(&shape_angle.y, aim_target_angle, 8, 0x400, 0x80);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, aim_target_angle, 8, 0x400, 0x80), cLib_addCalcAngleS(&shape_angle.y, aim_target_angle, 8, 0x400, 0x80));
 
         if (mpModelMorf->checkFrame(3) || mpModelMorf->checkFrame(13)) {
             if (mpModelMorf->checkFrame(13)) {
@@ -1042,6 +1109,11 @@ void daB_ZANT_c::executeSmallAttack() {
 
             mDoMtx_stack_c::multVecZero(&sp44);
 
+            // Keep the projectile spawn position exactly on the scaled hand.
+            // Oversized Zant can put that hand far above Link, so pre-seed only
+            // the projectile pitch toward the same target that B_ZANTM uses on
+            // its first frame. This avoids the projectile's 0x2000 first-frame
+            // pitch correction limit without moving the shot down Zant's body.
             u32 parameter = field_0x6fd + 1;
             if (field_0x703 < 10) {
                 parameter += 2;
@@ -1051,7 +1123,18 @@ void daB_ZANT_c::executeSmallAttack() {
                 parameter = 6;
             }
 
+#if TARGET_PC  // enemy attribute integration
+            csXyz projectile_angle = shape_angle;
+            if (actor_attr::enemy_size_multiplier(this) > 1.0f) {
+                cXyz target_pos = daPy_getPlayerActorClass()->current.pos;
+                target_pos.y += parameter * 60.0f - 260.0f;
+                projectile_angle.x = cLib_targetAngleX(&sp44, &target_pos);
+            }
+
+            fopAcM_createChild(fpcNm_B_ZANTM_e, fopAcM_GetID(this), parameter, &sp44, fopAcM_GetRoomNo(this), &projectile_angle, NULL, -1, NULL);
+#else
             fopAcM_createChild(fpcNm_B_ZANTM_e, fopAcM_GetID(this), parameter, &sp44, fopAcM_GetRoomNo(this), &shape_angle, NULL, -1, NULL);
+#endif
             dComIfGp_particle_set(0x886B, &sp44, &shape_angle, NULL);
 
             field_0x6fd++;
@@ -1094,8 +1177,13 @@ void daB_ZANT_c::executeSmallAttack() {
 
 bool daB_ZANT_c::calcScale(BOOL param_0) {
     if (!param_0) {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc(this, &mModelScaleXZ, 0.0f, 0.5f, 0.25f, 0.1f);
+        actor_attr::enemy_add_action_calc(this, &mModelScaleY, 1.2f, 0.5f, 0.1f, 0.1f);
+#else
         cLib_addCalc(&mModelScaleXZ, 0.0f, 0.5f, 0.25f, 0.1f);
         cLib_addCalc(&mModelScaleY, 1.2f, 0.5f, 0.1f, 0.1f);
+#endif
 
         if (!mModelScaleXZ) {
             mModelScaleY = 0.0f;
@@ -1103,10 +1191,10 @@ bool daB_ZANT_c::calcScale(BOOL param_0) {
             return true;
         }
     } else {
-        cLib_addCalc(&mModelScaleY, 1.0f, 0.5f, 0.2f, 0.1f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc(this, &mModelScaleY, 1.0f, 0.5f, 0.2f, 0.1f), cLib_addCalc(&mModelScaleY, 1.0f, 0.5f, 0.2f, 0.1f));
 
         if (mModelScaleY > 0.5f) {
-            cLib_addCalc(&mModelScaleXZ, 1.0f, 0.5f, 0.2f, 0.1f);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc(this, &mModelScaleXZ, 1.0f, 0.5f, 0.2f, 0.1f), cLib_addCalc(&mModelScaleXZ, 1.0f, 0.5f, 0.2f, 0.1f));
         }
 
         if (mModelScaleY == 1.0f && mModelScaleXZ == 1.0f) {
@@ -1150,39 +1238,39 @@ void daB_ZANT_c::executeWarp() {
             case PHASE_BB:
                 if (field_0x70b == 0) {
                     field_0x70b = 1;
-                    mModeTimer = 120;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 120), 120);
                 } else if (mFightCycle == 0) {
-                    mModeTimer = 40;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 40), 40);
                 } else {
-                    mModeTimer = 15;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 15), 15);
                 }
                 break;
             case PHASE_MG:
-                mModeTimer = 15;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 15), 15);
                 break;
             case PHASE_OI:
-                mModeTimer = 60;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 60), 60);
                 break;
             case PHASE_MK:
                 if (mLastAction == ACT_MONKEY) {
-                    mModeTimer = 15;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 15), 15);
                 } else {
-                    mModeTimer = 60;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 60), 60);
                 }
                 break;
             case PHASE_YO:
-                mModeTimer = 60;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 60), 60);
                 break;
             case PHASE_LAST:
                 if (mFlyWarpPosID != 0) {
-                    mModeTimer = 60;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 60), 60);
                 } else {
-                    mModeTimer = 15;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 15), 15);
                 }
                 break;
             }
 
-            mModeTimer += (int)l_HIO.mPlayWarpTime;
+            mModeTimer += DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, (int)l_HIO.mPlayWarpTime), (int)l_HIO.mPlayWarpTime);
         }
         break;
     case 4:
@@ -1279,7 +1367,7 @@ void daB_ZANT_c::executeDamage() {
 
         mSound.startCreatureVoice(Z2SE_EN_ZAN_V_DMG, -1);
         mMode = 5;
-        mModeTimer = 40;
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 40), 40);
     case 5:
         if (field_0x6f4 == 0) {
             setTgHitBit(FALSE);
@@ -1313,7 +1401,7 @@ void daB_ZANT_c::executeConfuse() {
         speedF = 0.0f;
         speed.y = 0.0f;
         field_0x702 = 0;
-        mModeTimer = 20;
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 20), 20);
         mMode = 6;
     case 6:
         if (mModeTimer == 0) {
@@ -1350,7 +1438,7 @@ void daB_ZANT_c::executeOpening() {
 
         setBck(BCK_ZAN_OP_1, J3DFrameCtrl::EMode_LOOP, 0.0f, 1.0f);
         mMode = MODE_START_DEMO_WAIT;
-        mModeTimer = 30;
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
 
         camera->mCamera.Stop();
         camera->mCamera.SetTrimSize(3);
@@ -1364,14 +1452,19 @@ void daB_ZANT_c::executeOpening() {
 
         if (mModeTimer == 0) {
             mMode = MODE_PAN_GROUND;
-            mModeTimer = 80;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 80), 80);
         }
         break;
     case MODE_PAN_GROUND:
         sp4C.set(0.0f, 81.0f, -187.0f);
         sp40.set(0.0f, 67.0f, -408.0f);
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamCenter, sp4C, 0.1f, 4.3f);
+        actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamEye, sp40, 0.1f, 6.0f);
+#else
         cLib_addCalcPos2(&mDemoCamCenter, sp4C, 0.1f, 4.3f);
         cLib_addCalcPos2(&mDemoCamEye, sp40, 0.1f, 6.0f);
+#endif
 
         if (mModeTimer == 0) {
             mMode = MODE_MSG_1;
@@ -1383,20 +1476,25 @@ void daB_ZANT_c::executeOpening() {
         if (mpModelMorf->getFrame() > 5.0f) {
             sp4C.set(0.0f, 86.0f, -9.0f);
             sp40.set(0.0f, 10.0f, -209.0f);
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamCenter, sp4C, 0.5f, 26.0f);
+            actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamEye, sp40, 0.5f, 30.0f);
+#else
             cLib_addCalcPos2(&mDemoCamCenter, sp4C, 0.5f, 26.0f);
             cLib_addCalcPos2(&mDemoCamEye, sp40, 0.5f, 30.0f);
+#endif
         }
 
         if (mpModelMorf->isStop()) {
             mMode = MODE_MSG_1_WAIT;
-            mModeTimer = 20;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
             setBck(BCK_ZAN_OP_3, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
             setZantMessage(0xE3B);  // My god had only one wish...
         }
         break;
     case MODE_MSG_1_WAIT:
         if (doZantMessage() == true) {
-            mModeTimer = 20;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
             mMode = MODE_WARP_OUT_SE;
         }
         break;
@@ -1418,7 +1516,7 @@ void daB_ZANT_c::executeOpening() {
             mDemoCamCenter.set(0.0f, 200.0f, -1700.0f);
             mDemoCamEye.set(0.0f, 70.0f, -300.0f);
             mDemoCamBank = 68.0f;
-            mModeTimer = 15;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 15), 15);
         }
         break;
     case MODE_WARP_WAIT:
@@ -1426,17 +1524,27 @@ void daB_ZANT_c::executeOpening() {
             setBck(BCK_ZAN_WAIT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
             player->changeDemoMode(0x48, 0, 0, 0);
             mMode = MODE_PAN_THRONE;
-            mModeTimer = 105;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 105), 105);
         }
         break;
     case MODE_PAN_THRONE:
         sp4C.set(32.0f, 290.0f, -1678.0f);
         sp40.set(100.0f, 70.0f, -300.0f);
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamCenter, sp4C, 0.1f, 1.0f);
+        actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamEye, sp40, 0.1f, 1.0f);
+#else
         cLib_addCalcPos2(&mDemoCamCenter, sp4C, 0.1f, 1.0f);
         cLib_addCalcPos2(&mDemoCamEye, sp40, 0.1f, 1.0f);
+#endif
 
+#if TARGET_PC  // enemy attribute integration
+        if (mModeTimer <= actor_attr::enemy_sync_countdown_milestone(this, 105, 30)) {
+            if (mModeTimer == actor_attr::enemy_sync_countdown_milestone(this, 105, 30)) {
+#else
         if (mModeTimer <= 30) {
             if (mModeTimer == 30) {
+#endif
                 current.angle.y = 0;
                 shape_angle.y = 0;
                 dComIfGp_particle_set(0x88FE, &current.pos, &shape_angle, NULL);
@@ -1447,15 +1555,20 @@ void daB_ZANT_c::executeOpening() {
 
         if (mModeTimer == 0) {
             mMode = MODE_ZOOM_THRONE;
-            mModeTimer = 30;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
         }
         break;
     case MODE_ZOOM_THRONE:
         calcScale(1);
         sp4C.set(32.0f, 290.0f, -1678.0f);
         sp40.set(66.0f, 180.0f, -989.0f);
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamCenter, sp4C, 0.5f, 60.0f);
+        actor_attr::enemy_add_action_calc_pos2(this, &mDemoCamEye, sp40, 0.5f, 60.0f);
+#else
         cLib_addCalcPos2(&mDemoCamCenter, sp4C, 0.5f, 60.0f);
         cLib_addCalcPos2(&mDemoCamEye, sp40, 0.5f, 60.0f);
+#endif
 
         if (mModeTimer == 0) {
             mMode = MODE_MSG_2;
@@ -1466,13 +1579,18 @@ void daB_ZANT_c::executeOpening() {
         if (doZantMessage() == true) {
             setBck(BCK_ZAN_OP_RISE, J3DFrameCtrl::EMode_LOOP, 10.0f, 1.0f);
             mMode = MODE_FLY_UP;
-            mModeTimer = 90;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 90), 90);
             mSound.startCreatureSound(Z2SE_EN_ZAN_OP_FLY, 0, -1);
         }
         break;
     case MODE_FLY_UP:
+#if TARGET_PC  // enemy attribute integration
+        current.pos.y += actor_attr::enemy_action_step(this, 3.0f);
+        mDemoCamCenter.y += actor_attr::enemy_action_step(this, 2.0f);
+#else
         current.pos.y += 3.0f;
         mDemoCamCenter.y += 2.0f;
+#endif
 
         if (mModeTimer == 0) {
             mMode = MODE_CLOSE_UP;
@@ -1519,20 +1637,25 @@ void daB_ZANT_c::executeOpening() {
             field_0x77c = 0.0f;
             field_0x6fc = 1;
             mMode = MODE_SET_BOSS_TITLE;
-            mModeTimer = 160;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 160), 160);
         }
         break;
     case MODE_SET_BOSS_TITLE:
-        if (mModeTimer == 100) {
+        if (mModeTimer == DUSK_IF_ELSE(actor_attr::enemy_sync_countdown_milestone(this, 160, 100), 100)) {
             fopMsgM_messageSetDemo(0x486);
         }
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc(this, &current.pos.y, 250.0f + 300.0f, 0.1f, 3.0f, 0.9f);
+        actor_attr::enemy_add_action_calc(this, &mDemoCamCenter.y, 250.0f + 672.0f, 0.1f, 1.0f, 0.3f);
+#else
         cLib_addCalc(&current.pos.y, 250.0f + 300.0f, 0.1f, 3.0f, 0.9f);
         cLib_addCalc(&mDemoCamCenter.y, 250.0f + 672.0f, 0.1f, 1.0f, 0.3f);
+#endif
 
         if (mModeTimer == 0) {
             mMode = MODE_WARP_IN_WAIT;
-            mModeTimer = 20;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
         }
         break;
     case MODE_WARP_IN_SE:
@@ -1551,13 +1674,13 @@ void daB_ZANT_c::executeOpening() {
 
         if (calcScale(1)) {
             mMode = MODE_WARP_IN_WAIT;
-            mModeTimer = 20;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
         }
         break;
     case MODE_WARP_IN_WAIT:
         if (mModeTimer == 0) {
             mMode = MODE_ZOOM_OUT_ROOM_CHANGE;
-            mModeTimer = 50;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 50), 50);
         }
         break;
     case MODE_ZOOM_OUT_ROOM_CHANGE:
@@ -1571,14 +1694,14 @@ void daB_ZANT_c::executeOpening() {
         }
         break;
     case MODE_START_ROOM_CHANGE:
-        cLib_chaseF(&mKankyoBlend, 1.0f, 0.006f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mKankyoBlend, 1.0f, 0.006f), cLib_chaseF(&mKankyoBlend, 1.0f, 0.006f));
         if (mpModelMorf->checkFrame(110)) {
             mMahojinAnmMode = 1;
-            field_0x715 = 30;
+            field_0x715 = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(this, 30), 30);
         }
 
         if (mpModelMorf->getFrame() > 110.0f) {
-            cLib_chaseF(&mKankyoBlend, 1.0f, 0.01f);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mKankyoBlend, 1.0f, 0.01f), cLib_chaseF(&mKankyoBlend, 1.0f, 0.01f));
         }
 
         shape_angle.y = fopAcM_searchPlayerAngleY(this);
@@ -1588,7 +1711,7 @@ void daB_ZANT_c::executeOpening() {
             dComIfGp_getVibration().StopQuake(31);
             setBck(BCK_ZAN_FLOAT_APPEARWAIT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
             mMode = MODE_ROOM_CHANGE;
-            mModeTimer = l_HIO.mMahojinWaitTime;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.mMahojinWaitTime), l_HIO.mMahojinWaitTime);
 
             cXyz pos(0.0f, 0.0f, 0.0f);
             dComIfGs_setRestartRoom(pos, 0, warp_next_room[1]);
@@ -1638,7 +1761,7 @@ void daB_ZANT_c::executeOpening() {
         }
         break;
     case MODE_END_DEMO:
-        cLib_chaseF(&mKankyoBlend, 1.0f, 0.02f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mKankyoBlend, 1.0f, 0.02f), cLib_chaseF(&mKankyoBlend, 1.0f, 0.02f));
         player->setPlayerPosAndAngle(&sp34, 0, 0);
 
         if (mpModelMorf->isStop()) {
@@ -1722,10 +1845,15 @@ void daB_ZANT_c::executeFly() {
         }
 
         if (field_0x6f8 != 0) {
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_angle_add(this, shape_angle.y, field_0x6f8);
+            actor_attr::enemy_chase_action_angle(this, &field_0x6f8, 0, 0x40);
+#else
             shape_angle.y += field_0x6f8;
             cLib_chaseAngleS(&field_0x6f8, 0, 0x40);
+#endif
         } else {
-            cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 4, 0x1000);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, current.angle.y, 4, 0x1000), cLib_addCalcAngleS2(&shape_angle.y, current.angle.y, 4, 0x1000));
         }
 
         sp9C = current.pos;
@@ -1759,7 +1887,7 @@ void daB_ZANT_c::executeFly() {
                     setTgHitBit(TRUE);
                     setTgType(0xD8FBFDFF);
                     field_0x702 = 0;
-                    field_0x6f0 = 150;
+                    field_0x6f0 = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 150), 150);
                     field_0x70c = 1;
                 }
             }
@@ -1822,6 +1950,29 @@ bool daB_ZANT_c::checkSwimLinkNearMouth() {
         return false;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    // This is a close-to-mouth check, not the long-range snort hitbox. The
+    // snort cylinders start 1000 units in front of the head; using their
+    // centers here catches Link farther away and misses him beside the mouth.
+    const f32 size_mul = actor_attr::enemy_size_multiplier(this);
+    daAlink_c* player = static_cast<daAlink_c*>(daPy_getPlayerActorClass());
+    cXyz mouth_offset(0.0f, -300.0f * size_mul, 300.0f * size_mul);
+    cXyz mouth_base;
+    cLib_offsetPos(&mouth_base, &pmobile->current.pos, pmobile->shape_angle.y, &mouth_offset);
+
+    // Link stays normal-sized, even when the head is 25% size. Include the
+    // extent of his collision body instead of checking his origin alone.
+    for (int i = 0; i < 3; ++i) {
+        const dCcD_Cyl& link_cyl = player->mTgCyls[i];
+        const cXyz link_pos = link_cyl.GetC();
+        if (mouth_base.absXZ(link_pos) < 200.0f * size_mul + link_cyl.GetR() &&
+            mouth_base.y < link_pos.y + link_cyl.GetH() &&
+            link_pos.y < mouth_base.y + 1100.0f * size_mul)
+        {
+            return true;
+        }
+    }
+#else
     s16 mobile_angle = pmobile->shape_angle.y;
     cXyz check_area(cM_ssin(mobile_angle) * 900.0f, 0.0f, cM_scos(mobile_angle) * 900.0f);
     check_area += pmobile->current.pos;
@@ -1830,6 +1981,7 @@ bool daB_ZANT_c::checkSwimLinkNearMouth() {
     if (check_area.absXZ(player_pos) < 400.0f && check_area.y - 300.0f < player_pos.y && check_area.y + 800.0f > player_pos.y) {
         return true;
     }
+#endif
 
     return false;
 }
@@ -1842,12 +1994,30 @@ bool daB_ZANT_c::checkSwimLinkNear() {
     }
 
     if (checkSwimLinkNearMouth()) {
-        if (field_0x706 != 0 && ((daB_ZANTZ_c*)pmobile)->getMouthMode() == 1) {
+        // The nearby-player retreat applies only while Zant is actually
+        // attacking from the open mouth. During his swim and the subsequent
+        // mouth-open transition, this check can immediately close the head
+        // again and keep the fight cycling without another attack.
+        if (DUSK_IF_ELSE(field_0x706 != 0 && ((daB_ZANTZ_c*)pmobile)->getMouthMode() == 1 && mAction == ACT_SMALL_ATTACK && mMode == 3, field_0x706 != 0 && ((daB_ZANTZ_c*)pmobile)->getMouthMode() == 1)) {
             s16 mobile_angle = pmobile->shape_angle.y;
+#if TARGET_PC  // enemy attribute integration
+            // Zant's position follows the scaled mouth at both small and
+            // large head sizes.
+            const f32 zant_mouth_offset = actor_attr::enemy_size_value(this, 300.0f);
+            cXyz check_area(cM_ssin(mobile_angle) * zant_mouth_offset, 0.0f,
+                cM_scos(mobile_angle) * zant_mouth_offset);
+#else
             cXyz check_area(cM_ssin(mobile_angle) * 300.0f, 0.0f, cM_scos(mobile_angle) * 300.0f);
+#endif
             check_area += pmobile->current.pos;
 
-            if (check_area.abs(current.pos) < 300.0f) {
+            // Do not let the proximity helper bypass the underwater mouth-open
+            // hold.  executeWater() mode 25 owns the close timing; at non-1x
+            // stun duration field_0x6f0 can intentionally remain active much
+            // longer.  Previously this path closed the statue in the same frame
+            // the timer was started, which also cut the visible snort sequence
+            // short.
+            if (DUSK_IF_ELSE(check_area.abs(current.pos) < 300.0f && field_0x6f0 == 0, check_area.abs(current.pos) < 300.0f)) {
                 setTgHitBit(FALSE);
                 ((daB_ZANTZ_c*)pmobile)->setMouthMode(2);
                 setActionMode(ACT_WATER, 27);
@@ -1855,6 +2025,14 @@ bool daB_ZANT_c::checkSwimLinkNear() {
         }
 
         ((daB_ZANTZ_c*)pmobile)->setSnortEffect(30);
+#if TARGET_PC  // enemy attribute integration
+        // The existing snort cylinders are farther out in front of the head.
+        // Push Link from this mouth-range trigger as well, or a small head can
+        // close on him without its air collision ever touching him.
+        daPy_py_c* player = daPy_getPlayerActorClass();
+        s16 throw_angle = cLib_targetAngleY(&pmobile->current.pos, &player->current.pos);
+        player->setThrowDamage(throw_angle, 30.0f, 10.0f, 0, 0, 2);
+#endif
         return true;
     }
 
@@ -1900,14 +2078,21 @@ void daB_ZANT_c::executeWater() {
     fopAcM_SearchByID(mMobileIDs[mCorrectMobileNo], &pmobile);
     if (pmobile != NULL) {
         s16 mobile_angle = pmobile->shape_angle.y;
+#if TARGET_PC  // enemy attribute integration
+        // Keep Zant at the same relative depth inside the head at any size,
+        // including before Link grabs him.
+        const f32 zant_mouth_offset = actor_attr::enemy_size_value(this, 300.0f);
+        cXyz sp58(cM_ssin(mobile_angle) * zant_mouth_offset, 0.0f, cM_scos(mobile_angle) * zant_mouth_offset);
+#else
         cXyz sp58(cM_ssin(mobile_angle) * 300.0f, 0.0f, cM_scos(mobile_angle) * 300.0f);
+#endif
         sp58 += pmobile->current.pos;
 
         switch (mMode) {
         case 0:
             if (mLastAction == ACT_SMALL_ATTACK) {
                 mMode = 0x19;
-                field_0x6f0 = 0x78;
+                field_0x6f0 = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 0x78), 0x78);
                 field_0x705 = 1;
                 attention_info.flags = fopAc_AttnFlag_BATTLE_e;
                 setBck(BCK_ZAN_FLOAT_WAIT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
@@ -1951,7 +2136,7 @@ void daB_ZANT_c::executeWater() {
             shape_angle.y = mobile_angle;
 
             if (((daB_ZANTZ_c*)pmobile)->getAppearMode() == 1) {
-                mModeTimer = 30;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
                 mMode = 21;
 
                 if (mFightCycle != 0) {
@@ -2007,7 +2192,7 @@ void daB_ZANT_c::executeWater() {
             if (mFightCycle == 0) {
                 if (((daB_ZANTZ_c*)pmobile)->getAppearMode() == 1) {
                     ((daB_ZANTZ_c*)pmobile)->setSnortEffect(30);
-                    mModeTimer = 30;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
                     mMode = 23;
                 }
             } else {
@@ -2047,7 +2232,7 @@ void daB_ZANT_c::executeWater() {
                                 ((daB_ZANTZ_c*)pmobile)->setSnortEffect(30);
                             }
                         }
-                        mModeTimer = 30;
+                        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
                         mMode = 23;
                     }
                 }
@@ -2064,7 +2249,7 @@ void daB_ZANT_c::executeWater() {
             }
             break;
         case 24:
-            cLib_addCalcAngleS(&shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x400, 0x80);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x400, 0x80), cLib_addCalcAngleS(&shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x400, 0x80));
             if (((daB_ZANTZ_c*)pmobile)->getMouthMode() == 1) {
                 attention_info.flags = fopAc_AttnFlag_BATTLE_e;
                 field_0x703 = 8;
@@ -2089,14 +2274,14 @@ void daB_ZANT_c::executeWater() {
 
                 if (mFightCycle == 0) {
                     mMode = 30;
-                    mModeTimer = cM_rndF(30.0f) + 100.0f;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(30.0f) + 100.0f), cM_rndF(30.0f) + 100.0f);
                 } else if (field_0x712 == 0) {
                     field_0x712++;
                     mMode = 28;
-                    mModeTimer = 30;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
                 } else {
                     mMode = 30;
-                    mModeTimer = cM_rndF(30.0f) + 100.0f;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(30.0f) + 100.0f), cM_rndF(30.0f) + 100.0f);
                     mCorrectMobileNo = (int)((f32)mCorrectMobileNo + cM_rndF(2.9f) + 1.0f) & 3;
                 }
             }
@@ -2117,7 +2302,7 @@ void daB_ZANT_c::executeWater() {
             break;
         case 30:
             if (mModeTimer == 0) {
-                mModeTimer = 30;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
                 mMode = 21;
             }
             break;
@@ -2131,7 +2316,14 @@ void daB_ZANT_c::executeSwim() {
 
     if (pmobile != NULL) {
         s16 mobile_angle = pmobile->shape_angle.y;
+#if TARGET_PC  // enemy attribute integration
+        // Match the scaled depth and height of the opening while swimming
+        // back; executeWater() then places him fully inside the head.
+        const f32 mouth_depth = actor_attr::enemy_size_value(this, 300.0f);
+        cXyz sp50(cM_ssin(mobile_angle) * mouth_depth, mouth_depth, cM_scos(mobile_angle) * mouth_depth);
+#else
         cXyz sp50(cM_ssin(mobile_angle) * 300.0f, 300.0f, cM_scos(mobile_angle) * 300.0f);
+#endif
         sp50 += pmobile->current.pos;
 
         s16 sp10 = cLib_targetAngleY(&pmobile->current.pos, &current.pos);
@@ -2152,9 +2344,9 @@ void daB_ZANT_c::executeSwim() {
             mMode = 11;
         case 11:
             if (current.pos.y < 50.0f) {
-                cLib_addCalc2(&current.pos.y, 50.0f, 0.1f, 10.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &current.pos.y, 50.0f, 0.1f, 10.0f), cLib_addCalc2(&current.pos.y, 50.0f, 0.1f, 10.0f));
             } else if (current.pos.y > 100.0f) {
-                cLib_addCalc2(&current.pos.y, 100.0f, 0.1f, 10.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &current.pos.y, 100.0f, 0.1f, 10.0f), cLib_addCalc2(&current.pos.y, 100.0f, 0.1f, 10.0f));
             }
 
             if (mpModelMorf->isStop()) {
@@ -2179,6 +2371,13 @@ void daB_ZANT_c::executeSwim() {
                 }
 
                 mMode = 4;
+#if TARGET_PC  // enemy attribute integration
+                if (actor_attr::enemy_size_multiplier(this) > 1.0f) {
+                    // The enlarged head's solid background can otherwise
+                    // stop Zant before he reaches the inside-mouth target.
+                    field_0x705 = 1;
+                }
+#endif
             } else {
                 s16 spC;
                 if (spE < 0) {
@@ -2192,13 +2391,23 @@ void daB_ZANT_c::executeSwim() {
                 mMode = 3;
             }
 
-            mModeTimer = 60;
+            // This is the temporary post-hookshot swim slowdown/recovery window.
+            // It intentionally follows Zant's movement/action speed, not stun duration.
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 60), 60);
         case 3:
+#if TARGET_PC  // enemy attribute integration
+        case 4:
+			{
+				if (current.pos.y < 50.0f) {
+					actor_attr::enemy_add_action_calc2(this, &current.pos.y, 50.0f, 0.1f, 10.0f);
+				}
+#else
         case 4:
             {
                 if (current.pos.y < 50.0f) {
                     cLib_addCalc2(&current.pos.y, 50.0f, 0.1f, 10.0f);
                 }
+#endif
 
                 f32 player_dist = fopAcM_searchPlayerDistance(this);
                 s16 spA = -cLib_targetAngleX(&current.pos, &field_0x6ac) + 0x4000;
@@ -2214,6 +2423,40 @@ void daB_ZANT_c::executeSwim() {
                     sp64 = 2;
                 }
 
+#if TARGET_PC  // enemy attribute integration
+				if (abs((s16)(sp8 - shape_angle.y)) < 0x2000) {
+					switch (sp64) {
+					case 0:
+						actor_attr::enemy_chase_action_float(this, &field_0x6cc, 0.0f, 2.0f);
+						break;
+					case 1:
+						actor_attr::enemy_chase_action_float(this, &field_0x6cc, 0.0f, 0.5f);
+						break;
+					case 2:
+						actor_attr::enemy_chase_action_float(this, &field_0x6cc, 15.0f, 3.0f);
+						break;
+					}
+				} else {
+					switch (sp64) {
+					case 0:
+						actor_attr::enemy_chase_action_float(this, &field_0x6cc, 0.0f, 1.0f);
+						break;
+					case 1:
+						actor_attr::enemy_chase_action_float(this, &field_0x6cc, 0.0f, 0.3f);
+						break;
+					case 2:
+						actor_attr::enemy_chase_action_float(this, &field_0x6cc, 5.0f, 1.0f);
+						break;
+					}
+				}
+				if (sp64 == 2) {
+					actor_attr::enemy_add_action_angle(this, &shape_angle.y, sp8, 0x10, 0x180);
+					actor_attr::enemy_add_action_angle(this, &shape_angle.x, spA, 0x10, 0x400);
+				} else {
+					actor_attr::enemy_add_action_angle(this, &shape_angle.y, sp8, 0x10, 0x80);
+					actor_attr::enemy_add_action_angle(this, &shape_angle.x, spA, 0x10, 0x200);
+				}
+#else
                 if (abs((s16)(sp8 - shape_angle.y)) < 0x2000) {
                     switch (sp64) {
                     case 0:
@@ -2247,6 +2490,7 @@ void daB_ZANT_c::executeSwim() {
                     cLib_addCalcAngleS2(&shape_angle.y, sp8, 0x10, 0x80);
                     cLib_addCalcAngleS2(&shape_angle.x, spA, 0x10, 0x200);
                 }
+#endif
 
                 current.angle.y = shape_angle.y;
                 current.angle.x = cLib_targetAngleX(&current.pos, &field_0x6ac);
@@ -2259,7 +2503,25 @@ void daB_ZANT_c::executeSwim() {
                     speedF = std::abs(field_0x6cc * cM_scos(current.angle.x));
                 }
 
-                if (current.pos.absXZ(sp50) < 200.0f) {
+#if TARGET_PC   // enemy attribute integration
+				// Allow for the movement that will be applied after action(). A
+				// fast swim can step past a small arrival volume in one frame.
+				// Snap to the inside-mouth target before starting the close so
+				// the closing MoveBG cannot push him back outside.
+				const bool vanilla_swim = actor_attr::enemy_size_multiplier(this) == 1.0f && actor_attr::enemy_action_speed_multiplier(this) == 1.0f;
+				const f32 mouth_arrival = vanilla_swim ? 200.0f : 50.0f + actor_attr::enemy_action_step(this, speedF);
+				if (current.pos.absXZ(sp50) < mouth_arrival) {
+					if (!vanilla_swim) {
+						current.pos.x = sp50.x;
+						current.pos.z = sp50.z;
+						old.pos.x = current.pos.x;
+						old.pos.z = current.pos.z;
+						speedF = 0.0f;
+						field_0x705 = 1;
+					}
+#else
+				if (current.pos.absXZ(sp50) < 200.0f) {
+#endif
                     mMode = 6;
                     attention_info.flags = 0;
                     setTgHitBit(FALSE);
@@ -2275,10 +2537,24 @@ void daB_ZANT_c::executeSwim() {
             }
             break;
         case 6:
+#if TARGET_PC  // enemy attribute integration
+            if (field_0x705 != 0) {
+                // Keep him inside the mouth if the head turns while closing.
+                current.pos.x = sp50.x;
+                current.pos.z = sp50.z;
+                old.pos.x = current.pos.x;
+                old.pos.z = current.pos.z;
+            }
+            actor_attr::enemy_chase_action_float(this, &speedF, 0.0f, 0.5f);
+            actor_attr::enemy_chase_action_float(this, &speed.y, 5.0f, 0.5f);
+            actor_attr::enemy_add_action_angle(this, &shape_angle.y, mobile_angle, 0x10, 0x200);
+            actor_attr::enemy_add_action_angle(this, &shape_angle.x, 0, 0x10, 0x200);
+#else
             cLib_chaseF(&speedF, 0.0f, 0.5f);
             cLib_chaseF(&speed.y, 5.0f, 0.5f);
             cLib_addCalcAngleS2(&shape_angle.y, mobile_angle, 0x10, 0x200);
             cLib_addCalcAngleS2(&shape_angle.x, 0, 0x10, 0x200);
+#endif
 
             if (!speedF && speed.y == 5.0f) {
                 mMode = 7;
@@ -2292,11 +2568,22 @@ void daB_ZANT_c::executeSwim() {
                 maxFallSpeed = -100.0f;
 
                 cXyz target(sp50.x, current.pos.y, sp50.z);
+#if TARGET_PC  // enemy attribute integration
+				if (field_0x705 != 0) {
+					current.pos.x = target.x;
+					current.pos.z = target.z;
+					old.pos.x = target.x;
+					old.pos.z = target.z;
+				} else {
+					actor_attr::enemy_chase_action_pos_xz(this, &current.pos, target, 3.0f);
+				}
+#else
                 cLib_chasePosXZ(&current.pos, target, 3.0f);
+#endif
                 
                 if (((daB_ZANTZ_c*)pmobile)->getMouthMode() == 3) {
                     field_0x705 = 1;
-                    mModeTimer = 30;
+                    mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 30), 30);
                     setActionMode(ACT_WATER, 27);
 
                     shape_angle.x = 0;
@@ -2333,9 +2620,9 @@ void daB_ZANT_c::executeSimaJump() {
             mMode = 10;
 
             if (mFightCycle == 0) {
-                field_0x6f0 = 120;
+                field_0x6f0 = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 120), 120);
             } else {
-                field_0x6f0 = 105;
+                field_0x6f0 = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 105), 105);
             }
 
             attention_info.flags = fopAc_AttnFlag_BATTLE_e;
@@ -2352,25 +2639,32 @@ void daB_ZANT_c::executeSimaJump() {
         attention_info.flags = fopAc_AttnFlag_BATTLE_e;
         field_0x6ec = 0;
         mMode = 1;
+        // Vertical movement is already advanced through enemy_action_pos_move_f(),
+        // so keep the stored ballistic values in vanilla frame units here.
         gravity = -5.0f;
         field_0x6fd = 0;
 
         if (field_0x70f < 2) {
             if (field_0x70f == 0) {
-                mModeTimer = 150;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 150), 150);
             }
 
             field_0x70f++;
         } else {
-            mModeTimer = cM_rndF(50.0f) + 100.0f;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(50.0f) + 100.0f), cM_rndF(50.0f) + 100.0f);
 
             if (field_0x70b >= 4) {
                 mModeTimer = 0;
+#if TARGET_PC  // enemy attribute integration
+            } else if (field_0x70b < 2 && mModeTimer < actor_attr::enemy_sync_timer(this, 120)) {
+                mModeTimer = actor_attr::enemy_sync_timer(this, 120);
+#else
             } else if (field_0x70b < 2 && mModeTimer < 120) {
                 mModeTimer = 120;
+#endif
             }
 
-            if (mModeTimer < 120) {
+            if (mModeTimer < DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 120), 120)) {
                 field_0x70b = 0;
                 mModeTimer = 0;
 
@@ -2389,7 +2683,11 @@ void daB_ZANT_c::executeSimaJump() {
 
         field_0x70b++;
         if (mFightCycle != 0) {
+#if TARGET_PC  // enemy attribute integration
+            mModeTimer = std::max<s16>(0, mModeTimer - actor_attr::enemy_sync_timer(this, 50));
+#else
             mModeTimer -= 50;
+#endif
         }
 
         setTgHitBit(FALSE);
@@ -2398,8 +2696,11 @@ void daB_ZANT_c::executeSimaJump() {
     case 3:
     case 4:
     case 5:
-        cLib_addCalcAngleS(&shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x800, 0x80);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x800, 0x80), cLib_addCalcAngleS(&shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x800, 0x80));
 
+        // This is an avoidance/state-transition radius, not a body-size offset.
+        // Scaling it to 2200 at 400% size makes Zant immediately choose mode 11
+        // after warping in, so he warps away before beginning the magma jump.
         if (fopAcM_searchPlayerDistance(this) < 550.0f) {
             if (mAcch.ChkGroundHit()) {
                 mMode = 11;
@@ -2433,19 +2734,19 @@ void daB_ZANT_c::executeSimaJump() {
             }
         } else if (mMode == 4) {
             if (mpModelMorf->checkFrame(7)) {
-                mpModelMorf->setPlaySpeed(0.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 0.0f), mpModelMorf->setPlaySpeed(0.0f));
             }
 
             if (mAcch.ChkGroundHit()) {
                 mSound.startCreatureSound(Z2SE_EN_ZAN_MG_LAND, 0, -1);
-                mpModelMorf->setPlaySpeed(1.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 1.0f), mpModelMorf->setPlaySpeed(1.0f));
                 mpModelMorf->setFrame(8.0f);
                 mMode = 5;
             }
         } else if (mpModelMorf->isStop()) {
             fopAcM_effSmokeSet1(&field_0x3894, &field_0x3898, &current.pos, NULL, 2.0f, &tevStr, 1);
             mMode = 1;
-            field_0x6ec = 5;
+            field_0x6ec = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 5), 5);
         }
 
         if (mAcch.ChkGroundHit() && mModeTimer == 0) {
@@ -2499,15 +2800,20 @@ void daB_ZANT_c::executeIceDemo() {
             mSound.startCreatureVoice(Z2SE_EN_ZAN_YO_V_HUGE, -1);
         }
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_float(this, &mModelScaleXZ, 10.0f, 0.1f);
+        actor_attr::enemy_chase_action_float(this, &mModelScaleY, 10.0f, 0.1f);
+#else
         cLib_chaseF(&mModelScaleXZ, 10.0f, 0.1f);
         cLib_chaseF(&mModelScaleY, 10.0f, 0.1f);
+#endif
 
         if (mpModelMorf->checkFrame(115)) {
             mMode = 2;
         }
         break;
     case 2:
-        cLib_chaseF(&speed.y, 50.0f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speed.y, 50.0f, 5.0f), cLib_chaseF(&speed.y, 50.0f, 5.0f));
         if (mpModelMorf->isStop()) {
             setBck(BCK_ZAN_FLOAT_WAIT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
             setActionMode(ACT_ICE_JUMP, 3);
@@ -2543,31 +2849,35 @@ void daB_ZANT_c::executeIceJump() {
             mMode = 3;
         }
     case 3:
-        cLib_chaseF(&speed.y, 15.0f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speed.y, 15.0f, 5.0f), cLib_chaseF(&speed.y, 15.0f, 5.0f));
         if (current.pos.y > 1500.0f) {
             field_0x70e = 3;
         }
 
         if (current.pos.y > 2000.0f) {
             mMode = 4;
-            mModeTimer = 90;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 90), 90);
             current.angle.y = shape_angle.y;
         }
         break;
     case 4:
-        cLib_chaseF(&speed.y, 0.0f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speed.y, 0.0f, 1.0f), cLib_chaseF(&speed.y, 0.0f, 1.0f));
         if (var_f31 < 300.0f) {
             var_f31 -= 50.0f;
             if (var_f31 < 0.0f) {
                 var_f31 = 0.0f;
             }
 
-            cLib_chaseF(&speedF, var_f31 / 10.0f, 1.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, var_f31 / 10.0f, 1.0f), cLib_chaseF(&speedF, var_f31 / 10.0f, 1.0f));
         } else {
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_chase_action_float(this, &speedF, 30.0f, 1.0f);
+            actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x400, 0x80);
+#else
             cLib_chaseF(&speedF, 30.0f, 1.0f);
             cLib_addCalcAngleS(&current.angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x400, 0x80);
+#endif
         }
-        
         shape_angle.y = current.angle.y;
 
         if (mModeTimer == 0 && sp44.absXZ(current.pos) < 550.0f) {
@@ -2605,16 +2915,27 @@ void daB_ZANT_c::executeIceJump() {
         mDoMtx_stack_c::transM(10.0f, 0.0f, 0.0f);
         mDoMtx_stack_c::multVecZero(&sp5C);
         sp68 = sp5C - sp44;
+#if TARGET_PC  // enemy attribute integration
+        if (sp68.abs() > 0.0f) {
+            current.pos -= actor_attr::enemy_move_step(this, sp68 * (20.0f / sp68.abs()));
+        }
+#else
         current.pos -= sp68 * (20.0f / sp68.abs());
+#endif
 
         if (mMode == 5) {
             if (mpModelMorf->checkFrame(10)) {
-                mpModelMorf->setPlaySpeed(0.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 0.0f), mpModelMorf->setPlaySpeed(0.0f));
                 mMode = 6;
                 mFoot2Cc[0].OnAtSetBit();
                 mFoot2Cc[4].OnAtSetBit();
+#if TARGET_PC  // enemy attribute integration
+                mFoot2Cc[0].SetAtAtp(actor_attr::enemy_attack_power_byte(this, 4));
+                mFoot2Cc[4].SetAtAtp(actor_attr::enemy_attack_power_byte(this, 4));
+#else
                 mFoot2Cc[0].SetAtAtp(4);
                 mFoot2Cc[4].SetAtAtp(4);
+#endif
             }
         } else {
             if (mAcch.ChkGroundHit()) {
@@ -2627,12 +2948,17 @@ void daB_ZANT_c::executeIceJump() {
 
                 mFoot2Cc[0].OffAtSetBit();
                 mFoot2Cc[4].OffAtSetBit();
+#if TARGET_PC  // enemy attribute integration
+                mFoot2Cc[0].SetAtAtp(actor_attr::enemy_attack_power_byte(this, 2));
+                mFoot2Cc[4].SetAtAtp(actor_attr::enemy_attack_power_byte(this, 2));
+#else
                 mFoot2Cc[0].SetAtAtp(2);
                 mFoot2Cc[4].SetAtAtp(2);
+#endif
 
                 gravity = 0.0f;
 
-                mpModelMorf->setPlaySpeed(1.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 1.0f), mpModelMorf->setPlaySpeed(1.0f));
                 mMode = 7;
                 attention_info.flags = fopAc_AttnFlag_BATTLE_e;
             }
@@ -2659,7 +2985,7 @@ void daB_ZANT_c::executeIceStep() {
 
     switch (mMode) {
     case 0:
-        mModeTimer = cM_rndFX(50.0f) + 600.0f;
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(50.0f) + 600.0f), cM_rndFX(50.0f) + 600.0f);
         for (int i = 0; i < 6; i++) {
             mFootCc[iron_tg_cc[i]].OffTgShield();
         }
@@ -2667,7 +2993,7 @@ void daB_ZANT_c::executeIceStep() {
         {
             f32 var_f30 = cM_rnd();
             s16 sp8 = shape_angle.y - fopAcM_searchPlayerAngleY(this);
-            f32 var_f29 = fopAcM_searchPlayerDistance(this);
+            f32 var_f29 = DUSK_IF_ELSE(fopAcM_searchPlayerDistance(this) / actor_attr::enemy_size_multiplier(this), fopAcM_searchPlayerDistance(this));
 
             if (var_f29 < 300.0f) {
                 if (sp8 < 0) {
@@ -2846,7 +3172,7 @@ void daB_ZANT_c::executeIceStep() {
         }
 
         if (sp98 != 0) {
-            cLib_addCalcAngleS2(&shape_angle.y, field_0x6ba, 0x10, 0x400);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, field_0x6ba, 0x10, 0x400), cLib_addCalcAngleS2(&shape_angle.y, field_0x6ba, 0x10, 0x400));
         }
 
         if (mMode <= 3) {
@@ -2894,6 +3220,19 @@ void daB_ZANT_c::executeIceDamage() {
     };
 
     daPy_py_c* player = daPy_getPlayerActorClass();
+#if TARGET_PC  // enemy attribute integration
+
+    // Vanilla has many host frames between the two hop markers, so the
+    // three-frame shrink calculation finishes while Zant is grounded.  At a
+    // fast action clock the next marker can arrive first; continue the same
+    // interpolation during the hop so the shrink cannot freeze until the next
+    // hit.  The literal 100% path remains unchanged.
+    if (actor_attr::enemy_action_time_speed(this) != 1.0f && (mMode == 3 || mMode == 4) && field_0x70b <= 10)
+    {
+        actor_attr::enemy_add_action_calc2(this, &mModelScaleXZ, damage_scale[field_0x70b], 0.5f, field_0x6cc);
+        mModelScaleY = mModelScaleXZ;
+    }
+#endif
 
     if (mMode >= 10 && mModeTimer == 0) {
         for (int i = 0; i < 11; i++) {
@@ -2929,7 +3268,9 @@ void daB_ZANT_c::executeIceDamage() {
 
         current.angle.y = shape_angle.y;
         mMode = 2;
-        mModeTimer = 300;
+        //mModeTimer = actor_attr::enemy_stun_timer(this, 300); // need to include time it takes for zant to become vulnerable.
+        // this should do for now until above is fixed.
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 300.0f), 300);
         field_0x70b = 0;
         field_0x70b++;
         field_0x6cc = (mModelScaleXZ - damage_scale[field_0x70b]) / 3.0f;
@@ -2962,13 +3303,13 @@ void daB_ZANT_c::executeIceDamage() {
             mSound.startCreatureVoice(Z2SE_EN_ZAN_YO_V_KENKEN, -1);
         } else {
             if (field_0x70b <= 10) {
-                cLib_addCalc2(&mModelScaleXZ, damage_scale[field_0x70b], 0.5f, field_0x6cc);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mModelScaleXZ, damage_scale[field_0x70b], 0.5f, field_0x6cc), cLib_addCalc2(&mModelScaleXZ, damage_scale[field_0x70b], 0.5f, field_0x6cc));
             } else {
-                cLib_chaseF(&mModelScaleXZ, 0.5f, 0.1f);
+                DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mModelScaleXZ, 0.5f, 0.1f), cLib_chaseF(&mModelScaleXZ, 0.5f, 0.1f));
             }
 
             mModelScaleY = mModelScaleXZ;
-            cLib_addCalcAngleS2(&shape_angle.y, field_0x6ba, 8, 0x1000);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, field_0x6ba, 8, 0x1000), cLib_addCalcAngleS2(&shape_angle.y, field_0x6ba, 8, 0x1000));
             current.angle.y = shape_angle.y;
             speedF = 0.0f;
 
@@ -2985,7 +3326,7 @@ void daB_ZANT_c::executeIceDamage() {
                 mpModelMorf->setFrame(25);
             }
 
-            mpModelMorf->setPlaySpeed(0.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 0.0f), mpModelMorf->setPlaySpeed(0.0f));
             mMode = 4;
         }
         break;
@@ -3004,7 +3345,7 @@ void daB_ZANT_c::executeIceDamage() {
             }
 
             field_0x6cc = (mModelScaleXZ - damage_scale[field_0x70b]) / 3.0f;
-            mpModelMorf->setPlaySpeed((10.0f - mModelScaleXZ) / 10.0f + 1.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, (10.0f - mModelScaleXZ) / 10.0f + 1.0f), mpModelMorf->setPlaySpeed((10.0f - mModelScaleXZ) / 10.0f + 1.0f));
 
             if (field_0x70b == 8) {
                 for (int i = 0; i < 11; i++) {
@@ -3038,13 +3379,18 @@ void daB_ZANT_c::executeIceDamage() {
         speedF = 0.0f;
         mMode = 11;
     case 11:
-        cLib_chaseF(&mModelScaleXZ, 0.5f, 0.1f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mModelScaleXZ, 0.5f, 0.1f), cLib_chaseF(&mModelScaleXZ, 0.5f, 0.1f));
         mModelScaleY = mModelScaleXZ;
 
         if (mpModelMorf->isStop()) {
             mMode = 12;
+#if TARGET_PC  // enemy attribute integration
+            if (mModeTimer >= actor_attr::enemy_sync_timer(this, 30)) {
+                mModeTimer = actor_attr::enemy_sync_timer(this, 30);
+#else
             if (mModeTimer >= 30) {
                 mModeTimer = 30;
+#endif
             }
 
             setBck(BCK_ZAN_WAIT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
@@ -3071,7 +3417,7 @@ void daB_ZANT_c::executeIceDamage() {
         mMode = 41;
         speed.y = 0.0f;
         speedF = 0.0f;
-        mModeTimer = 30;
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 30), 30);
     case 41:
         if (mModeTimer == 0) {
             mMode = 30;
@@ -3286,7 +3632,7 @@ void daB_ZANT_c::executeMonkey() {
         }
         break;
     case 2:
-        cLib_addCalcAngleS(&shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x800, 0x80);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x800, 0x80), cLib_addCalcAngleS(&shape_angle.y, fopAcM_searchPlayerAngleY(this), 8, 0x800, 0x80));
         if (abs((s16)(shape_angle.y - fopAcM_searchPlayerAngleY(this))) < 0x2000) {
             field_0x703 = l_HIO.mBulletNum;
             field_0x711 = 0;
@@ -3298,7 +3644,7 @@ void daB_ZANT_c::executeMonkey() {
         setNextPillarPos();
         mMode = 6;
     case 6:
-        cLib_addCalcAngleS2(&shape_angle.y, cLib_targetAngleY(&current.pos, &field_0x6ac), 8, 0x800);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, cLib_targetAngleY(&current.pos, &field_0x6ac), 8, 0x800), cLib_addCalcAngleS2(&shape_angle.y, cLib_targetAngleY(&current.pos, &field_0x6ac), 8, 0x800));
 
         if (mModeTimer == 0 && mAcch.ChkGroundHit()) {
             setBck(BCK_ZAN_LV1_JUMP_A, J3DFrameCtrl::EMode_NONE, 3.0f, 1.0f);
@@ -3306,11 +3652,11 @@ void daB_ZANT_c::executeMonkey() {
         }
         break;
     case 8:
-        cLib_addCalcAngleS2(&shape_angle.y, cLib_targetAngleY(&current.pos, &field_0x6ac), 8, 0x800);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, cLib_targetAngleY(&current.pos, &field_0x6ac), 8, 0x800), cLib_addCalcAngleS2(&shape_angle.y, cLib_targetAngleY(&current.pos, &field_0x6ac), 8, 0x800));
 
         if (mpModelMorf->checkFrame(13)) {
             mSound.startCreatureVoice(Z2SE_EN_ZAN_MK_V_JUMP, -1);
-            mModeTimer = 18;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 18), 18);
             speed.y = 45.0f;
             mMode = 9;
             field_0x707 = 0;
@@ -3321,18 +3667,50 @@ void daB_ZANT_c::executeMonkey() {
             }
         }
         break;
+#if TARGET_PC  // enemy attribute integration
+    case 9: {
+#else
     case 9:
+#endif
         if (mModeTimer != 0) {
+#if TARGET_PC  // enemy attribute integration
+            // This jump must arrive at the selected pillar exactly even when
+            // action speed compresses the 18-frame travel window down to only
+            // a handful of real frames.  cLib_chasePosXZ() is intended for
+            // gradual convergence and can finish short with very large steps,
+            // so consume an exact fraction of the remaining X/Z delta instead.
+            const f32 framesRemaining = static_cast<f32>(mModeTimer);
+            current.pos.x += (field_0x6ac.x - current.pos.x) / framesRemaining;
+            current.pos.z += (field_0x6ac.z - current.pos.z) / framesRemaining;
+#else
             cXyz sp2C(field_0x6ac.x, current.pos.y, field_0x6ac.z);
             cLib_chasePosXZ(&current.pos, sp2C, field_0x6ac.absXZ(current.pos) / mModeTimer);
+#endif
         }
 
-        if (mModeTimer == 8) {
+        if (mModeTimer == DUSK_IF_ELSE(actor_attr::enemy_sync_countdown_milestone(this, 18, 8), 8)) {
             setBck(BCK_ZAN_LV1_JUMP_B, J3DFrameCtrl::EMode_NONE, 3.0f, 1.0f);
         }
 
+#if TARGET_PC  // enemy attribute integration
+        // A quarter-size collision body can pass completely through the
+        // pillar top in one 4x integration step.  Once the descending jump is
+        // horizontally over its logical waypoint, treat crossing the target
+        // height as the same landing that vanilla collision would report.
+        const bool crossedPillarTop = actor_attr::enemy_action_time_speed(this) != 1.0f &&
+                                      speed.y <= 0.0f && current.pos.y <= field_0x6ac.y &&
+                                      current.pos.absXZ(field_0x6ac) < 150.0f;
+        const bool reachedTargetXZ = current.pos.absXZ(field_0x6ac) < 150.0f;
+        if ((mAcch.ChkGroundHit() && reachedTargetXZ) || crossedPillarTop) {
+#else
         if (mAcch.ChkGroundHit()) {
+#endif
             current.pos = field_0x6ac;
+#if TARGET_PC  // enemy attribute integration
+            if (speed.y < 0.0f) { // double check this
+                speed.y = 0.0f;
+            }
+#endif
             field_0x707 = 1;
             field_0x70a = field_0x709;
             
@@ -3345,6 +3723,9 @@ void daB_ZANT_c::executeMonkey() {
             field_0x6fd++;
         }
         break;
+#if TARGET_PC  // enemy attribute integration
+    }
+#endif
     case 100:
         target_info_count = 0;
         fpcM_Search(s_pillar_sub, this);
@@ -3367,10 +3748,16 @@ void daB_ZANT_c::executeMonkeyFall() {
     case 0:
     case 20:
         setTgHitBit(TRUE);
-        mModeTimer = 90;
+        // While Zant is stunned on top of a pillar, allow the randomized
+        // stun duration to shorten this state, but never let it exceed 50%
+        // of the vanilla duration.
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 90), 90);
 
         if (mMode == 20) {
-            mModeTimer = 30;
+            // Direct-hit stun received while Zant is still standing on top of
+            // the pillar. Keep randomized shorter stuns, but never allow this
+            // vulnerable window to exceed 50% of its vanilla 30-frame length.
+            mModeTimer = DUSK_IF_ELSE(std::min<s16>(actor_attr::enemy_stun_timer(this, 30), 15), 30);
         }
 
         setBck(BCK_ZAN_FAINT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
@@ -3421,11 +3808,11 @@ void daB_ZANT_c::executeMonkeyFall() {
             mBodySphCc[1].OffAtSetBit();
 
             speedF = 0.0f;
-            mpModelMorf->setPlaySpeed(1.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 1.0f), mpModelMorf->setPlaySpeed(1.0f));
             mMode = 13;
             field_0x702 = 0;
             setTgHitBit(TRUE);
-            field_0x6f0 = 120;
+            field_0x6f0 = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 120), 120);
         }
         break;
     case 13:
@@ -3461,10 +3848,15 @@ void daB_ZANT_c::executeMonkeyDamage() {
     case 5:
     case 6:
         if (mMode == 5) {
-            field_0x6f0 = 100;
+            field_0x6f0 = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 100), 100);
             field_0x6ff = 0;
+#if TARGET_PC  // enemy attribute integration
+        } else if (field_0x6f0 < actor_attr::enemy_stun_timer(this, 30)) {
+            field_0x6f0 = actor_attr::enemy_stun_timer(this, 30);
+#else
         } else if (field_0x6f0 < 30) {
             field_0x6f0 = 30;
+#endif
         }
 
         setBck(BCK_ZAN_LANDING_WAIT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
@@ -3492,10 +3884,10 @@ void daB_ZANT_c::setLastWarp(int param_0, int i_warpID) {
     mFlyWarpPosID = i_warpID;
 
     if (mFightCycle == 0) {
-        if (health <= 400) {
+        if (health <= DUSK_IF_ELSE(actor_attr::enemy_health_value(this, 400), 400)) {
             mFightCycle = 1;
         }
-    } else if (mFightCycle == 1 && health <= 200) {
+    } else if (mFightCycle == 1 && health <= DUSK_IF_ELSE(actor_attr::enemy_health_value(this, 200), 200)) {
         mFightCycle = 2;
     }
 
@@ -3506,7 +3898,7 @@ void daB_ZANT_c::setLastWarp(int param_0, int i_warpID) {
         field_0x712 = 0;
 
         if (mFightCycle == 2) {
-            field_0x6ec = 450;
+            field_0x6ec = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 450), 450);
             field_0x71d = 1;
             field_0x6ff = 0;
         }
@@ -3662,10 +4054,10 @@ void daB_ZANT_c::executeLastStartDemo() {
             camera->SetTrimSize(3);
             setBck(BCK_ZAN_LAST_DEMO, J3DFrameCtrl::EMode_NONE, 10.0f, 1.0f);
             mSound.startCreatureSound(Z2SE_EN_ZAN_CTL_OP, 0, -1);
-            mpModelMorf->setPlaySpeed(0.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 0.0f), mpModelMorf->setPlaySpeed(0.0f));
 
             gravity = -5.0f;
-            mModeTimer = 10;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
             mMode = 1;
             field_0x71d = 0;
             field_0x703 = 0;
@@ -3693,13 +4085,13 @@ void daB_ZANT_c::executeLastStartDemo() {
         player->setPlayerPosAndAngle(&sp28, 0x8000, 0);
 
         sp1C.set(0.0f, 90.0f, -900.0f);
-        cLib_addCalcPos(&mDemoCamCenter, sp1C, 0.2f, 5.0f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &mDemoCamCenter, sp1C, 0.2f, 5.0f, 1.0f), cLib_addCalcPos(&mDemoCamCenter, sp1C, 0.2f, 5.0f, 1.0f));
 
         if (mAcch.ChkGroundHit()) {
             speed.y = 0.0f;
             speedF = 0.0f;
             dComIfGp_getVibration().StartShock(4, 31, cXyz(0.0f, 1.0f, 0.0f));
-            mpModelMorf->setPlaySpeed(1.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 1.0f), mpModelMorf->setPlaySpeed(1.0f));
             mMode = 3;
         }
         break;
@@ -3707,39 +4099,44 @@ void daB_ZANT_c::executeLastStartDemo() {
         sp1C = eyePos;
         sp1C.y -= 30.0f;
 
-        cLib_addCalcPos(&mDemoCamCenter, sp1C, 0.5f, 50.0f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &mDemoCamCenter, sp1C, 0.5f, 50.0f, 1.0f), cLib_addCalcPos(&mDemoCamCenter, sp1C, 0.5f, 50.0f, 1.0f));
         if (mpModelMorf->checkFrame(97)) {
             mMode = 4;
         }
         break;
     case 4:
-        cLib_addCalc2(&mDemoCamBank, 72.0f, 0.3f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mDemoCamBank, 72.0f, 0.3f, 1.0f), cLib_addCalc2(&mDemoCamBank, 72.0f, 0.3f, 1.0f));
         sp1C = eyePos;
         sp1C.y -= 30.0f;
 
-        cLib_addCalc2(&mDemoCamCenter.y, sp1C.y, 0.5f, 50.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mDemoCamCenter.y, sp1C.y, 0.5f, 50.0f), cLib_addCalc2(&mDemoCamCenter.y, sp1C.y, 0.5f, 50.0f));
         sp1C.y = mDemoCamCenter.y;
 
-        cLib_addCalcPosXZ(&mDemoCamCenter, sp1C, 0.5f, 3.0f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos_xz(this, &mDemoCamCenter, sp1C, 0.5f, 3.0f, 1.0f), cLib_addCalcPosXZ(&mDemoCamCenter, sp1C, 0.5f, 3.0f, 1.0f));
         if (mpModelMorf->checkFrame(103)) {
             dComIfGp_getVibration().StartShock(2, 31, cXyz(0.0f, 1.0f, 0.0f));
             mMode = 5;
         }
         break;
     case 5:
-        cLib_addCalc2(&mDemoCamBank, 72.0f, 0.3f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(this, &mDemoCamBank, 72.0f, 0.3f, 1.0f), cLib_addCalc2(&mDemoCamBank, 72.0f, 0.3f, 1.0f));
         sp1C = eyePos;
         sp1C.y = mDemoCamCenter.y;
 
-        cLib_addCalcPosXZ(&mDemoCamCenter, sp1C, 0.5f, 3.0f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos_xz(this, &mDemoCamCenter, sp1C, 0.5f, 3.0f, 1.0f), cLib_addCalcPosXZ(&mDemoCamCenter, sp1C, 0.5f, 3.0f, 1.0f));
         if (mpModelMorf->checkFrame(134)) {
             mDrawSwords = true;
             mMode = 6;
         }
         break;
     case 6:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc2(this, &mDemoCamCenter.y, 128.0f, 0.3f, 3.0f);
+        actor_attr::enemy_add_action_calc2(this, &mDemoCamBank, 55.0f, 0.3f, 3.0f);
+#else
         cLib_addCalc2(&mDemoCamCenter.y, 128.0f, 0.3f, 3.0f);
         cLib_addCalc2(&mDemoCamBank, 55.0f, 0.3f, 3.0f);
+#endif
 
         if (mpModelMorf->isStop()) {
             mFightCycle = 0;
@@ -3771,7 +4168,7 @@ void daB_ZANT_c::executeLastAttack() {
         if (field_0x713 == 0) {
             mMode = 1;
             setBck(BCK_ZAN_SW_WAIT, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
-            mModeTimer = 60;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 60), 60);
         } else {
             mMode = 5;
         }
@@ -3794,10 +4191,10 @@ void daB_ZANT_c::executeLastAttack() {
                 setLastWarp(1, 0);
             }
         } else {
-            cLib_addCalcAngleS2(&shape_angle.y, angle_to_player, 0x10, 0x400);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, angle_to_player, 0x10, 0x400), cLib_addCalcAngleS2(&shape_angle.y, angle_to_player, 0x10, 0x400));
             current.angle.y = shape_angle.y;
 
-            if (fopAcM_searchPlayerDistance(this) < 800.0f || mModeTimer == 0) {
+            if (fopAcM_searchPlayerDistance(this) < DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 800.0f), 800.0f) || mModeTimer == 0) {
                 mMode = 2;
                 setBck(BCK_ZAN_SW_WALK, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
             }
@@ -3821,11 +4218,11 @@ void daB_ZANT_c::executeLastAttack() {
                 setLastWarp(1, 0);
             }
         } else {
-            cLib_addCalcAngleS2(&shape_angle.y, angle_to_player, 0x10, 0x400);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &shape_angle.y, angle_to_player, 0x10, 0x400), cLib_addCalcAngleS2(&shape_angle.y, angle_to_player, 0x10, 0x400));
             current.angle.y = shape_angle.y;
-            cLib_chaseF(&speedF, 5.0f, 1.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, 5.0f, 1.0f), cLib_chaseF(&speedF, 5.0f, 1.0f));
 
-            if (fopAcM_searchPlayerDistance(this) < 500.0f) {
+            if (fopAcM_searchPlayerDistance(this) < DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 500.0f), 500.0f)) {
                 mMode = 5;
             }
         }
@@ -3833,15 +4230,15 @@ void daB_ZANT_c::executeLastAttack() {
     case 5:
         if (field_0x713 == 0) {
             setBck(BCK_ZAN_SW_ATTACK, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
-            mModeTimer = 200;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 200), 200);
             speedF = 5.0f;
         } else {
             setBck(BCK_ZAN_SW_ATTACKB, J3DFrameCtrl::EMode_LOOP, 3.0f, 1.0f);
 
             if (field_0x713 != 2) {
-                mModeTimer = cM_rndF(60.0f) + 60.0f;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(60.0f) + 60.0f), cM_rndF(60.0f) + 60.0f);
             } else {
-                mModeTimer = cM_rndF(15.0f) + 30.0f;
+                mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(15.0f) + 30.0f), cM_rndF(15.0f) + 30.0f);
             }
 
             speedF = 10.0f;
@@ -3869,9 +4266,15 @@ void daB_ZANT_c::executeLastAttack() {
                 setLastWarp(1, 0);
             }
         } else {
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_chase_action_float(this, &mSwordSize, l_HIO.mSwordAttackSize, 0.1f);
+            actor_attr::enemy_add_action_angle(this, &current.angle.y, angle_to_player, 8, 0x400);
+            actor_attr::enemy_add_action_angle(this, &shape_angle.y, angle_to_player, 8, 0x400);
+#else
             cLib_chaseF(&mSwordSize, l_HIO.mSwordAttackSize, 0.1f);
             cLib_addCalcAngleS2(&current.angle.y, angle_to_player, 8, 0x400);
             cLib_addCalcAngleS2(&shape_angle.y, angle_to_player, 8, 0x400);
+#endif
 
             if (field_0x713 == 0) {
                 if (mpModelMorf->checkFrame(4) || mpModelMorf->checkFrame(24)) {
@@ -3930,7 +4333,7 @@ void daB_ZANT_c::executeLastAttack() {
         }
         break;
     case 20:
-        if (fopAcM_searchPlayerDistance(this) < 500.0f) {
+        if (fopAcM_searchPlayerDistance(this) < DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 500.0f), 500.0f)) {
             mMode = 5;
         } else {
             mMode = 2;
@@ -3944,12 +4347,17 @@ void daB_ZANT_c::executeLastAttack() {
 
         if (field_0x704 == 0) {
             if (field_0x713 != 2) {
-                field_0x6ec = 300;
+                field_0x6ec = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 300), 300);
                 field_0x71d = 1;
                 field_0x6ff = 0;
             }
+#if TARGET_PC  // enemy attribute integration
+        } else if (field_0x6ec < actor_attr::enemy_sync_timer(this, 30)) {
+            field_0x6ec = actor_attr::enemy_sync_timer(this, 30);
+#else
         } else if (field_0x6ec < 30) {
             field_0x6ec = 30;
+#endif
         }
 
         if (field_0x713 == 0) {
@@ -3975,7 +4383,7 @@ void daB_ZANT_c::executeLastAttack() {
         mSound.startCreatureVoiceLevel(Z2SE_EN_ZAN_CTL_V_SPIN_ATK, -1);
         setLastRollEffect();
 
-        cLib_chaseF(&mSwordSize, l_HIO.mSwordAttackSize, 0.1f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mSwordSize, l_HIO.mSwordAttackSize, 0.1f), cLib_chaseF(&mSwordSize, l_HIO.mSwordAttackSize, 0.1f));
         
         f32 var_f31 = 1.2f;
         if (field_0x713 != 0) {
@@ -3996,27 +4404,27 @@ void daB_ZANT_c::executeLastAttack() {
             int sp48 = abs((s16)(angle_to_player - current.angle.y));
             if (sp48 > 0x4000) {
                 if (sp48 > 0x6800) {
-                    cLib_chaseF(&speedF, -30.0f, var_f31 * 0.2f);
+                    DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, -30.0f, var_f31 * 0.2f), cLib_chaseF(&speedF, -30.0f, var_f31 * 0.2f));
                 } else {
-                    cLib_chaseF(&speedF, 5.0f, var_f31 * 0.2f);
+                    DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, 5.0f, var_f31 * 0.2f), cLib_chaseF(&speedF, 5.0f, var_f31 * 0.2f));
                 }
 
-                cLib_addCalcAngleS2(&current.angle.y, angle_to_player + 0x8000, 0x10, var_f31 * 512.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_angle( this, &current.angle.y, angle_to_player + 0x8000, 0x10, var_f31 * 512.0f), cLib_addCalcAngleS2(&current.angle.y, angle_to_player + 0x8000, 0x10, var_f31 * 512.0f));
                 if (speedF < 0.0f && sp48 > 0x6000) {
                     current.angle.y += 0x8000;
                     speedF = -speedF;
                 }
             } else {
                 if (sp48 > 0x1800) {
-                    cLib_chaseF(&speedF, 10.0f, var_f31);
+                    DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, 10.0f, var_f31), cLib_chaseF(&speedF, 10.0f, var_f31));
                 } else {
-                    cLib_chaseF(&speedF, var_f31 * 30.0f, var_f31);
+                    DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, var_f31 * 30.0f, var_f31), cLib_chaseF(&speedF, var_f31 * 30.0f, var_f31));
                 }
 
-                cLib_addCalcAngleS2(&current.angle.y, angle_to_player, 0x10, var_f31 * 768.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_angle( this, &current.angle.y, angle_to_player, 0x10, var_f31 * 768.0f), cLib_addCalcAngleS2(&current.angle.y, angle_to_player, 0x10, var_f31 * 768.0f));
             }
         } else {
-            cLib_chaseF(&speedF, var_f31 * 30.0f, var_f31 * 2.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, var_f31 * 30.0f, var_f31 * 2.0f), cLib_chaseF(&speedF, var_f31 * 30.0f, var_f31 * 2.0f));
         }
 
         int sp3C = 0;
@@ -4026,7 +4434,6 @@ void daB_ZANT_c::executeLastAttack() {
 
         if (mRollCc.ChkTgHit()) {
             sp48 = mRollCc.GetTgHitObj();
-            
             if (sp48->ChkAtType(AT_TYPE_IRON_BALL)) {
                 sp40 = 1;
             } else if (sp48->ChkAtType(AT_TYPE_NORMAL_SWORD)) {
@@ -4095,14 +4502,24 @@ void daB_ZANT_c::executeLastAttack() {
                 return;
             }
 
+#if TARGET_PC  // enemy attribute integration
+            if (field_0x6ec < actor_attr::enemy_sync_timer(this, 10)) {
+                field_0x6ec = actor_attr::enemy_sync_timer(this, 10);
+#else
             if (field_0x6ec < 10) {
                 field_0x6ec = 10;
+#endif
                 mMode = 12;
             }
         }
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_angle(this, &field_0x6f8, 0x3000, 0x80);
+        actor_attr::enemy_angle_add(this, shape_angle.y, field_0x6f8);
+#else
         cLib_chaseAngleS(&field_0x6f8, 0x3000, 0x80);
         shape_angle.y += field_0x6f8;
+#endif
 
         if (field_0x6ec == 0) {
             mMode = 12;
@@ -4113,9 +4530,15 @@ void daB_ZANT_c::executeLastAttack() {
         mSound.startCreatureVoiceLevel(Z2SE_EN_ZAN_CTL_V_SPIN_ATK, -1);
         setLastRollEffect();
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_float(this, &speedF, 0.0f, 1.0f);
+        actor_attr::enemy_chase_action_angle(this, &field_0x6f8, 0, 0x80);
+        actor_attr::enemy_angle_add(this, shape_angle.y, field_0x6f8);
+#else
         cLib_chaseF(&speedF, 0.0f, 1.0f);
         cLib_chaseAngleS(&field_0x6f8, 0, 0x80);
         shape_angle.y += field_0x6f8;
+#endif
 
         if (field_0x6f8 < 0x1000) {
             mRollCc.OffAtSetBit();
@@ -4128,7 +4551,7 @@ void daB_ZANT_c::executeLastAttack() {
             dComIfGs_offOneZoneSwitch(1, fopAcM_GetRoomNo(this));
 
             if (field_0x713 == 2) {
-                field_0x6ec = 450;
+                field_0x6ec = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 450), 450);
             }
         }
         break;
@@ -4138,17 +4561,24 @@ void daB_ZANT_c::executeLastAttack() {
             setTgShield(FALSE);
             setTgHitBit(TRUE);
 
-            field_0x6f0 = 60;
+            field_0x6f0 = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 60), 60);
             field_0x71d = 0;
             field_0x703 = 0;
             field_0x71c = 0;
             field_0x712 = 0;
         }
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_float(this, &mSwordSize, 1.0f, 0.1f);
+        actor_attr::enemy_chase_action_float(this, &speedF, 0.0f, 1.0f);
+        actor_attr::enemy_chase_action_angle(this, &field_0x6f8, 0, 0x80);
+        actor_attr::enemy_angle_add(this, shape_angle.y, field_0x6f8);
+#else
         cLib_chaseF(&mSwordSize, 1.0f, 0.1f);
         cLib_chaseF(&speedF, 0.0f, 1.0f);
         cLib_chaseAngleS(&field_0x6f8, 0, 0x80);
         shape_angle.y += field_0x6f8;
+#endif
 
         if (field_0x6f8 == 0) {
             setActionMode(ACT_LAST_TIRED, 0);
@@ -4161,11 +4591,11 @@ void daB_ZANT_c::executeLastTired() {
     switch (mMode) {
     case 0:
         if (field_0x713 == 0) {
-            mModeTimer = 120;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 120), 120);
         } else if (field_0x713 == 1) {
-            mModeTimer = 90;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 90), 90);
         } else {
-            mModeTimer = 60;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 60), 60);
         }
 
         field_0x6f0 = mModeTimer;
@@ -4179,7 +4609,7 @@ void daB_ZANT_c::executeLastTired() {
         field_0x71c = 0;
         field_0x712 = 0;
     case 5:
-        cLib_chaseF(&speedF, 0.0f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, 0.0f, 1.0f), cLib_chaseF(&speedF, 0.0f, 1.0f));
         if (mModeTimer == 0) {
             setTgHitBit(FALSE);
             setLastWarp(1, 0);
@@ -4210,11 +4640,21 @@ void daB_ZANT_c::executeLastDamage() {
 
         if (mTakenBigDmg) {
             if (mFightCycle == 0) {
+#if TARGET_PC  // enemy attribute integration
+                if (health < actor_attr::enemy_health_value(this, 400)) {
+                    health = actor_attr::enemy_health_value(this, 400);
+#else
                 if (health < 400) {
                     health = 400;
+#endif
                 }
+#if TARGET_PC  // enemy attribute integration
+            } else if (mFightCycle == 1 && health < actor_attr::enemy_health_value(this, 200)) {
+                health = actor_attr::enemy_health_value(this, 200);
+#else
             } else if (mFightCycle == 1 && health < 200) {
                 health = 200;
+#endif
             }
 
             mFightCycle++;
@@ -4322,7 +4762,7 @@ void daB_ZANT_c::executeLastDamage() {
         speedF = 0.0f;
         speed.y = 0.0f;
         field_0x702 = 0;
-        mModeTimer = 20;
+        mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_stun_timer(this, 20), 20);
         mMode = 21;
     case 21:
         if (mModeTimer == 0) {
@@ -4396,13 +4836,13 @@ void daB_ZANT_c::executeLastEndDemo() {
         {
             f32 var_f31 = mpModelMorf->getFrame();
             if ((80 <= var_f31 && var_f31 <= 120) || (175 <= var_f31 && var_f31 <= 205)) {
-                cLib_addCalcPos(&mDemoCamCenter, sp34, 0.1f, 3.0f, 1.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &mDemoCamCenter, sp34, 0.1f, 3.0f, 1.0f), cLib_addCalcPos(&mDemoCamCenter, sp34, 0.1f, 3.0f, 1.0f));
             } else {
-                cLib_addCalcPos(&mDemoCamCenter, sp34, 0.5f, 30.0f, 1.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &mDemoCamCenter, sp34, 0.5f, 30.0f, 1.0f), cLib_addCalcPos(&mDemoCamCenter, sp34, 0.5f, 30.0f, 1.0f));
             }
         }
 
-        cLib_addCalcAngleS(&field_0x6ba, 0, 0x10, 0x40, 0x10);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &field_0x6ba, 0, 0x10, 0x40, 0x10), cLib_addCalcAngleS(&field_0x6ba, 0, 0x10, 0x40, 0x10));
 
         sp34.set(0.0f, 50.0f, -1000.0f);
         sp40.set(0.0f, field_0x6bc, 250.0f);
@@ -4417,19 +4857,24 @@ void daB_ZANT_c::executeLastEndDemo() {
         }
         break;
     case 3:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &field_0x6ba, 0, 0x10, 0x40, 0x10);
+        actor_attr::enemy_add_action_calc2(this, &field_0x6bc, 250.0f, 0.1f, 3.0f);
+#else
         cLib_addCalcAngleS(&field_0x6ba, 0, 0x10, 0x40, 0x10);
         cLib_addCalc2(&field_0x6bc, 250.0f, 0.1f, 3.0f);
+#endif
         sp34.set(0.0f, 300.0f, -1000.0f);
         sp40.set(0.0f, 0.0f, 150.0f);
         
         {
             cXyz sp58;
             cLib_offsetPos(&sp58, &sp34, field_0x6ba, &sp40);
-            cLib_addCalcPos(&mDemoCamEye, sp58, 0.1f, 4.0f, 1.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &mDemoCamEye, sp58, 0.1f, 4.0f, 1.0f), cLib_addCalcPos(&mDemoCamEye, sp58, 0.1f, 4.0f, 1.0f));
         }
         
         sp34 = eyePos;
-        cLib_addCalcPos(&mDemoCamCenter, sp34, 0.1f, 0.8f, 1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &mDemoCamCenter, sp34, 0.1f, 0.8f, 1.0f), cLib_addCalcPos(&mDemoCamCenter, sp34, 0.1f, 0.8f, 1.0f));
 
         if (mpModelMorf->checkFrame(340)) {
             mpModelMorf->setFrame(300);
@@ -4438,16 +4883,16 @@ void daB_ZANT_c::executeLastEndDemo() {
             mDemoCamEye.set(0.0f, 5.0f, -800.0f);
             field_0x6bc = 30.0f;
             mDemoCamCenter = eyePos;
-            mDemoCamCenter.y -= field_0x6bc;
+            mDemoCamCenter.y -= DUSK_IF_ELSE(actor_attr::enemy_action_step(this, field_0x6bc), field_0x6bc);
             mDemoCamBank = 80.0f;
         }
         break;
     case 14:
         mDemoCamCenter = eyePos;
-        mDemoCamCenter.y -= field_0x6bc;
+        mDemoCamCenter.y -= DUSK_IF_ELSE(actor_attr::enemy_action_step(this, field_0x6bc), field_0x6bc);
 
         if (mpModelMorf->checkFrame(360)) {
-            mpModelMorf->setPlaySpeed(0.5f);
+            DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpModelMorf, 0.5f), mpModelMorf->setPlaySpeed(0.5f));
             mMode = 15;
         }
         break;
@@ -4457,10 +4902,15 @@ void daB_ZANT_c::executeLastEndDemo() {
         }
 
         mDemoCamCenter = eyePos;
-        mDemoCamCenter.y -= field_0x6bc;
+        mDemoCamCenter.y -= DUSK_IF_ELSE(actor_attr::enemy_action_step(this, field_0x6bc), field_0x6bc);
 
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_float(this, &field_0x6bc, 0.0f, 1.0f);
+        actor_attr::enemy_chase_action_float(this, &mDemoCamBank, 80.0f, 0.5f);
+#else
         cLib_chaseF(&field_0x6bc, 0.0f, 1.0f);
         cLib_chaseF(&mDemoCamBank, 80.0f, 0.5f);
+#endif
         break;
     }
 
@@ -4470,9 +4920,9 @@ void daB_ZANT_c::executeLastEndDemo() {
 void daB_ZANT_c::calcMahojinAnime() {
     switch (mMahojinAnmMode) {
     case 1:
-        mpMahojinStartBtk->setPlaySpeed(1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpMahojinStartBtk, 1.0f), mpMahojinStartBtk->setPlaySpeed(1.0f));
         mpMahojinStartBtk->setFrame(0);
-        mpMahojinEndBrk->setPlaySpeed(0.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpMahojinEndBrk, 0.0f), mpMahojinEndBrk->setPlaySpeed(0.0f));
         mpMahojinEndBrk->setFrame(0);
         mMahojinAnmMode = 2;
     case 2:
@@ -4487,7 +4937,7 @@ void daB_ZANT_c::calcMahojinAnime() {
     case 3:
         break;
     case 4:
-        mpMahojinEndBrk->setPlaySpeed(1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpMahojinEndBrk, 1.0f), mpMahojinEndBrk->setPlaySpeed(1.0f));
         mMahojinAnmMode = 5;
     case 5:
         if (mpMahojinEndBrk->isStop()) {
@@ -4498,14 +4948,19 @@ void daB_ZANT_c::calcMahojinAnime() {
 
     switch (mMahojin2AnmMode) {
     case 0:
-        mpMahojinBrk2->setPlaySpeed(0.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(this, mpMahojinBrk2, 0.0f), mpMahojinBrk2->setPlaySpeed(0.0f));
         mpMahojinBrk2->setFrame(30);
         mpMahojinStartBtk2->setFrame(19);
         mMahojin2Size = 1.0f;
         break;
     case 1:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_set_animation_play_speed(this, mpMahojinBrk2, 0.5f);
+        actor_attr::enemy_chase_action_float(this, &mMahojin2Size, 10.0f, 0.1f);
+#else
         mpMahojinBrk2->setPlaySpeed(0.5f);
         cLib_chaseF(&mMahojin2Size, 10.0f, 0.1f);
+#endif
 
         if (mpMahojinBrk2->isStop()) {
             mMahojin2AnmMode = 0;
@@ -4546,13 +5001,24 @@ void daB_ZANT_c::calcRoomChangeCamera(int param_0) {
     switch (param_0) {
     case 0:
         mDemoCamBank = 58.0f;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_float(this, &field_0x77c, 30.0f, 1.0f);
+        actor_attr::enemy_add_action_calc_pos(this, &mDemoCamEye, eye_target, 0.3f, field_0x77c * 1.1f, 3.0f);
+        actor_attr::enemy_add_action_calc_pos(this, &mDemoCamCenter, center_target, 0.3f, field_0x77c, 3.0f);
+#else
         cLib_chaseF(&field_0x77c, 30.0f, 1.0f);
         cLib_addCalcPos(&mDemoCamEye, eye_target, 0.3f, field_0x77c * 1.1f, 3.0f);
         cLib_addCalcPos(&mDemoCamCenter, center_target, 0.3f, field_0x77c, 3.0f);
+#endif
         break;
     case 1:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc_pos(this, &mDemoCamEye, eye_target, 0.2f, 15.0f, 3.0f);
+        actor_attr::enemy_add_action_calc_pos(this, &mDemoCamCenter, center_target, 0.2f, 15.0f, 3.0f);
+#else
         cLib_addCalcPos(&mDemoCamEye, eye_target, 0.2f, 15.0f, 3.0f);
         cLib_addCalcPos(&mDemoCamCenter, center_target, 0.2f, 15.0f, 3.0f);
+#endif
         break;
     }
 }
@@ -4572,12 +5038,17 @@ void daB_ZANT_c::initNextRoom() {
     dComIfGs_offSaveDunSwitch(22);
 
     if (mFightPhase != PHASE_LAST) {
-        health = 280;
+        health = DUSK_IF_ELSE(actor_attr::enemy_health_value(this, 280), 280);
     } else {
+        /* field_0x560 already contains the randomized maximum health. */
         health = field_0x560;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    mAcchCir.SetWall(actor_attr::enemy_size_value(this, 100.0f), actor_attr::enemy_size_value(this, 100.f));
+#else
     mAcchCir.SetWall(100.0f, 100.f);
+#endif
 
     if (mFightPhase == PHASE_MG) {
         attention_info.distances[fopAc_attn_BATTLE_e] = 4;
@@ -4645,13 +5116,13 @@ void daB_ZANT_c::executeRoomChange() {
     case 1:
         if (calcScale(0)) {
             mMode = 4;
-            mModeTimer = l_HIO.mDemoWarpTime;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.mDemoWarpTime), l_HIO.mDemoWarpTime);
         }
         break;
     case 4:
         if (mModeTimer == 0) {
             mMode = 10;
-            mModeTimer = 15;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 15), 15);
 
             current.pos.set(-140.0f, 300.0f, 700.0f);
             old.pos = current.pos;
@@ -4709,13 +5180,13 @@ void daB_ZANT_c::executeRoomChange() {
 
         if (calcScale(1)) {
             mMode = 12;
-            mModeTimer = 20;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
         }
         break;
     case 12:
         if (mModeTimer == 0) {
             mMode = 13;
-            mModeTimer = 50;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 50), 50);
         }
         break;
     case 13:
@@ -4740,7 +5211,7 @@ void daB_ZANT_c::executeRoomChange() {
         }
         break;
     case 14:
-        cLib_chaseF(&mKankyoBlend, 1.0f, 0.02f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mKankyoBlend, 1.0f, 0.02f), cLib_chaseF(&mKankyoBlend, 1.0f, 0.02f));
 
         if (mpModelMorf->checkFrame(42)) {
             mMahojinAnmMode = 1;
@@ -4748,7 +5219,7 @@ void daB_ZANT_c::executeRoomChange() {
         }
 
         if (mpModelMorf->checkFrame(42)) {
-            field_0x715 = 30;
+            field_0x715 = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(this, 30), 30);
         }
 
         shape_angle.y = fopAcM_searchPlayerAngleY(this);
@@ -4764,7 +5235,7 @@ void daB_ZANT_c::executeRoomChange() {
             }
 
             mMode = 15;
-            mModeTimer = l_HIO.mMahojinWaitTime;
+            mModeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, l_HIO.mMahojinWaitTime), l_HIO.mMahojinWaitTime);
 
             initNextRoom();
             cXyz pos(0.0f, 0.0f, 0.0f);
@@ -4782,7 +5253,7 @@ void daB_ZANT_c::executeRoomChange() {
         }
         break;
     case 16:
-        cLib_chaseF(&mKankyoBlend, 1.0f, 0.02f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &mKankyoBlend, 1.0f, 0.02f), cLib_chaseF(&mKankyoBlend, 1.0f, 0.02f));
         player->setPlayerPosAndAngle(&sp34, 0, 0);
 
         if (mpModelMorf->isStop()) {
@@ -4871,7 +5342,12 @@ void daB_ZANT_c::setBaseActionMode(int param_0) {
 
             if (pmobile != NULL) {
                 var_r27 = pmobile->shape_angle.y;
+#if TARGET_PC  // enemy attribute integration
+                const f32 mouth_depth = actor_attr::enemy_size_value(this, 300.0f);
+                sp44.set(cM_ssin(var_r27) * mouth_depth, mouth_depth, cM_scos(var_r27) * mouth_depth);
+#else
                 sp44.set(cM_ssin(var_r27) * 300.0f, 300.0f, cM_scos(var_r27) * 300.0f);
+#endif
                 sp44 += pmobile->current.pos;
             }
 
@@ -4913,6 +5389,15 @@ void daB_ZANT_c::setBaseActionMode(int param_0) {
 }
 
 void daB_ZANT_c::action() {
+#if TARGET_PC  // enemy attribute integration
+
+    // Remember whether this frame began in the forest pillar-jump flight state.
+    // executeMonkey() can transition mode 9 -> 1 before the generic movement
+    // pass below runs, so checking mMode only after the action switch misses
+    // the exact landing frame.
+    const bool wasMonkeyPillarJump = mFightPhase == PHASE_MK && mAction == ACT_MONKEY && mMode == 9;
+
+#endif
     if (mFightPhase == PHASE_YO) {
         ice_damage_check();
     } else {
@@ -5021,9 +5506,12 @@ void daB_ZANT_c::action() {
                 wall_r = 100.0f;
             }
 
+#if TARGET_PC  // enemy attribute integration
+            mAcchCir.SetWall(actor_attr::enemy_size_value(this, 100.0f), actor_attr::enemy_size_value(this, wall_r));
+#else
             mAcchCir.SetWall(100.0f, wall_r);
+#endif
         }
-        
         dComIfGs_offSaveDunSwitch(20);
         dComIfGs_offSaveDunSwitch(21);
         dComIfGs_offSaveDunSwitch(22);
@@ -5094,9 +5582,15 @@ void daB_ZANT_c::action() {
         neck_rot_x = var_r29;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(this, &mNeckRotZ, neck_rot_z, 8, 0x400, 0x80);
+    actor_attr::enemy_add_action_angle(this, &mNeckRotX, neck_rot_x, 8, 0x400, 0x80);
+    actor_attr::enemy_add_action_angle(this, &mBackboneRotZ, body_rot_x, 8, 0x400, 0x80);
+#else
     cLib_addCalcAngleS(&mNeckRotZ, neck_rot_z, 8, 0x400, 0x80);
     cLib_addCalcAngleS(&mNeckRotX, neck_rot_x, 8, 0x400, 0x80);
     cLib_addCalcAngleS(&mBackboneRotZ, body_rot_x, 8, 0x400, 0x80);
+#endif
 
     calcMahojinAnime();
 
@@ -5107,12 +5601,46 @@ void daB_ZANT_c::action() {
         dStage_RoomCheck(NULL);
     }
 
+#if TARGET_PC  // enemy attribute integration
+    if (mFightPhase == PHASE_LAST) {
+        // Final-phase Zant is a ground fighter. Keep vertical physics in vanilla
+        // frame units so high action speed does not repeatedly drive him into
+        // the floor before background correction, but scale his horizontal
+        // locomotion directly from the movement-speed attribute.
+        actor_attr::pos_move_resolved_f(this, speedF * actor_attr::enemy_action_speed_multiplier(this), gravity, maxFallSpeed, field_0x9a4.GetCCMoveP());
+    } else {
+        actor_attr::enemy_action_pos_move_f(this, field_0x9a4.GetCCMoveP());
+    }
+#else
     fopAcM_posMoveF(this, field_0x9a4.GetCCMoveP());
+#endif
 
     if (field_0x705 == 0) {
         mAcch.CrrPos(dComIfG_Bgsp());
     }
 
+#if TARGET_PC  // enemy attribute integration
+    // Forest-phase pillar jumps move X/Z manually in executeMonkey(). At high
+    // action speeds, collision/background correction can leave the final frame
+    // slightly short even though the scaled travel timer has expired. Once the
+    // travel window is complete, keep the selected pillar's X/Z authoritative.
+    if (mFightPhase == PHASE_MK && mAction == ACT_MONKEY && mMode == 9 && mModeTimer == 0) {
+        current.pos.x = field_0x6ac.x;
+        current.pos.z = field_0x6ac.z;
+    }
+
+    // More importantly, executeMonkey() can accept the landing and change
+    // mode 9 -> 1 before enemy_action_pos_move_f()/CrrPos run.  Reassert the
+    // complete pillar landing after those generic movement passes so the same
+    // frame cannot pull Zant short/off the pillar again.
+    if (wasMonkeyPillarJump && mFightPhase == PHASE_MK && mAction == ACT_MONKEY && mMode == 1) {
+        current.pos = field_0x6ac;
+        old.pos = current.pos;
+        speed.y = 0.0f;
+        speedF = 0.0f;
+    }
+
+#endif
     u32 sp44 = mModelScaleY * 100.0f;
     mpModelMorf->play(sp44, dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
 }
@@ -5120,8 +5648,16 @@ void daB_ZANT_c::action() {
 void daB_ZANT_c::mtx_set() {
     mDoMtx_stack_c::transS(current.pos);
     mDoMtx_stack_c::ZXYrotM(shape_angle);
+#if TARGET_PC  // enemy attribute integration
+    mDoMtx_stack_c::scaleM(
+        (l_HIO.mModelSize * mModelScaleXZ) * actor_attr::enemy_size_multiplier(this),
+        (l_HIO.mModelSize * mModelScaleY) * actor_attr::enemy_size_multiplier(this),
+        (l_HIO.mModelSize * mModelScaleXZ) * actor_attr::enemy_size_multiplier(this));
+
+#else
     mDoMtx_stack_c::scaleM(l_HIO.mModelSize * mModelScaleXZ, l_HIO.mModelSize * mModelScaleY, l_HIO.mModelSize * mModelScaleXZ);
     
+#endif
     J3DModel* model = mpModelMorf->getModel();
     model->setBaseTRMtx(mDoMtx_stack_c::get());
     mpModelMorf->modelCalc();
@@ -5164,41 +5700,46 @@ void daB_ZANT_c::cc_set() {
     mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(JNT_NECK));
     mDoMtx_stack_c::multVecZero(&eyePos);
     attention_info.position = eyePos;
-    attention_info.position.y += mModelScaleY * 100.0f;
+    attention_info.position.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(this, mModelScaleY * 100.0f), mModelScaleY * 100.0f);
 
     cXyz center;
     mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(JNT_BACKBONE));
     mDoMtx_stack_c::transM(30.0f, 0.0f, 0.0f);
     mDoMtx_stack_c::multVecZero(&center);
     mBodySphCc[0].SetC(center);
-    mBodySphCc[0].SetR(70.0f);
+    mBodySphCc[0].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 70.0f), 70.0f));
     dComIfG_Ccsp()->Set(&mBodySphCc[0]);
 
     mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(JNT_WAIST));
     mDoMtx_stack_c::transM(50.0f, 0.0f, 0.0f);
     mDoMtx_stack_c::multVecZero(&center);
     mBodySphCc[1].SetC(center);
-    mBodySphCc[1].SetR(70.0f);
+    mBodySphCc[1].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 70.0f), 70.0f));
     dComIfG_Ccsp()->Set(&mBodySphCc[1]);
 
     if (mFightPhase == PHASE_LAST) {
         mRollCc.SetC(current.pos);
+#if TARGET_PC  // enemy attribute integration
+        mRollCc.SetR(actor_attr::enemy_size_value(this, 200.0f));
+        mRollCc.SetH(actor_attr::enemy_size_value(this, 250.0f));
+#else
         mRollCc.SetR(200.0f);
         mRollCc.SetH(250.0f);
+#endif
         dComIfG_Ccsp()->Set(&mRollCc);
 
         mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(JNT_ARML3));
         mDoMtx_stack_c::transM(100.0f, 0.0f, 0.0f);
         mDoMtx_stack_c::multVecZero(&center);
         mSwordCc[0].SetC(center);
-        mSwordCc[0].SetR(50.0f);
+        mSwordCc[0].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 50.0f), 50.0f));
         dComIfG_Ccsp()->Set(&mSwordCc[0]);
 
         mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(JNT_ARMR3));
         mDoMtx_stack_c::transM(-100.0f, 0.0f, 0.0f);
         mDoMtx_stack_c::multVecZero(&center);
         mSwordCc[1].SetC(center);
-        mSwordCc[1].SetR(50.0f);
+        mSwordCc[1].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 50.0f), 50.0f));
         dComIfG_Ccsp()->Set(&mSwordCc[1]);
     }
 }
@@ -5271,12 +5812,12 @@ void daB_ZANT_c::cc_ice_set() {
         }
 
         attention_info.position = eyePos;
-        attention_info.position.y += 120.0f;
+        attention_info.position.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 120.0f), 120.0f);
     } else {
         mDoMtx_stack_c::copy(mpModelMorf->getModel()->getAnmMtx(JNT_NECK));
         mDoMtx_stack_c::multVecZero(&eyePos);
         attention_info.position = eyePos;
-        attention_info.position.y += mModelScaleY * 120.0f;
+        attention_info.position.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(this, mModelScaleY * 120.0f), mModelScaleY * 120.0f);
     }
 
     cXyz sp64;
@@ -5290,7 +5831,7 @@ void daB_ZANT_c::cc_ice_set() {
         mDoMtx_stack_c::multVecZero(&sp64);
 
         mFootCc[i].SetC(sp64);
-        mFootCc[i].SetR(sph.radius * mModelScaleY);
+        mFootCc[i].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, sph.radius * mModelScaleY), sph.radius * mModelScaleY));
         dComIfG_Ccsp()->Set(&mFootCc[i]);
     }
 
@@ -5302,11 +5843,11 @@ void daB_ZANT_c::cc_ice_set() {
         mDoMtx_stack_c::multVecZero(&sp64);
 
         mFoot2Cc[i].SetC(sp64);
-        mFoot2Cc[i].SetR(sph.radius * mModelScaleY);
+        mFoot2Cc[i].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, sph.radius * mModelScaleY), sph.radius * mModelScaleY));
         dComIfG_Ccsp()->Set(&mFoot2Cc[i]);
 
         mCameraCc[i].SetC(sp64);
-        mCameraCc[i].SetR((sph.radius + 10.0f) * mModelScaleY);
+        mCameraCc[i].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, (sph.radius + 10.0f) * mModelScaleY), (sph.radius + 10.0f) * mModelScaleY));
         dComIfG_Ccsp()->Set(&mCameraCc[i]);
     }
 }
@@ -5382,7 +5923,7 @@ static int daB_ZANT_Delete(daB_ZANT_c* i_this) {
 int daB_ZANT_c::CreateHeap() {
     J3DModelData* modelData = (J3DModelData*)dComIfG_getObjectRes("B_zan", BMDR_ZAN);
     JUT_ASSERT(0, modelData != NULL);
-    mpModelMorf = JKR_NEW mDoExt_McaMorfSO(modelData, NULL, NULL, (J3DAnmTransform*)dComIfG_getObjectRes("B_zan", BCK_ZAN_FLOAT_WAIT), 2, 1.0f, 0, -1, &mSound, 0, 0x11000084);
+    mpModelMorf = JKR_NEW mDoExt_McaMorfSO(modelData, NULL, NULL, (J3DAnmTransform*)dComIfG_getObjectRes("B_zan", BCK_ZAN_FLOAT_WAIT), 2, DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 1.0f), 1.0f), 0, -1, &mSound, 0, 0x11000084);
     if (mpModelMorf == NULL || mpModelMorf->getModel() == NULL) {
         return 0;
     }
@@ -5402,7 +5943,7 @@ int daB_ZANT_c::CreateHeap() {
         return 0;
     }
 
-    if (!mpMahojinEndBrk->init(mpMahojinModel->getModelData(), (J3DAnmTevRegKey*)dComIfG_getObjectRes("B_zan", BRK_ZAN_MAHOJIN_END), 1, 0, 1.0f, 0, -1)) {
+    if (!mpMahojinEndBrk->init(mpMahojinModel->getModelData(), (J3DAnmTevRegKey*)dComIfG_getObjectRes("B_zan", BRK_ZAN_MAHOJIN_END), 1, 0, DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 1.0f), 1.0f), 0, -1)) {
         return 0;
     }
 
@@ -5411,7 +5952,7 @@ int daB_ZANT_c::CreateHeap() {
         return 0;
     }
 
-    if (!mpMahojinBtk->init(mpMahojinModel->getModelData(), (J3DAnmTextureSRTKey*)dComIfG_getObjectRes("B_zan", BTK_ZAN_MAHOJIN), 1, 2, 1.0f, 0, -1)) {
+    if (!mpMahojinBtk->init(mpMahojinModel->getModelData(), (J3DAnmTextureSRTKey*)dComIfG_getObjectRes("B_zan", BTK_ZAN_MAHOJIN), 1, 2, DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 1.0f), 1.0f), 0, -1)) {
         return 0;
     }
 
@@ -5420,7 +5961,7 @@ int daB_ZANT_c::CreateHeap() {
         return 0;
     }
 
-    if (!mpMahojinStartBtk->init(mpMahojinModel->getModelData(), (J3DAnmTextureSRTKey*)dComIfG_getObjectRes("B_zan", BTK_ZAN_MAHOJIN_START), 1, 0, 1.0f, 0, -1)) {
+    if (!mpMahojinStartBtk->init(mpMahojinModel->getModelData(), (J3DAnmTextureSRTKey*)dComIfG_getObjectRes("B_zan", BTK_ZAN_MAHOJIN_START), 1, 0, DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 1.0f), 1.0f), 0, -1)) {
         return 0;
     }
 
@@ -5443,7 +5984,7 @@ int daB_ZANT_c::CreateHeap() {
         return 0;
     }
 
-    if (!mpMahojinStartBtk2->init(mpMahojinModel2->getModelData(), (J3DAnmTextureSRTKey*)dComIfG_getObjectRes("B_zan", BTK_ZAN_MAHOJIN_START), 1, 0, 1.0f, 0, -1)) {
+    if (!mpMahojinStartBtk2->init(mpMahojinModel2->getModelData(), (J3DAnmTextureSRTKey*)dComIfG_getObjectRes("B_zan", BTK_ZAN_MAHOJIN_START), 1, 0, DUSK_IF_ELSE(actor_attr::enemy_action_step(this, 1.0f), 1.0f), 0, -1)) {
         return 0;
     }
 
@@ -5511,36 +6052,91 @@ int daB_ZANT_c::create() {
         fopAcM_SetMax(this, 200.0f, 200.0f, 200.0f);
 
         mAcch.Set(fopAcM_GetPosition_p(this), fopAcM_GetOldPosition_p(this), this, 1, &mAcchCir, fopAcM_GetSpeed_p(this), NULL, NULL);
+#if TARGET_PC  // enemy attribute integration
+        mAcchCir.SetWall(actor_attr::enemy_size_value(this, 100.0f), actor_attr::enemy_size_value(this, 100.0f));
+#else
         mAcchCir.SetWall(100.0f, 100.0f);
+#endif
 
+#if TARGET_PC  // enemy attribute integration
+        health = actor_attr::enemy_health_value(this, 600);
+        field_0x560 = health;
+#else
         health = 600;
         field_0x560 = 600;
+#endif
 
         field_0x9a4.Init(0xFE, 0, this);
     
         mBodySphCc[0].Set(cc_zant_src);
+#if TARGET_PC  // enemy attribute integration
+
+        mBodySphCc[0].SetR(actor_attr::enemy_size_value(this, mBodySphCc[0].GetR()));
+
+        mBodySphCc[0].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mBodySphCc[0].GetAtAtp()));
+#endif
         mBodySphCc[0].SetStts(&field_0x9a4);
 
         mBodySphCc[1].Set(cc_zant_src);
+#if TARGET_PC  // enemy attribute integration
+
+        mBodySphCc[1].SetR(actor_attr::enemy_size_value(this, mBodySphCc[1].GetR()));
+
+        mBodySphCc[1].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mBodySphCc[1].GetAtAtp()));
+#endif
         mBodySphCc[1].SetStts(&field_0x9a4);
 
         mRollCc.Set(cc_zant_roll_src);
+#if TARGET_PC  // enemy attribute integration
+
+        mRollCc.SetR(actor_attr::enemy_size_value(this, mRollCc.GetR()));
+
+        mRollCc.SetH(actor_attr::enemy_size_value(this, mRollCc.GetH()));
+
+        mRollCc.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mRollCc.GetAtAtp()));
+#endif
         mRollCc.SetStts(&field_0x9a4);
 
         mSwordCc[0].Set(cc_zant_sword_src);
+#if TARGET_PC  // enemy attribute integration
+
+        mSwordCc[0].SetR(actor_attr::enemy_size_value(this, mSwordCc[0].GetR()));
+
+        mSwordCc[0].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mSwordCc[0].GetAtAtp()));
+#endif
         mSwordCc[0].SetStts(&field_0x9a4);
         mSwordCc[1].Set(cc_zant_sword_src);
+#if TARGET_PC  // enemy attribute integration
+        mSwordCc[1].SetR(actor_attr::enemy_size_value(this, mSwordCc[1].GetR()));
+        mSwordCc[1].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mSwordCc[1].GetAtAtp()));
+#endif
         mSwordCc[1].SetStts(&field_0x9a4);
 
         field_0xc74.Init(0xFE, 0, this);
         for (int i = 0; i < 11; i++) {
             mFoot2Cc[i].Set(cc_zant_foot_src2);
+#if TARGET_PC  // enemy attribute integration
+            mFoot2Cc[i].SetR(actor_attr::enemy_size_value(this, mFoot2Cc[i].GetR()));
+            mFoot2Cc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mFoot2Cc[i].GetAtAtp()));
+#endif
             mFoot2Cc[i].SetStts(&field_0xc74);
 
             mFootCc[i].Set(cc_zant_foot_src);
+#if TARGET_PC  // enemy attribute integration
+
+            mFootCc[i].SetR(actor_attr::enemy_size_value(this, mFootCc[i].GetR()));
+
+            mFootCc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mFootCc[i].GetAtAtp()));
+#endif
             mFootCc[i].SetStts(&field_0xc74);
 
             mCameraCc[i].Set(cc_zant_camera_src);
+#if TARGET_PC  // enemy attribute integration
+
+            mCameraCc[i].SetR(actor_attr::enemy_size_value(this, mCameraCc[i].GetR()));
+
+            mCameraCc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(this, mCameraCc[i].GetAtAtp()));
+#endif
             mCameraCc[i].SetStts(&field_0xc74);
         }
 
