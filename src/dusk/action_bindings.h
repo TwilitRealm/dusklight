@@ -4,6 +4,8 @@
 
 #include "dusk/config_var.hpp"
 
+#include <aurora/binding.hpp>
+
 namespace dusk {
 
 enum class ActionBinds {
@@ -32,6 +34,10 @@ ActionBindsMap& getActionBinds();
 
 bool isActionBound(ActionBinds action, u32 port);
 bool isActionBoundAnyPort(ActionBinds action);
+
+aurora::binding::ControlId getActionControl(ActionBinds action);
+
+void syncActionBindings();
 
 void updateActionBindings();
 

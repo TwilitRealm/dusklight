@@ -2,6 +2,7 @@
 
 #include <RmlUi/Core.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
+#include <aurora/input.hpp>
 #include <aurora/rmlui.hpp>
 
 #include "dusk/settings.h"
@@ -9,6 +10,7 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "ui.hpp"
 
@@ -34,9 +36,49 @@ bool is_command(std::string_view text) {
     return text.size() >= 2 && text[0] == '>' && text[1] == ' ';
 }
 
+aurora::input::LayerId sShortcutLayer = aurora::input::kInvalidLayerId;
+
+bool text_field_focused() {
+    auto* context = aurora::rmlui::get_context();
+    auto* focus = context != nullptr ? context->GetFocusElement() : nullptr;
+    return focus != nullptr &&
+           (focus->GetTagName() == "input" || focus->GetTagName() == "textarea");
+}
+
+// The console's repeats and release follow the consumed press.
+aurora::input::EventResult shortcut_event(const aurora::input::InputEvent& event, void*) {
+    const auto* key = event.payload.get_if<aurora::input::InputEvent::KeyChanged>();
+    if (key == nullptr || key->keycode != SDLK_SLASH || !key->pressed || key->repeat ||
+        !getSettings().backend.enableAdvancedSettings || text_field_focused())
+    {
+        return aurora::input::EventResult::Pass;
+    }
+    auto* console = static_cast<CommandConsole*>(find_document(kScopeCommandConsole));
+    if (console == nullptr || console->input_active()) {
+        return aurora::input::EventResult::Pass;
+    }
+    bring_document_to_front(*console);
+    console->show();
+    return aurora::input::EventResult::Consume;
+}
+
 }  // namespace
 
-CommandConsole::CommandConsole() : Document(kDocumentSource, false, DocumentScope::CommandConsole) {
+void CommandConsole::register_shortcut() {
+    if (sShortcutLayer == aurora::input::kInvalidLayerId) {
+        sShortcutLayer = aurora::input::register_layer({
+            .label = "dusklight.console_shortcut",
+            .priority = aurora::input::kRmlUiLayerPriority + 1,
+            .onEvent = shortcut_event,
+        });
+    }
+}
+
+void CommandConsole::unregister_shortcut() {
+    aurora::input::unregister_layer(std::exchange(sShortcutLayer, aurora::input::kInvalidLayerId));
+}
+
+CommandConsole::CommandConsole() : Document(kDocumentSource, false, kScopeCommandConsole) {
     mConsole = mDocument ? mDocument->GetElementById("console") : nullptr;
     mOutput = mDocument ? mDocument->GetElementById("console-output") : nullptr;
     auto* rawInput = mDocument ? mDocument->GetElementById("console-input") : nullptr;

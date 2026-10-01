@@ -1,8 +1,7 @@
 #include "overlay.hpp"
 
 #include "controller_config.hpp"
-#include "popover.hpp"
-#include "window.hpp"
+#include "ui.hpp"
 
 #include "dusk/achievements.h"
 #include "dusk/action_bindings.h"
@@ -15,6 +14,8 @@
 
 #include <aurora/gfx.h>
 #include <borealis/log.hpp>
+#include <borealis/ui/popover.hpp>
+#include <borealis/ui/window.hpp>
 #include <dolphin/pad.h>
 #include <fmt/format.h>
 #include <magic_enum.hpp>
@@ -95,7 +96,7 @@ Rml::Element* create_toast(Rml::Element* parent, const Toast& toast) {
         if (toast.type == "achievement") {
             auto* icon = append(heading, "icon");
             icon->SetClass("trophy", true);
-            mDoAud_seStartMenu(kSoundAchievementUnlock);
+            play_nav_sound(NavSound::AchievementUnlock);
         } else if (toast.type == "controller") {
             auto* icon = append(heading, "icon");
             icon->SetClass("controller", true);
@@ -230,7 +231,7 @@ static std::string FormatElapsedTime(OSTime ticksElapsed) {
         "{0:02}:{1:02}:{2:02}.{3:03}", hr.count(), min.count(), sec.count(), ms.count());
 }
 
-Overlay::Overlay() : Document(kDocumentSource, true, DocumentScope::Overlay) {
+Overlay::Overlay() : Document(kDocumentSource, true, kScopeOverlay) {
     mFpsCounter = mDocument->GetElementById("fps");
     mPipelineProgress = mDocument->GetElementById("pipeline-progress");
     mPipelineProgressLabel = mDocument->GetElementById("pipeline-progress-label");

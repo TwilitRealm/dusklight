@@ -1,13 +1,17 @@
 #pragma once
 
-#include "window.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/window.hpp>
 
 #include <cstdint>
 #include <string>
 
-namespace dusk::ui {
-
+namespace borealis::ui {
 class Pane;
+}  // namespace borealis::ui
+
+namespace dusk::ui {
 
 class SavesWindow final : public Window {
 public:

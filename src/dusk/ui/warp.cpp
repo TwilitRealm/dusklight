@@ -1,10 +1,11 @@
 #include "warp.hpp"
 
 #include "editor.hpp"
-#include "pane.hpp"
+#include "ui.hpp"
 
 #include "dusk/map_loader_definitions.h"
 
+#include <borealis/ui/pane.hpp>
 #include <fmt/format.h>
 
 namespace dusk::ui {
@@ -123,7 +124,7 @@ void populate_map_picker(Pane& pane, WarpSelectionState& state) {
                     .isSelected = [&state] { return state.showInternalNames; },
                 })
         .on_pressed([&pane, &state] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             state.showInternalNames = !state.showInternalNames;
             populate_map_picker(pane, state);
         });
@@ -136,7 +137,7 @@ void populate_map_picker(Pane& pane, WarpSelectionState& state) {
                         .isSelected = [i, &state] { return state.mapIdx == i; },
                     })
             .on_pressed([i, &state] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 if (state.mapIdx != i) {
                     state.mapIdx = i;
                     reset_selection(state);
@@ -174,7 +175,7 @@ WarpWindow::WarpWindow() {
                                     .isSelected = [i, &state] { return state.regionIdx == i; },
                                 })
                         .on_pressed([i, &state] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             if (state.regionIdx != i) {
                                 state.regionIdx = i;
                                 state.mapIdx = 0;
@@ -229,7 +230,7 @@ WarpWindow::WarpWindow() {
                                     .isSelected = [i, &state] { return state.roomIdx == i; },
                                 })
                         .on_pressed([i, &state] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             if (state.roomIdx != i) {
                                 state.roomIdx = i;
                                 state.pointIdx = 0;
@@ -275,7 +276,7 @@ WarpWindow::WarpWindow() {
                                 })
                         .on_pressed([i, &state] {
                             if (state.pointIdx != i) {
-                                mDoAud_seStartMenu(kSoundItemChange);
+                                play_nav_sound(NavSound::ItemChange);
                                 state.pointIdx = i;
                                 clamp_indices(state);
                             }
@@ -297,7 +298,7 @@ WarpWindow::WarpWindow() {
                                 })
                         .on_pressed([layer, &state] {
                             if (state.layer != layer) {
-                                mDoAud_seStartMenu(kSoundItemChange);
+                                play_nav_sound(NavSound::ItemChange);
                                 state.layer = layer;
                             }
                         });
@@ -319,7 +320,7 @@ WarpWindow::WarpWindow() {
                         return;
                     }
 
-                    mDoAud_seStartMenu(kSoundClick);
+                    play_nav_sound(NavSound::Click);
                     const auto& region = gameRegions[state.regionIdx];
                     const auto& map = region.maps[state.mapIdx];
                     const auto& room = map.mapRooms[state.roomIdx];
