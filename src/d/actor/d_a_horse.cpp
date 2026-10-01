@@ -17,8 +17,123 @@
 #include "SSystem/SComponent/c_math.h"
 #include "Z2AudioLib/Z2Instances.h"
 #include "JSystem/JAudio2/JAUSectionHeap.h"
+#if TARGET_PC  // additional actor attribute integration
+#include <algorithm>
+#endif
 #include <cmath>
 #include <cstring>
+#if TARGET_PC  // additional actor attribute integration
+#include <limits>
+
+#include "d/actor/d_a_e_rd.h"
+#include "dusk/dusk.h"
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#include "f_pc/f_pc_manager.h"
+
+namespace {
+struct HorseKingBulblinSearch {
+    e_rd_class* king = nullptr;
+    fpc_ProcID lowestId = fpcM_ERROR_PROCESS_ID_e;
+};
+
+void* horseKingBulblinSearch(void* actorPtr, void* data) {
+
+    if (actorPtr == nullptr || !fopAcM_IsActor(actorPtr) || fopAcM_GetName(actorPtr) != fpcNm_E_RD_e) {
+        return nullptr;
+    }
+
+    auto* king = static_cast<e_rd_class*>(actorPtr);
+
+    // Mounted King Bulblin encounters:
+    // 1 = first field encounter
+    // 2 = Bridge of Eldin
+    // 3 = Lake Hylia Bridge
+    // 4 = Hyrule Castle (not a horseback encounter for Epona)
+    if (king->actor_set < 1 || king->actor_set > 3) {
+        return nullptr;
+    }
+
+    auto* search = static_cast<HorseKingBulblinSearch*>(data);
+    const fpc_ProcID id = fopAcM_GetID(king);
+
+    // Duplicated encounters can contain several Kings. Use the oldest/lowest
+    // process ID so Epona follows one stable encounter master rather than
+    // whichever copy the actor iterator happens to visit first.
+    if (search->king == nullptr || id < search->lowestId) {
+        search->king = king;
+        search->lowestId = id;
+    }
+
+    return nullptr;
+}
+
+f32 horseKingBulblinSpeedMultiplier() {
+
+    // Do not bypass inheritance during events. Scripted and player-controlled
+    // horse movement must stay on the same King Bulblin movement clock.
+    HorseKingBulblinSearch search;
+    fpcM_Search(horseKingBulblinSearch, &search);
+
+    if (search.king == nullptr) {
+        return 1.0f;
+    }
+
+    const f32 speedMultiplier = dusk::mods::svc::actor_attr::resolve_multiplier(&search.king->enemy, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+
+    // This is deliberately a horse-local minimum. King Bulblin keeps his
+    // complete randomized movement-speed range, while Epona never becomes
+    // slower than her vanilla movement/action clock.
+    return std::max(1.0f, speedMultiplier);
+}
+
+f32 horseKingBulblinAcceleration(f32 vanilla) {
+
+    const f32 speedMultiplier = horseKingBulblinSpeedMultiplier();
+
+    // Velocity target is scaled by M. Acceleration/deceleration must scale by
+    // M^2 so reaching that target takes 1/M as many frames, matching the
+    // encounter's action-speed clock (same treatment as the Spinner pass).
+    return vanilla * speedMultiplier * speedMultiplier;
+}
+
+f32 horseKingBulblinSpeedValue(f32 vanilla) {
+
+    return vanilla * horseKingBulblinSpeedMultiplier();
+}
+
+s16 horseKingBulblinTimer(s16 vanillaFrames) {
+
+    return dusk::mods::svc::actor_attr::sync_timer(vanillaFrames, horseKingBulblinSpeedMultiplier());
+}
+}  // namespace
+
+f32 daHorse_c::getKingBulblinEncounterSpeedMultiplier() const {
+
+    return horseKingBulblinSpeedMultiplier();
+}
+
+static s16 horseKingBulblinTurnStep(s16 vanilla) {
+
+    const f32 speed = horseKingBulblinSpeedMultiplier();
+
+    if (speed == 1.0f || vanilla == 0) {
+        return vanilla;
+    }
+
+    return static_cast<s16>(std::clamp(std::lround(static_cast<f32>(vanilla) * speed), 1L, static_cast<long>(std::numeric_limits<s16>::max())));
+}
+
+static s16 horseKingBulblinTurnDivisor(s16 vanilla) {
+
+    const f32 speed = horseKingBulblinSpeedMultiplier();
+
+    if (speed == 1.0f) {
+        return vanilla;
+    }
+
+    return static_cast<s16>(std::clamp(std::lround(static_cast<f32>(vanilla) / speed), 1L, static_cast<long>(std::numeric_limits<s16>::max())));
+}
+#endif
 
 #define ANM_HS_BACK_WALK           6
 #define ANM_HS_WALK_START          7
@@ -413,7 +528,7 @@ void daHorse_c::coHitCallbackBoarHit(fopAc_ac_c* i_hitActor, dCcD_GObjInf* i_hit
                 }
             }
 
-            m_cowHit = 5;
+            m_cowHit = DUSK_IF_ELSE(horseKingBulblinTimer(5), 5);
             dComIfGp_getVibration().StartShock(VIBMODE_S_POWER3, 1, cXyz(0.0f, 1.0f, 0.0f));
             if (checkStateFlg0(FLG0_UNK_100000)) {
                 procLargeDamageInit();
@@ -436,7 +551,7 @@ void daHorse_c::coHitCallbackCowHit(fopAc_ac_c* i_hitActor) {
                 field_0x1702 = 0x500;
             }
 
-            m_cowHit = 5;
+            m_cowHit = DUSK_IF_ELSE(horseKingBulblinTimer(5), 5);
         }
     } else if (fopAcM_GetName(i_hitActor) == fpcNm_ALINK_e) {
         if (daAlink_getAlinkActorClass()->checkSlideMode()) {
@@ -929,6 +1044,12 @@ void daHorse_c::resetBasAnime() {
 
 int daHorse_c::setDoubleAnime(f32 i_ratio, f32 i_anmSpeedA, f32 i_anmSpeedB, u16 i_anmIdxA, u16 i_anmIdxB,
                               f32 i_morf) {
+#if TARGET_PC  // enemy attribute integration
+
+    const f32 encounterSpeedMultiplier = getKingBulblinEncounterSpeedMultiplier();
+    i_anmSpeedA *= encounterSpeedMultiplier;
+    i_anmSpeedB *= encounterSpeedMultiplier;
+#endif
     J3DAnmTransform* temp_r26 = m_anmRatio[0].getAnmTransform();
     if (i_morf < 0.0f && (m_anmIdx[0] != ANM_HS_RUN_DASH || i_anmIdxA != ANM_HS_RUN_SLOW) && (m_anmIdx[0] != i_anmIdxA || m_anmIdx[1] != i_anmIdxB)) {
         i_morf = 3.0f;
@@ -1093,8 +1214,13 @@ int daHorse_c::checkDemoAction() {
         current.angle.y = shape_angle.y;
         field_0x1728 = 0;
         field_0x16b8 = 0;
+#if TARGET_PC  // enemy attribute integration
+        m_callMoveTimer = horseKingBulblinTimer(450);
+        speedF = getNormalMaxSpeedF();
+#else
         m_callMoveTimer = 450;
         speedF = m_normalMaxSpeedF;
+#endif
         return procMoveInit();
     }
 
@@ -1284,7 +1410,7 @@ void daHorse_c::setDemoMoveData(u32* i_mode, cXyz const* i_pos) {
         }
     }
 
-    if ((0.5f * (speedF * speedF)) / m_hio->m.stopping_deceleration > JMAFastSqrt(dist_xz2)) {
+    if ((0.5f * (speedF * speedF)) / DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration) > JMAFastSqrt(dist_xz2)) {
         m_padStickValue = 0.0f;
     }
     s16 s = pos_vec.atan2sX_Z();
@@ -1584,9 +1710,9 @@ void daHorse_c::setMoveAnime(f32 i_morf) {
     f32 var_f31;
     f32 ratio;
     if (speedF >= 0.0f) {
-        var_f31 = speedF * (1.0f / m_normalMaxSpeedF);
+        var_f31 = speedF * (1.0f / DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF));
     } else {
-        var_f31 = speedF * (1.0f / m_hio->m.max_backward_speed);
+        var_f31 = speedF * (1.0f / DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.max_backward_speed), m_hio->m.max_backward_speed));
     }
 
     if (var_f31 < m_hio->m.walk_to_fastwalk_rate) {
@@ -1674,7 +1800,7 @@ void daHorse_c::setMoveAnime(f32 i_morf) {
             onStateFlg0(FLG0_UNK_2);
             if (m_lashAccelerationTime == 0) {
                 onResetStateFlg0(RFLG0_UNK_4);
-                setSingleAnime(ANM_HS_RUN_DASH, m_hio->m.dash_anm_speed, 0.0f, -1, 3.0f, 0);
+                setSingleAnime(ANM_HS_RUN_DASH, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.dash_anm_speed), m_hio->m.dash_anm_speed), 0.0f, -1, 3.0f, 0);
             }
             return;
         }
@@ -1682,7 +1808,7 @@ void daHorse_c::setMoveAnime(f32 i_morf) {
         if (var_f31 < m_hio->m.run_to_fastrun_rate) {
             ratio = 0.1f * ((var_f31 - m_hio->m.fastwalk_to_run_rate) / (m_hio->m.run_to_fastrun_rate - m_hio->m.fastwalk_to_run_rate));
         } else {
-            ratio = 0.1f + ((var_f31 - m_hio->m.run_to_fastrun_rate) / ((1.0f + (m_lashAddSpeed / m_normalMaxSpeedF)) - m_hio->m.run_to_fastrun_rate));
+            ratio = 0.1f + ((var_f31 - m_hio->m.run_to_fastrun_rate) / ((1.0f + (DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_lashAddSpeed) / getNormalMaxSpeedF(), m_lashAddSpeed / m_normalMaxSpeedF))) - m_hio->m.run_to_fastrun_rate));
             if (ratio > 1.0f) {
                 ratio = 1.0f;
             }
@@ -1766,7 +1892,7 @@ int daHorse_c::checkHorseNoMove(BOOL forward) {
             return 3;
         }
 
-        var_f31 = fabsf(speedF) / m_normalMaxSpeedF;
+        var_f31 = fabsf(speedF) / DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF);
         if (var_f31 > 1.0f) {
             var_f31 = 1.0f;
         } else if (m_procID == PROC_WAIT_e || m_procID == PROC_STOP_e) {
@@ -1840,7 +1966,7 @@ int daHorse_c::checkHorseNoMove(BOOL forward) {
     sp50.y = checkOffsetY + current.pos.y;
 
     f32 sp18;
-    if (forward != 0 && speedF > (0.5f * m_normalMaxSpeedF)) {
+    if (forward != 0 && speedF > (0.5f * DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF))) {
         sp18 = noMoveCresDis;
     } else {
         sp18 = noMoveCresBackDis;
@@ -1863,7 +1989,7 @@ int daHorse_c::checkHorseNoMove(BOOL forward) {
                         if (var_f30 <= noMoveStopDis + 1) {
                             if (forward != 0 && !player->checkHorseGetOffMode()) {
                                 onStateFlg0(FLG0_UNK_40000);
-                                field_0x1704 = 30;
+                                field_0x1704 = DUSK_IF_ELSE(horseKingBulblinTimer(30), 30);
                             }
                             return 2;
                         }
@@ -1880,7 +2006,7 @@ int daHorse_c::checkHorseNoMove(BOOL forward) {
                 if (var_f30 <= noMoveStopDis + 1) {
                     if (sp8 > sp14 && forward != 0) {
                         onStateFlg0(FLG0_UNK_40000);
-                        field_0x1704 = 30;
+                        field_0x1704 = DUSK_IF_ELSE(horseKingBulblinTimer(30), 30);
                     }
                     return 2;
                 }
@@ -1892,7 +2018,7 @@ int daHorse_c::checkHorseNoMove(BOOL forward) {
                     if (var_f30 <= noMoveStopDis + 1) {
                         if (forward != 0) {
                             onStateFlg0(FLG0_UNK_40000);
-                            field_0x1704 = 30;
+                            field_0x1704 = DUSK_IF_ELSE(horseKingBulblinTimer(30), 30);
                         }
                         return 2;
                     }
@@ -1949,7 +2075,7 @@ int daHorse_c::setSpeedAndAngle() {
 
     if (var_r28 == 2 && m_procID == PROC_MOVE_e) {
         if (speedF >= 0.0f) {
-            if (speedF <= m_hio->m.cliff_rise_rate) {
+            if (speedF <= DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.cliff_rise_rate), m_hio->m.cliff_rise_rate)) {
                 onStateFlg0(FLG0_UNK_40000000);
             }
             return 4;
@@ -1969,10 +2095,15 @@ int daHorse_c::setSpeedAndAngle() {
             if (var_r28 == 2) {
                 speedF = 0.0f;
             } else if (var_r28 == 1) {
-                cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
+                cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
             }
+#if TARGET_PC  // enemy attribute integration
+        } else if (m_lashAccelerationTime == 0 && speedF > getNormalMaxSpeedF()) {
+            cLib_chaseF(&speedF, getNormalMaxSpeedF(), horseKingBulblinAcceleration(m_hio->m.stopping_deceleration));
+#else
         } else if (m_lashAccelerationTime == 0 && speedF > m_normalMaxSpeedF) {
             cLib_chaseF(&speedF, m_normalMaxSpeedF, m_hio->m.stopping_deceleration);
+#endif
         }
 
         if (checkStateFlg0(FLG0_UNK_200000)) {
@@ -2008,9 +2139,17 @@ int daHorse_c::setSpeedAndAngle() {
     if (checkInputOnR()) {
         if (checkStateFlg0(FLG0_UNK_40000) && (m_anmIdx[2] != ANM_HS_WAIT_03 || m_frameCtrl[2].getFrame() >= 18.0f)) {
             if (var_r27 == 1) {
+#if TARGET_PC  // enemy attribute integration
+                cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY + 0x8000, horseKingBulblinTurnDivisor(5), horseKingBulblinTurnStep(field_0x16c2), horseKingBulblinTurnStep(m_hio->m.min_turn));
+#else
                 cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY + 0x8000, 5, field_0x16c2, m_hio->m.min_turn);
+#endif
             } else {
+#if TARGET_PC  // enemy attribute integration
+                cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY, horseKingBulblinTurnDivisor(5), horseKingBulblinTurnStep(field_0x16c2), horseKingBulblinTurnStep(m_hio->m.min_turn));
+#else
                 cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY, 5, field_0x16c2, m_hio->m.min_turn);
+#endif
             }
 
             if (!checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) {
@@ -2025,10 +2164,18 @@ int daHorse_c::setSpeedAndAngle() {
                     }
 
                     if (!checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) {
+#if TARGET_PC  // enemy attribute integration
+                        cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY, horseKingBulblinTurnDivisor(5), horseKingBulblinTurnStep(static_cast<s16>(field_0x16c2 * var_f28)), horseKingBulblinTurnStep(static_cast<s16>(m_hio->m.min_turn * var_f28)));
+#else
                         cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY, 5, field_0x16c2 * var_f28, m_hio->m.min_turn * var_f28);
+#endif
                     }
                 } else {
+#if TARGET_PC  // enemy attribute integration
+                    cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY, horseKingBulblinTurnDivisor(5), horseKingBulblinTurnStep(field_0x16c2), horseKingBulblinTurnStep(m_hio->m.min_turn));
+#else
                     cLib_addCalcAngleS(&current.angle.y, m_padStickAngleY, 5, field_0x16c2, m_hio->m.min_turn);
+#endif
                 }
 
                 if (!checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) {
@@ -2040,7 +2187,11 @@ int daHorse_c::setSpeedAndAngle() {
                 return 3;
             }
 
+#if TARGET_PC  // enemy attribute integration
+            cLib_addCalcAngleS(&current.angle.y, (m_padStickAngleY + 0x8000), horseKingBulblinTurnDivisor(5), horseKingBulblinTurnStep(field_0x16c2), horseKingBulblinTurnStep(m_hio->m.min_turn));
+#else
             cLib_addCalcAngleS(&current.angle.y, (m_padStickAngleY + 0x8000), 5, field_0x16c2, m_hio->m.min_turn);
+#endif
 
             if (!checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) {
                 shape_angle.y = current.angle.y;
@@ -2050,7 +2201,7 @@ int daHorse_c::setSpeedAndAngle() {
 
     if (m_demoMode == 6) {
         if (var_r28 != 0 && speedF > 0.0f) {
-            cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
+            cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
         }
         return 0;
     }
@@ -2058,7 +2209,11 @@ int daHorse_c::setSpeedAndAngle() {
     if (checkStateFlg0(FLG0_UNK_1)) {
         dAttention_c* attention = dComIfGp_getAttention();
         if (attention->GetLockonList(0) != NULL && attention->LockonTruth() && fopAcM_searchActorDistanceXZ2(this, attention->GetLockonList(0)->getActor()) > 1000000.0f) {
+#if TARGET_PC  // enemy attribute integration
+            cLib_addCalcAngleS(&current.angle.y, fopAcM_searchActorAngleY(this, attention->GetLockonList(0)->getActor()), horseKingBulblinTurnDivisor(5), horseKingBulblinTurnStep(field_0x16c2), horseKingBulblinTurnStep(m_hio->m.min_turn));
+#else
             cLib_addCalcAngleS(&current.angle.y, fopAcM_searchActorAngleY(this, attention->GetLockonList(0)->getActor()), 5, field_0x16c2, m_hio->m.min_turn);
+#endif
             if (!checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) {
                 shape_angle.y = current.angle.y;
             }
@@ -2112,10 +2267,14 @@ int daHorse_c::setSpeedAndAngle() {
     }
 
     if (var_r28 != 0 && speedF > 0.0f) {
-        cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
+        cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
     } else if (checkStateFlg0(FLG0_UNK_40000)) {
         if (m_anmIdx[2] != ANM_HS_WAIT_03 || m_frameCtrl[2].getFrame() >= 18.0f) {
+#if TARGET_PC  // enemy attribute integration
+            cLib_chaseF(&speedF, -horseKingBulblinSpeedValue(m_hio->m.max_backward_speed), horseKingBulblinAcceleration(m_hio->m.max_backward_acceleration));
+#else
             cLib_chaseF(&speedF, -m_hio->m.max_backward_speed, m_hio->m.max_backward_acceleration);
+#endif
 
             field_0x1704--;
             if (field_0x1704 == 0) {
@@ -2128,55 +2287,85 @@ int daHorse_c::setSpeedAndAngle() {
         }
     } else if (checkInputOnR() && m_lashAccelerationTime == 0 && var_r27 == 1) {
         if (speedF > 0.0f) {
+#if TARGET_PC  // enemy attribute integration
+            cLib_chaseF(&speedF, 0.0f, horseKingBulblinAcceleration(m_hio->m.stopping_deceleration));
+        } else if (!checkStateFlg0(FLG0_UNK_8) && (checkTurnInput() || checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) && checkTurnPlayerState() && speedF > (0.2f * -horseKingBulblinSpeedValue(m_hio->m.max_backward_speed))) {
+#else
             cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
         } else if (!checkStateFlg0(FLG0_UNK_8) && (checkTurnInput() || checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) && checkTurnPlayerState() && speedF > (0.2f * -m_hio->m.max_backward_speed)) {
+#endif
             return 1;
         } else {
             int spC = checkHorseNoMove(FALSE);
             if (spC == 0) {
                 if (!checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) {
+#if TARGET_PC  // enemy attribute integration
+                    cLib_chaseF(&speedF, -horseKingBulblinSpeedValue(m_hio->m.max_backward_speed), horseKingBulblinAcceleration(m_hio->m.max_backward_acceleration));
+#else
                     cLib_chaseF(&speedF, -m_hio->m.max_backward_speed, m_hio->m.max_backward_acceleration);
+#endif
                 }
             } else if (spC == 1) {
-                cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
+                cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
             } else {
                 speedF = 0.0f;
             }
         }
     } else if (m_cowHit != 0) {
         if (!checkStateFlg0(daHorse_FLG0(FLG0_UNK_100000 | FLG0_UNK_200000))) {
+#if TARGET_PC  // enemy attribute integration
+            cLib_chaseF(&speedF, 0.5f * getNormalMaxSpeedF(), horseKingBulblinAcceleration(m_hio->m.lash_acceleration));
+#else
             cLib_chaseF(&speedF, 0.5f * m_normalMaxSpeedF, m_hio->m.lash_acceleration);
+#endif
         }
     } else {
         f32 var_f31;
         f32 var_f29;
         if (var_r28 != 0) {
             var_f31 = 0.0f;
-            var_f29 = m_hio->m.deceleration;
+            var_f29 = DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.deceleration), m_hio->m.deceleration);
         } else if (m_lashAccelerationTime != 0 || (checkStateFlg0(FLG0_RODEO_MODE) && checkStateFlg0(FLG0_UNK_1)) || m_demoMode == 4) {
+#if TARGET_PC  // enemy attribute integration
+            var_f31 = getLashMaxSpeedF();
+            var_f29 = horseKingBulblinAcceleration(m_hio->m.lash_acceleration);
+            if (speedF < horseKingBulblinSpeedValue(m_hio->m.min_lash_speed)) {
+                speedF = horseKingBulblinSpeedValue(m_hio->m.min_lash_speed);
+#else
             var_f31 = m_lashMaxSpeedF;
             var_f29 = m_hio->m.lash_acceleration;
             if (speedF < m_hio->m.min_lash_speed) {
                 speedF = m_hio->m.min_lash_speed;
+#endif
             }
         } else {
             if (player->checkHorseHangMode()) {
                 var_f31 = speedF;
+#if TARGET_PC  // enemy attribute integration
+                if (m_lashAccelerationTime == 0 && speedF > getNormalMaxSpeedF()) {
+                    var_f31 = getNormalMaxSpeedF();
+#else
                 if (m_lashAccelerationTime == 0 && speedF > m_normalMaxSpeedF) {
                     var_f31 = m_normalMaxSpeedF;
+#endif
                 }
             } else {
-                var_f31 = var_f30 * (m_normalMaxSpeedF * (m_padStickValue * m_padStickValue));
+                var_f31 = var_f30 * (DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF) * (m_padStickValue * m_padStickValue));
             }
 
-            var_f29 = m_hio->m.acceleration;
+            var_f29 = DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.acceleration), m_hio->m.acceleration);
             if (checkStateFlg0(FLG0_UNK_4) && abs(field_0x16ea) < 0x4000) {
                 var_f31 *= 1.0f - (0.8f * cM_scos(field_0x16ea));
             }
         }
 
+#if TARGET_PC  // enemy attribute integration
+        if (dComIfG_Bgsp().ChkPolySafe(m_acch.m_gnd) && dComIfG_Bgsp().GetGroundCode(m_acch.m_gnd) == 11 && var_f31 > (getNormalMaxSpeedF() + (0.5f * horseKingBulblinSpeedValue(m_lashAddSpeed)))) {
+            var_f31 = getNormalMaxSpeedF() + (0.5f * horseKingBulblinSpeedValue(m_lashAddSpeed));
+#else
         if (dComIfG_Bgsp().ChkPolySafe(m_acch.m_gnd) && dComIfG_Bgsp().GetGroundCode(m_acch.m_gnd) == 11 && var_f31 > (m_normalMaxSpeedF + (0.5f * m_lashAddSpeed))) {
             var_f31 = m_normalMaxSpeedF + (0.5f * m_lashAddSpeed);
+#endif
         }
     
         if (var_f31 > fabsf(speedF)) {
@@ -2186,20 +2375,25 @@ int daHorse_c::setSpeedAndAngle() {
                 return 3;
             }
     
-            cLib_chaseF(&speedF, var_f31, m_hio->m.stopping_deceleration);
+            cLib_chaseF(&speedF, var_f31, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
         } else {
             if (dComIfGp_event_runCheck() || checkStateFlg0(FLG0_UNK_10000000)) {
-                var_f29 = m_hio->m.stopping_deceleration;
+                var_f29 = DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration);
             } else {
-                var_f29 = m_hio->m.deceleration;
+                var_f29 = DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.deceleration), m_hio->m.deceleration);
             }
     
             cLib_chaseF(&speedF, var_f31, var_f29);
         }
     }
 
+#if TARGET_PC  // enemy attribute integration
+    if (checkInputOnR() && m_procID == PROC_MOVE_e && var_r28 == 0 && var_r27 == 0 && speedF > 0.05f && speedF < horseKingBulblinSpeedValue(m_hio->m.walk_min_speed)) {
+        speedF = horseKingBulblinSpeedValue(m_hio->m.walk_min_speed);
+#else
     if (checkInputOnR() && m_procID == PROC_MOVE_e && var_r28 == 0 && var_r27 == 0 && speedF > 0.05f && speedF < m_hio->m.walk_min_speed) {
         speedF = m_hio->m.walk_min_speed;
+#endif
     }
 
     return 0;
@@ -2261,14 +2455,19 @@ void daHorse_c::setBodyPart() {
 void daHorse_c::setMatrix() {
     s16 var_r29 = 0;
     s16 var_r27 = 0;
-    f32 temp_f31 = m_normalMaxSpeedF * m_hio->m.fastwalk_to_run_rate;
+    f32 temp_f31 = DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF) * m_hio->m.fastwalk_to_run_rate;
 
     if (m_procID == PROC_MOVE_e && speedF > temp_f31) {
         f32 var_f30;
+#if TARGET_PC  // enemy attribute integration
+        if (speedF <= getNormalMaxSpeedF()) {
+            var_f30 = (0.3f * (speedF - temp_f31)) / (getNormalMaxSpeedF() - temp_f31);
+#else
         if (speedF <= m_normalMaxSpeedF) {
             var_f30 = (0.3f * (speedF - temp_f31)) / (m_normalMaxSpeedF - temp_f31);
+#endif
         } else {
-            var_f30 = 0.5f + ((0.5f * speedF) / m_lashMaxSpeedF);
+            var_f30 = 0.5f + ((0.5f * speedF) / DUSK_IF_ELSE(getLashMaxSpeedF(), m_lashMaxSpeedF));
         }
         
         var_r29 = 4.0f * var_f30 * ((500.0f / (f32)field_0x16c2) * (s16)(field_0x16e8 - shape_angle.y));
@@ -2349,7 +2548,7 @@ void daHorse_c::setEffect() {
         sp4C = -1;
     }
 
-    f32 var_f31 = 2.0f * (speedF / m_normalMaxSpeedF);
+    f32 var_f31 = 2.0f * (speedF / DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF));
     if (var_f31 > 1.0f) {
         var_f31 = 1.0f;
     }
@@ -3187,7 +3386,7 @@ bool daHorse_c::checkSpecialWallHitSubstance(const cXyz& param_0) const {
         return 1;
     }
 
-    if (speedF < (0.7f * m_normalMaxSpeedF)) {
+    if (speedF < (0.7f * DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF))) {
         return 1;
     }
 
@@ -3245,7 +3444,7 @@ BOOL daHorse_c::checkTurnAfterFastMove(f32 param_0) {
             }
 
             if (temp_r29 < 0x2000 && !checkHorseNoMove(TRUE)) {
-                speedF = m_hio->m.fastwalk_to_run_rate * m_normalMaxSpeedF;
+                speedF = m_hio->m.fastwalk_to_run_rate * DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF);
                 return procMoveInit();
             }
 
@@ -3323,24 +3522,24 @@ void daHorse_c::setLashCnt() {
             mDoAud_seStart(Z2SE_WHIP_HORSE, NULL, 0, 0);
 
             if (!checkStateFlg0(FLG0_PLAYER_BACK_RIDE_LASH)) {
-                m_lashCnt--;
+                //m_lashCnt--;
                 if (m_lashCnt == 0) {
-                    m_lashRecoverTime = m_hio->m.full_spur_recovery_time;
+                    m_lashRecoverTime = DUSK_IF_ELSE(horseKingBulblinTimer(m_hio->m.full_spur_recovery_time), m_hio->m.full_spur_recovery_time);
                 } else {
-                    m_lashRecoverTime = m_hio->m.spur_recovery_time;
+                    m_lashRecoverTime = DUSK_IF_ELSE(horseKingBulblinTimer(m_hio->m.spur_recovery_time), m_hio->m.spur_recovery_time);
                 }
             } else {
                 offStateFlg0(FLG0_PLAYER_BACK_RIDE_LASH);
             }
 
             if (checkStateFlg0(FLG0_UNK_2000)) {
-                m_lashAccelerationTime = m_hio->m.kakariko_lash_acceleration_time;
+                m_lashAccelerationTime = DUSK_IF_ELSE(horseKingBulblinTimer(m_hio->m.kakariko_lash_acceleration_time), m_hio->m.kakariko_lash_acceleration_time);
             } else {
-                m_lashAccelerationTime = m_hio->m.lash_acceleration_time;
+                m_lashAccelerationTime = DUSK_IF_ELSE(horseKingBulblinTimer(m_hio->m.lash_acceleration_time), m_hio->m.lash_acceleration_time);
             }
 
             onResetStateFlg0(RFLG0_LASH_DASH_START);
-            setNeckAnime(ANM_HS_LASH, 1.0f, 0.0f, -1);
+            setNeckAnime(ANM_HS_LASH, DUSK_IF_ELSE(horseKingBulblinSpeedValue(1.0f), 1.0f), 0.0f, -1);
             m_sound.startCreatureVoice(Z2SE_HS_V_RUSH, -1);
             onEndResetStateFlg0(ERFLG0_UNK_400);
         } else {
@@ -3362,7 +3561,7 @@ void daHorse_c::setLashCnt() {
                 } else {
                     m_lashCnt++;
                     if (m_lashCnt < 6) {
-                        m_lashRecoverTime = m_hio->m.continuous_spur_recovery_time;
+                        m_lashRecoverTime = DUSK_IF_ELSE(horseKingBulblinTimer(m_hio->m.continuous_spur_recovery_time), m_hio->m.continuous_spur_recovery_time);
                     }
 
                     if (!dComIfGp_event_runCheck()) {
@@ -3452,22 +3651,22 @@ int daHorse_c::callHorseSubstance(cXyz const* i_pos) {
         Vec farthest_pos;
         Vec path_pnt_pos;
         f32 farthest_sqdist = 0;
-        #else
+#else
         Vec* farthest_pos;
         Vec* path_pnt_pos;
-        #endif
+#endif
  
         for (int i = 0; i < m_path->m_num; i++) {
             #if TARGET_PC
             path_pnt_pos = m_path->m_points[i].m_position;
             f32 x_dist = path_pnt_pos.x - i_pos->x;
             f32 z_dist = path_pnt_pos.z - i_pos->z;
-            #else
+#else
             path_pnt_pos = &m_path->m_points[i].m_position;
             f32 x_dist = path_pnt_pos->x - i_pos->x;
             f32 z_dist = path_pnt_pos->z - i_pos->z;
             f32 farthest_sqdist;
-            #endif
+#endif
 
             f32 sqdist = (x_dist * x_dist) + (z_dist * z_dist);
 
@@ -3479,9 +3678,9 @@ int daHorse_c::callHorseSubstance(cXyz const* i_pos) {
 
         #if TARGET_PC
         cXyz pos(farthest_pos.x, farthest_pos.y, farthest_pos.z);
-        #else
+#else
         cXyz pos(farthest_pos->x, farthest_pos->y, farthest_pos->z);
-        #endif
+#endif
         setHorsePosAndAngle(&pos, shape_angle.y);
         rt = 1;
     } else if (dist_xz2 <= SQUARE(800.0f)) {
@@ -3579,7 +3778,7 @@ int daHorse_c::procWait() {
 
     if (!checkEndResetStateFlg0(ERFLG0_MOVE_ACCEPT) && !checkStateFlg0(FLG0_UNK_40000) && (m_anmIdx[0] != ANM_HS_WALK_START || !(m_frameCtrl[0].getFrame() >= 15.0f)) && !dComIfGp_event_runCheck()) {
         if (sp18 == 0 && speedF < 0.0f && m_anmIdx[0] != ANM_HS_WALK_START) {
-            setSingleAnime(ANM_HS_WALK_START, 1.0f, 0.0f, -1, 3.0f, 0);
+            setSingleAnime(ANM_HS_WALK_START, DUSK_IF_ELSE(horseKingBulblinSpeedValue(1.0f), 1.0f), 0.0f, -1, 3.0f, 0);
         }
         speedF = 0.0f;
     }
@@ -3594,7 +3793,7 @@ int daHorse_c::procWait() {
 
     if (fabsf(speedF) >= 0.05f) {
         if (checkEndResetStateFlg0(ERFLG0_RIDE_RUN_FLG)) {
-            speedF = m_hio->m.fastwalk_to_run_rate * m_normalMaxSpeedF;
+            speedF = m_hio->m.fastwalk_to_run_rate * DUSK_IF_ELSE(getNormalMaxSpeedF(), m_normalMaxSpeedF);
         }
         return procMoveInit();
     }
@@ -3732,12 +3931,21 @@ int daHorse_c::procMove() {
         }
     }
 
+#if TARGET_PC  // enemy attribute integration
+    if (m_demoMode == 2 && speedF > (m_hio->m.walk_to_fastwalk_rate * getNormalMaxSpeedF())) {
+        speedF = m_hio->m.walk_to_fastwalk_rate * getNormalMaxSpeedF();
+    } else if (m_demoMode == 10 && speedF > (m_hio->m.wait_to_walk_rate * getNormalMaxSpeedF())) {
+        speedF = m_hio->m.wait_to_walk_rate * getNormalMaxSpeedF();
+    } else if (m_demoMode == 11 && speedF > (m_hio->m.fastwalk_to_run_rate * getNormalMaxSpeedF())) {
+        speedF = m_hio->m.fastwalk_to_run_rate * getNormalMaxSpeedF();
+#else
     if (m_demoMode == 2 && speedF > (m_hio->m.walk_to_fastwalk_rate * m_normalMaxSpeedF)) {
         speedF = m_hio->m.walk_to_fastwalk_rate * m_normalMaxSpeedF;
     } else if (m_demoMode == 10 && speedF > (m_hio->m.wait_to_walk_rate * m_normalMaxSpeedF)) {
         speedF = m_hio->m.wait_to_walk_rate * m_normalMaxSpeedF;
     } else if (m_demoMode == 11 && speedF > (m_hio->m.fastwalk_to_run_rate * m_normalMaxSpeedF)) {
         speedF = m_hio->m.fastwalk_to_run_rate * m_normalMaxSpeedF;
+#endif
     }
 
     if (checkStateFlg0(daHorse_FLG0(FLG0_UNK_200000 | FLG0_UNK_100000)) && !m_acch.ChkGroundHit()) {
@@ -3797,8 +4005,13 @@ int daHorse_c::procStopInit() {
     offStateFlg0(daHorse_FLG0(FLG0_TURN_CANCEL_KEEP | FLG0_PLAYER_BACK_RIDE_LASH | FLG0_UNK_800 | FLG0_UNK_2));
     field_0x171a = 0;
 
+#if TARGET_PC  // enemy attribute integration
+    if (m_demoMode == 8 || m_demoMode == 16 || m_demoMode == 14 || checkStateFlg0(FLG0_UNK_40000000) || (speedF * (1.0f / getNormalMaxSpeedF())) < m_hio->m.run_to_fastrun_rate) {
+        setSingleAnime(ANM_HS_STOP_SLOW, horseKingBulblinSpeedValue(m_hio->m.faststop_anm_speed), 0.0f, -1, m_hio->m.faststop_interpolation, 0);
+#else
     if (m_demoMode == 8 || m_demoMode == 16 || m_demoMode == 14 || checkStateFlg0(FLG0_UNK_40000000) || (speedF * (1.0f / m_normalMaxSpeedF)) < m_hio->m.run_to_fastrun_rate) {
         setSingleAnime(ANM_HS_STOP_SLOW, m_hio->m.faststop_anm_speed, 0.0f, -1, m_hio->m.faststop_interpolation, 0);
+#endif
         field_0x177C = m_hio->m.fast_stop_cancel_frame;
 
         if (checkStateFlg0(FLG0_UNK_40000000)) {
@@ -3806,7 +4019,7 @@ int daHorse_c::procStopInit() {
             field_0x171a = 1;
         }
     } else {
-        setSingleAnime(ANM_HS_STOP_STAND, m_hio->m.faststop_stand_anm_speed, 0.0f, -1, m_hio->m.faststop_interpolation, 0);
+        setSingleAnime(ANM_HS_STOP_STAND, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.faststop_stand_anm_speed), m_hio->m.faststop_stand_anm_speed), 0.0f, -1, m_hio->m.faststop_interpolation, 0);
         field_0x177C = m_hio->m.faststop_stand_cancel_frame;
     }
 
@@ -3814,15 +4027,25 @@ int daHorse_c::procStopInit() {
     field_0x171c = 0;
 
     if (checkStateFlg0(FLG0_UNK_10000000)) {
-        field_0x1774 = 2.7f;
+        field_0x1774 = DUSK_IF_ELSE(horseKingBulblinAcceleration(2.7f), 2.7f);
         field_0x171c = 1;
+#if TARGET_PC  // enemy attribute integration
+    } else if (speedF <= getNormalMaxSpeedF()) {
+        field_0x1774 = horseKingBulblinAcceleration(m_hio->m.faststop_deceleration_slow);
+#else
     } else if (speedF <= m_normalMaxSpeedF) {
         field_0x1774 = m_hio->m.faststop_deceleration_slow;
+#endif
     } else {
-        f32 var_f31 = (m_normalMaxSpeedF * m_normalMaxSpeedF) / (2.0f * m_hio->m.faststop_deceleration_slow);
+        f32 var_f31 = DUSK_IF_ELSE((getNormalMaxSpeedF() * getNormalMaxSpeedF()) / (2.0f * horseKingBulblinAcceleration(m_hio->m.faststop_deceleration_slow)), (m_normalMaxSpeedF * m_normalMaxSpeedF) / (2.0f * m_hio->m.faststop_deceleration_slow));
         field_0x1774 = (speedF * speedF) / (2.f * var_f31);
+#if TARGET_PC  // enemy attribute integration
+        if (field_0x1774 > horseKingBulblinAcceleration(m_hio->m.faststop_deceleration)) {
+            field_0x1774 = horseKingBulblinAcceleration(m_hio->m.faststop_deceleration);
+#else
         if (field_0x1774 > m_hio->m.faststop_deceleration) {
             field_0x1774 = m_hio->m.faststop_deceleration;
+#endif
         }
     }
 
@@ -3860,7 +4083,7 @@ int daHorse_c::procStop() {
     if (var_r25 == 2) {
         speedF = 0.0f;
     } else if (checkStateFlg0(FLG0_RODEO_MODE)) {
-        cLib_chaseF(&speedF, 0.0f, 3.5f);
+        cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(3.5f), 3.5f));
     } else {
         cLib_chaseF(&speedF, 0.0f, field_0x1774);
     }
@@ -3949,7 +4172,7 @@ int daHorse_c::procTurnInit(int param_0) {
     m_procID = PROC_TURN_e;
 
     resetNeckAnime();
-    setSingleAnime(ANM_HS_STAND, m_hio->m.stand_anm_speed, 0.0f, -1, m_hio->m.stand_interpolation, 0);
+    setSingleAnime(ANM_HS_STAND, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.stand_anm_speed), m_hio->m.stand_anm_speed), 0.0f, -1, m_hio->m.stand_interpolation, 0);
 
     field_0x1774 = 52.0f;
     field_0x1778 = turnRateStand;
@@ -4057,7 +4280,7 @@ int daHorse_c::procTurn() {
 
             if (checkInputOnR() || (checkStateFlg0(daHorse_FLG0(FLG0_UNK_200000 | FLG0_UNK_100000)) && !dComIfGp_event_runCheck()) || checkStateFlg0(FLG0_UNK_200) || field_0x1730 != 0) {
                 f32 f31 = cM_fsin(field_0x1778 * (frame_ctrl->getFrame() - field_0x1780));
-                s16 spE = 2000.0f * f31;
+                s16 spE = DUSK_IF_ELSE(horseKingBulblinTurnStep(static_cast<s16>(2000.0f * f31)), 2000.0f * f31);
                 s16 var_r27;
                 if (checkStateFlg0(daHorse_FLG0(FLG0_UNK_200000 | FLG0_UNK_100000 | FLG0_UNK_200)) || field_0x1730 != 0) {
                     var_r27 = field_0x171e;
@@ -4143,13 +4366,18 @@ int daHorse_c::procJumpInit(int param_0) {
     field_0x1720 = param_0;
 
     if (param_0) {
-        setSingleAnime(ANM_HS_JUMP_START_CLIFT, m_hio->m.cliff_jump_anm_speed, m_hio->m.cliff_jump_start_frame, m_hio->m.cliff_jump_end_frame, m_hio->m.cliff_jump_interpolation, 0);
+        setSingleAnime(ANM_HS_JUMP_START_CLIFT, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.cliff_jump_anm_speed), m_hio->m.cliff_jump_anm_speed), m_hio->m.cliff_jump_start_frame, m_hio->m.cliff_jump_end_frame, m_hio->m.cliff_jump_interpolation, 0);
     } else {
-        setSingleAnime(ANM_HS_JUMP_START, m_hio->m.jump_anm_speed, m_hio->m.jump_start_frame, m_hio->m.jump_end_frame, m_hio->m.jump_interpolation, 0);
+        setSingleAnime(ANM_HS_JUMP_START, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.jump_anm_speed), m_hio->m.jump_anm_speed), m_hio->m.jump_start_frame, m_hio->m.jump_end_frame, m_hio->m.jump_interpolation, 0);
     }
 
+#if TARGET_PC  // enemy attribute integration
+    if (speedF < 0.75f * getNormalMaxSpeedF()) {
+        speedF = 0.75f * getNormalMaxSpeedF();
+#else
     if (speedF < 0.75f * m_normalMaxSpeedF) {
         speedF = 0.75f * m_normalMaxSpeedF;
+#endif
     }
 
     field_0x1774 = 0.8f * speedF;
@@ -4158,14 +4386,25 @@ int daHorse_c::procJumpInit(int param_0) {
     speedF *= field_0x1768 / JMAFastSqrt((field_0x1768 * field_0x1768) + (temp_f31 * temp_f31));
 
     field_0x171a = field_0x1768 / speedF;
+#if TARGET_PC  // enemy attribute integration
+    const s16 minimumJumpTime = horseKingBulblinTimer(m_hio->m.min_jump_time);
+    if (field_0x171a < minimumJumpTime) {
+        field_0x171a = minimumJumpTime;
+#else
     if (field_0x171a < m_hio->m.min_jump_time) {
         field_0x171a = m_hio->m.min_jump_time;
+#endif
         speedF = field_0x1768 / (f32)field_0x171a;
     }
 
     field_0x171e = field_0x1770 / speedF;
+#if TARGET_PC  // enemy attribute integration
+    if (field_0x171e < minimumJumpTime) {
+        field_0x171e = minimumJumpTime;
+#else
     if (field_0x171e < m_hio->m.min_jump_time) {
         field_0x171e = m_hio->m.min_jump_time;
+#endif
     }
 
     field_0x177C = (-2.0f * temp_f31) / (f32)(field_0x171e * field_0x171e);
@@ -4177,7 +4416,7 @@ int daHorse_c::procJumpInit(int param_0) {
     field_0x171c = 0;
     field_0x17d0 = current.pos;
     field_0x1778 = 1.5f * (1.5f * (field_0x1768 * field_0x1768));
-    field_0x1722 = 300;
+    field_0x1722 = DUSK_IF_ELSE(horseKingBulblinTimer(300), 300);
     return 1;
 }
 
@@ -4194,11 +4433,16 @@ int daHorse_c::procJump() {
 
     if (m_anmIdx[0] == ANM_HS_JUMP_START_CLIFT) {
         if (m_frameCtrl[0].checkAnmEnd()) {
-            setSingleAnime(ANM_HS_JUMP_MIDDLE, m_hio->m.cliff_air_anm_speed, m_hio->m.cliff_air_start_frame, m_hio->m.cliff_air_end_frame, m_hio->m.cliff_air_interpolation, 0);
+            setSingleAnime(ANM_HS_JUMP_MIDDLE, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.cliff_air_anm_speed), m_hio->m.cliff_air_anm_speed), m_hio->m.cliff_air_start_frame, m_hio->m.cliff_air_end_frame, m_hio->m.cliff_air_interpolation, 0);
         }
     } else if (m_anmIdx[0] == ANM_HS_JUMP_START) {
         if (m_frameCtrl[0].checkAnmEnd()) {
+#if TARGET_PC  // enemy attribute integration
+            const f32 jumpAnmSpeed = horseKingBulblinSpeedValue(m_hio->m.jump_anm_speed);
+            int temp_r28 = (f32)field_0x171a - ((1.0f / jumpAnmSpeed) * (f32)(m_frameCtrl[0].getEnd() - m_frameCtrl[0].getStart()));
+#else
             int temp_r28 = (f32)field_0x171a - ((1.0f / m_hio->m.jump_anm_speed) * (f32)(m_frameCtrl[0].getEnd() - m_frameCtrl[0].getStart()));
+#endif
             if (temp_r28 <= 0) {
                 temp_r28 += field_0x171e;
                 gravity = field_0x177C;
@@ -4228,16 +4472,21 @@ int daHorse_c::procLandInit(f32 i_speedF, BOOL param_1) {
     dComIfGp_getVibration().StartShock(VIBMODE_S_POWER2, 1, cXyz(0.0f, 1.0f, 0.0f));
 
     if (param_1) {
-        setSingleAnime(ANM_HS_JUMP_END, m_hio->m.cliff_land_anm_speed, m_hio->m.cliff_land_start_frame, m_hio->m.cliff_land_end_frame, m_hio->m.cliff_land_interpolation, 0);
+        setSingleAnime(ANM_HS_JUMP_END, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.cliff_land_anm_speed), m_hio->m.cliff_land_anm_speed), m_hio->m.cliff_land_start_frame, m_hio->m.cliff_land_end_frame, m_hio->m.cliff_land_interpolation, 0);
         field_0x177C = m_hio->m.cliff_land_cancel_frame;
     } else {
-        setSingleAnime(ANM_HS_JUMP_END, m_hio->m.land_anm_speed, m_hio->m.land_start_frame, m_hio->m.land_end_frame, m_hio->m.land_interpolation, 0);
+        setSingleAnime(ANM_HS_JUMP_END, DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.land_anm_speed), m_hio->m.land_anm_speed), m_hio->m.land_start_frame, m_hio->m.land_end_frame, m_hio->m.land_interpolation, 0);
         field_0x177C = m_hio->m.land_cancel_frame;
     }
 
     speedF = i_speedF;
+#if TARGET_PC  // enemy attribute integration
+    if (speedF >= getLashMaxSpeedF()) {
+        speedF = getLashMaxSpeedF();
+#else
     if (speedF >= m_lashMaxSpeedF) {
         speedF = m_lashMaxSpeedF;
+#endif
     }
 
     gravity = -5.0f;
@@ -4255,16 +4504,16 @@ int daHorse_c::procLand() {
     if (temp_r3 == 2) {
         speedF = 0.0f;
     } else if (temp_r3 != 0) {
-        cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
+        cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
     }
 
     if (field_0x171a != 0) {
-        cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
+        cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
         dComIfGp_evmng_cutEnd(m_demoStaffId);
         setMoveAnime(-1.0f);
     } else if (frame_ctrl->checkAnmEnd()) {
         if (m_demoMode == 7) {
-            cLib_chaseF(&speedF, 0.0f, m_hio->m.stopping_deceleration);
+            cLib_chaseF(&speedF, 0.0f, DUSK_IF_ELSE(horseKingBulblinAcceleration(m_hio->m.stopping_deceleration), m_hio->m.stopping_deceleration));
             dComIfGp_evmng_cutEnd(m_demoStaffId);
             setMoveAnime(3.0f);
             field_0x171a = 1;
@@ -4431,7 +4680,7 @@ int daHorse_c::execute() {
     setTalkModeWolf();
 
     if (checkStateFlg0(FLG0_UNK_1) && m_anmIdx[2] == 0xFFFF && (m_tgco_cyl[0].ChkTgHit() || m_tgco_cyl[1].ChkTgHit() || m_tgco_cyl[2].ChkTgHit() || m_head_sph.ChkTgHit())) {
-        setNeckAnime(ANM_HS_LASH, 1.0f, 0.0f, -1);
+        setNeckAnime(ANM_HS_LASH, DUSK_IF_ELSE(horseKingBulblinSpeedValue(1.0f), 1.0f), 0.0f, -1);
         m_sound.startCreatureVoice(Z2SE_HS_V_RUSH, -1);
     }
 
@@ -4618,7 +4867,7 @@ int daHorse_c::execute() {
 
     if (!checkInputOnR() && fabsf(speedF) < 0.05f) {
         offStateFlg0(FLG0_UNK_8);
-    } else if (fabsf(speedF) > 0.2f * m_hio->m.max_backward_speed || (m_anmIdx[0] == ANM_HS_WALK_START && m_frameCtrl[0].getFrame() > 2.0f)) {
+    } else if (fabsf(speedF) > 0.2f * DUSK_IF_ELSE(horseKingBulblinSpeedValue(m_hio->m.max_backward_speed), m_hio->m.max_backward_speed) || (m_anmIdx[0] == ANM_HS_WALK_START && m_frameCtrl[0].getFrame() > 2.0f)) {
         onStateFlg0(FLG0_UNK_8);
     }
 

@@ -6,6 +6,42 @@
 #include "d/dolzel_rel.h"  // IWYU pragma: keep
 
 #include "d/actor/d_a_e_tk_ball.h"
+#if TARGET_PC  // additional actor attribute integration
+
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace dusk::mods::svc::actor_attr {
+
+template <>
+struct EnemyActorAccessor<e_tk_ball_class> {
+    static fopAc_ac_c* get(e_tk_ball_class* i_this) {
+
+        return static_cast<fopAc_ac_c*>(i_this);
+
+}
+};
+
+template <>
+struct EnemyAttributeOwner<e_tk_ball_class> {
+    static fopAc_ac_c* get(e_tk_ball_class* i_this) {
+
+        fopAc_ac_c* actor = EnemyActorAccessor<e_tk_ball_class>::get(i_this);
+        fopAc_ac_c* parent = fopAcM_SearchByID(fopAcM_GetLinkId(actor));
+
+        if (parent != NULL && (fopAcM_GetName(parent) == fpcNm_E_TK_e || fopAcM_GetName(parent) == fpcNm_E_TK2_e)) {
+            return parent;
+        }
+
+        return actor;
+
+}
+};
+
+}  // namespace dusk::mods::svc::actor_attr
+
+#endif
 #include "d/actor/d_a_player.h"
 #include "d/d_s_play.h"
 
@@ -41,6 +77,9 @@ static int daE_TK_BALL_Draw(e_tk_ball_class* i_this) {
 
 static int simple_bg_check(e_tk_ball_class* i_this) {
     fopAc_ac_c* actor = i_this;
+#if TARGET_PC  // enemy attribute integration
+    const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(i_this);
+#endif
 
     cXyz current_pos;
     cXyz start_pos;
@@ -53,14 +92,24 @@ static int simple_bg_check(e_tk_ball_class* i_this) {
     cMtx_YrotS(*calc_mtx, actor->current.angle.y);
 
     ray_offset.x = 0.0f;
+#if TARGET_PC  // enemy attribute integration
+    ray_offset.y = 30.0f * sizeMultiplier;
+    ray_offset.z = -50.0f * sizeMultiplier;
+#else
     ray_offset.y = 30.0f;
     ray_offset.z = -50.0f;
+#endif
 
     MtxPosition(&ray_offset, &mtx_offset);
     start_pos = current_pos + mtx_offset;
 
+#if TARGET_PC  // enemy attribute integration
+    ray_offset.y = -30.0f * sizeMultiplier;
+    ray_offset.z = 50.0f * sizeMultiplier;
+#else
     ray_offset.y = -30.0f;
     ray_offset.z = 50.0f;
+#endif
     MtxPosition(&ray_offset, &mtx_offset);
     end_pos = current_pos + mtx_offset;
 
@@ -78,7 +127,11 @@ static void impact_eff_set(e_tk_ball_class* i_this) {
     cXyz pos = actor->current.pos;
     pos.y += i_this->mArcHeight;
 
+#if TARGET_PC  // enemy attribute integration
+    cXyz scale = actor_attr::enemy_size_multiplier(i_this, 2.0f + TREG_F(8));
+#else
     cXyz scale(2.0f + TREG_F(8), 2.0f + TREG_F(8), 2.0f + TREG_F(8));
+#endif
 
     csXyz rotation = actor->current.angle;
     ANGLE_ADD(rotation.y, 0x8000);
@@ -123,13 +176,13 @@ static void e_tk_ball_move(e_tk_ball_class* i_this) {
 
         direction_vec.x = 0.0f;
         direction_vec.y = 0.0f;
-        direction_vec.z = 50.0f + TREG_F(10);
+        direction_vec.z = DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, 50.0f + TREG_F(10)), 50.0f + TREG_F(10));
         MtxPosition(&direction_vec, &actor->speed);
 
         i_this->mAtSph.OnAtVsPlayerBit();
         i_this->mAtSph.OffAtVsEnemyBit();
         i_this->mAtSph.StartCAt(actor->current.pos);
-        i_this->mActionTimer[0] = 100;
+        i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 100), 100);
         /* [[fallthrough]] */
 
     case MODE_TK_BALL_MOVE:
@@ -165,7 +218,7 @@ static void e_tk_ball_move(e_tk_ball_class* i_this) {
             actor->speed.z *= -0.3f;
             actor->speed.y = 0.0f;
             actor->current.pos += actor->speed;
-            i_this->mActionTimer[0] = 60;
+            i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 60), 60);
             return;
         }
 
@@ -176,15 +229,20 @@ static void e_tk_ball_move(e_tk_ball_class* i_this) {
         speed_vec.x = 0.0;
         speed_vec.y = 0.0;
         if (daPy_getPlayerActorClass()->getCutType() != daPy_py_c::CUT_TYPE_NONE) {
-            speed_vec.z = 60.0f + TREG_F(16);
+            speed_vec.z = DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, 60.0f + TREG_F(16)), 60.0f + TREG_F(16));
         }
         cMtx_YrotS(*calc_mtx, actor->current.angle.y);
         cMtx_XrotM(*calc_mtx, actor->current.angle.x);
         MtxPosition(&speed_vec, &actor->speed);
         i_this->mAtSph.OffAtVsPlayerBit();
         i_this->mAtSph.OnAtVsEnemyBit();
+#if TARGET_PC  // enemy attribute integration
+        i_this->mActionTimer[0] = actor_attr::enemy_sync_timer(i_this, 100);
+        i_this->mActionTimer[1] = actor_attr::enemy_sync_timer(i_this, 10);
+#else
         i_this->mActionTimer[0] = 100;
         i_this->mActionTimer[1] = 10;
+#endif
         actor->current.pos += actor->speed;
     } else {
         i_this->mAtSph.MoveCAt(actor->current.pos);
@@ -232,9 +290,16 @@ static void e_tk_ball_drop(e_tk_ball_class* i_this) {
     switch (i_this->mMode) {
     case MODE_TK_BALL_INIT:
         actor->current.pos += actor->speed;
+#if TARGET_PC  // enemy attribute integration
+        actor->speed.y -= actor_attr::enemy_gravity_step(i_this, 2.0f);
+        const f32 terminalVelocity = actor_attr::enemy_move_step(i_this, 50.0f);
+        if (actor->speed.y < -terminalVelocity) {
+            actor->speed.y = -terminalVelocity;
+#else
         actor->speed.y -= 2.0f;
         if (actor->speed.y < -50.0f) {
             actor->speed.y = -50.0f;
+#endif
         }
         break;
     }
@@ -286,7 +351,11 @@ static void action(e_tk_ball_class* i_this) {
     cXyz particle_position = actor->current.pos;
     particle_position.y += i_this->mArcHeight;
 
+#if TARGET_PC  // enemy attribute integration
+    cXyz particle_scale = actor_attr::enemy_size_multiplier(i_this, 2.0f + TREG_F(8));
+#else
     cXyz particle_scale(2.0f + TREG_F(8), 2.0f + TREG_F(8), 2.0f + TREG_F(8));
+#endif
 
     for (int i = 0; i < 2; i++) {
         i_this->mParticleKey[i] = dComIfGp_particle_set(
@@ -335,14 +404,19 @@ static int daE_TK_BALL_Execute(e_tk_ball_class* i_this) {
 
     action(i_this);
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_angle_add(i_this, actor->shape_angle.y, 0x1000);
+    actor_attr::enemy_angle_add(i_this, actor->shape_angle.x, 0xE00);
+#else
     ANGLE_ADD(actor->shape_angle.y, 0x1000);
     ANGLE_ADD(actor->shape_angle.x, 0xE00);
+#endif
 
     mDoMtx_stack_c::transS(actor->current.pos.x, actor->current.pos.y + i_this->mArcHeight,
                            actor->current.pos.z);
     mDoMtx_stack_c::YrotM(actor->shape_angle.y);
     mDoMtx_stack_c::XrotM(actor->shape_angle.x);
-    f32 scale = 2.0f + TREG_F(8);
+    f32 scale = DUSK_IF_ELSE((2.0f + TREG_F(8)) * actor_attr::enemy_size_multiplier(i_this), 2.0f + TREG_F(8));
     mDoMtx_stack_c::scaleM(scale, scale, scale);
     i_this->mpModel->setBaseTRMtx(mDoMtx_stack_c::get());
 
@@ -450,6 +524,7 @@ static int daE_TK_BALL_Create(fopAc_ac_c* i_this) {
         actor->mStts.Init(0xff, 0, i_this);
         actor->mAtSph.Set(at_sph_src);
         actor->mAtSph.SetStts(&actor->mStts);
+        IF_DUSK(actor->mAtSph.SetAtAtp(actor_attr::enemy_attack_power_byte(actor, 1.0f));)
         if (actor->mType == TYPE_TK_BALL_FIRE) {
             actor->mAtSph.SetAtType(AT_TYPE_100);
             actor->mAtSph.SetAtMtrl(dCcD_MTRL_FIRE);
@@ -457,6 +532,12 @@ static int daE_TK_BALL_Create(fopAc_ac_c* i_this) {
 
         actor->mTgSph.Set(tg_sph_src);
         actor->mTgSph.SetStts(&actor->mStts);
+#if TARGET_PC  // enemy attribute integration
+
+        const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(actor);
+        actor->mAtSph.SetR(20.0f * sizeMultiplier);
+        actor->mTgSph.SetR(35.0f * sizeMultiplier);
+#endif
 
         actor->mSound.init(&i_this->current.pos, 1);
         i_this->shape_angle.y = cM_rndFX(32768.0f);
