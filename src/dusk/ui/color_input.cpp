@@ -1,12 +1,11 @@
 #include "color_input.hpp"
 
-#include "button.hpp"
-#include "input.hpp"
-#include "nav_group.hpp"
-
-#include "m_Do/m_Do_audio.h"
+#include "ui.hpp"
 
 #include <SDL3/SDL_clipboard.h>
+#include <borealis/ui/button.hpp>
+#include <borealis/ui/input.hpp>
+#include <borealis/ui/nav_group.hpp>
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -54,8 +53,8 @@ public:
     };
 
     AdjustmentRegion(Rml::Element* root, Props props) : Component{root}, mProps{std::move(props)} {
-        listen(mRoot, Rml::EventId::Keydown, [this](Rml::Event& event) {
-            const auto command = map_nav_event(event);
+        listen(mRoot, kNavCommandEvent, [this](Rml::Event& event) {
+            const auto command = nav_command(event);
             if (command == NavCommand::Confirm) {
                 if (mActive) {
                     finish();
@@ -85,7 +84,7 @@ public:
                 event.StopPropagation();
             }
         });
-        listen(mRoot, Rml::String{input::kNavAxisEvent}, [this](Rml::Event& event) {
+        listen(mRoot, Rml::String{borealis::ui::input::kNavAxisEvent}, [this](Rml::Event& event) {
             mAxis = {
                 event.GetParameter<float>("x", 0.0f),
                 event.GetParameter<float>("y", 0.0f),
@@ -555,7 +554,7 @@ void ColorInput::add_swatch_button(NavGroup& navigation, const Rml::String& valu
     }
     button.root()->SetAttribute("title", title);
     button.on_pressed([this, value] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         commit_value(value);
     });
 }
@@ -623,7 +622,7 @@ void ColorInput::nudge_sv(NavCommand direction) {
     }
     mSat = sat;
     mVal = val;
-    mDoAud_seStartMenu(kSoundItemChange);
+    play_nav_sound(NavSound::ItemChange);
     commit_color();
 }
 
@@ -636,7 +635,7 @@ void ColorInput::nudge_hue(NavCommand direction) {
         return;
     }
     mHue = hue;
-    mDoAud_seStartMenu(kSoundItemChange);
+    play_nav_sound(NavSound::ItemChange);
     commit_color();
 }
 
@@ -649,7 +648,7 @@ void ColorInput::nudge_alpha(NavCommand direction) {
         return;
     }
     mAlpha = alpha;
-    mDoAud_seStartMenu(kSoundItemChange);
+    play_nav_sound(NavSound::ItemChange);
     commit_color();
 }
 

@@ -375,7 +375,7 @@ void sync_virtual_input() noexcept {
 }
 
 TouchControls::TouchControls()
-    : Document(touch_controls_document_source(), true, DocumentScope::TouchControls),
+    : Document(touch_controls_document_source(), true, kScopeTouchControls),
       mRoot(mDocument != nullptr ? mDocument->GetElementById("root") : nullptr),
       mControlStick(mDocument != nullptr ? mDocument->GetElementById("control-stick") : nullptr),
       mControlKnob(mDocument != nullptr ? mDocument->GetElementById("control-knob") : nullptr),
@@ -441,9 +441,6 @@ TouchControls::TouchControls()
         mRoot, aurora::rmlui::TouchEndEvent, [this](Rml::Event& event) { handle_touch_up(event); });
     listen(mRoot, aurora::rmlui::TouchCancelEvent,
         [this](Rml::Event& event) { handle_touch_cancel(event); });
-    listen(mRoot, Rml::EventId::Mousemove, [this](Rml::Event& event) { handle_mouse_move(event); });
-    listen(mRoot, Rml::EventId::Mousedown, [this](Rml::Event& event) { handle_mouse_down(event); });
-    listen(mRoot, Rml::EventId::Mouseup, [this](Rml::Event& event) { handle_mouse_up(event); });
 }
 
 TouchControls::~TouchControls() {
@@ -713,26 +710,17 @@ void TouchControls::clear_control_input() noexcept {
 
 void TouchControls::clear_virtual_input() noexcept {
     clear_motion_touch_input();
-    mMenuPointerTouch = 0;
-    mMenuPointerMouseSuppressions = 0;
-    mMenuPointerTouchActive = false;
     clear_control_input();
 }
 
 void TouchControls::sync_touch_state() noexcept {
-    const bool controlsEnabled = getSettings().game.enableTouchControls;
-    const bool pointerMenuActive = menu_pointer::active();
-    if (mWasSuppressed || (!controlsEnabled && !pointerMenuActive)) {
+    if (mWasSuppressed || !getSettings().game.enableTouchControls) {
         clear_virtual_input();
         return;
     }
 
-    if (pointerMenuActive) {
+    if (menu_pointer::active()) {
         clear_motion_touch_input();
-        if (!controlsEnabled) {
-            clear_control_input();
-            return;
-        }
     }
 
     sync_l_lock_state();
@@ -831,10 +819,7 @@ void TouchControls::sync_virtual_input() noexcept {
 
 void TouchControls::sync_visibility() noexcept {
     mWasSuppressed = any_document_visible();
-    if ((getSettings().game.enableTouchControls ||
-            (menu_pointer::enabled() && menu_pointer::active())) &&
-        !mWasSuppressed)
-    {
+    if (getSettings().game.enableTouchControls && !mWasSuppressed) {
         show();
     } else if (visible()) {
         hide(false);
@@ -1180,68 +1165,22 @@ void TouchControls::sync_control_long_presses() noexcept {
     }
 }
 
-bool TouchControls::handle_menu_event(Rml::Event& event, menu_pointer::Phase phase) noexcept {
-    if (!menu_pointer::active() || event.GetTargetElement() != mRoot) {
-        return false;
-    }
-    if (!menu_pointer::enabled()) {
-        mMenuPointerTouch = 0;
-        mMenuPointerMouseSuppressions = 0;
-        mMenuPointerTouchActive = false;
-        event.StopPropagation();
-        return true;
-    }
-
-    const auto id = touch_event_id(event);
-    switch (phase) {
-    case menu_pointer::Phase::Press:
-        if (mMenuPointerTouchActive) {
-            event.StopPropagation();
-            return true;
+bool TouchControls::claims_pointer(Rml::Element* element) const {
+    for (; element != nullptr && element != mRoot; element = element->GetParentNode()) {
+        for (const auto& elements : mControlElements) {
+            if (elements.root == element) {
+                return true;
+            }
         }
-        mMenuPointerTouch = id;
-        mMenuPointerTouchActive = true;
-        break;
-    case menu_pointer::Phase::Move:
-        if (!mMenuPointerTouchActive || mMenuPointerTouch != id) {
-            event.StopPropagation();
-            return true;
-        }
-        break;
-    case menu_pointer::Phase::Release:
-    case menu_pointer::Phase::Cancel:
-        if (!mMenuPointerTouchActive || mMenuPointerTouch != id) {
-            event.StopPropagation();
-            return true;
-        }
-        mMenuPointerTouchActive = false;
-        break;
     }
-
-    const auto position = touch_event_position(event);
-    menu_pointer::handle_fallthrough_pointer(position.x, position.y, phase, true);
-    switch (phase) {
-    case menu_pointer::Phase::Press:
-    case menu_pointer::Phase::Release:
-        mMenuPointerMouseSuppressions = 2;
-        break;
-    case menu_pointer::Phase::Move:
-    case menu_pointer::Phase::Cancel:
-        mMenuPointerMouseSuppressions = 1;
-        break;
-    }
-    event.StopPropagation();
-    return true;
+    return false;
 }
 
 void TouchControls::handle_touch_down(Rml::Event& event) noexcept {
     if (!visible() || mWasSuppressed) {
         return;
     }
-    if (handle_menu_event(event, menu_pointer::Phase::Press)) {
-        return;
-    }
-    if (!getSettings().game.enableTouchControls) {
+    if (menu_pointer::active() || !getSettings().game.enableTouchControls) {
         return;
     }
 
@@ -1308,10 +1247,7 @@ void TouchControls::handle_touch_motion(Rml::Event& event) noexcept {
     if (!visible() || mWasSuppressed) {
         return;
     }
-    if (handle_menu_event(event, menu_pointer::Phase::Move)) {
-        return;
-    }
-    if (!getSettings().game.enableTouchControls) {
+    if (menu_pointer::active() || !getSettings().game.enableTouchControls) {
         return;
     }
 
@@ -1336,9 +1272,6 @@ void TouchControls::handle_touch_up(Rml::Event& event) noexcept {
     if (release_control_touch(id, false)) {
         return;
     }
-    if (handle_menu_event(event, menu_pointer::Phase::Release)) {
-        return;
-    }
     if (mMoveTouch.active && mMoveTouch.id == id) {
         mMoveTouch = {};
     }
@@ -1355,75 +1288,12 @@ void TouchControls::handle_touch_cancel(Rml::Event& event) noexcept {
     if (release_control_touch(id, true)) {
         return;
     }
-    if (handle_menu_event(event, menu_pointer::Phase::Cancel)) {
-        return;
-    }
     if (mMoveTouch.active && mMoveTouch.id == id) {
         mMoveTouch = {};
     }
     if (mCameraTouch.active && mCameraTouch.id == id) {
         mCameraTouch = {};
     }
-}
-
-void TouchControls::handle_mouse_move(Rml::Event& event) noexcept {
-    if (mMenuPointerMouseSuppressions > 0) {
-        --mMenuPointerMouseSuppressions;
-        return;
-    }
-    if (!visible() || mWasSuppressed || !menu_pointer::active() || !menu_pointer::enabled() ||
-        event.GetTargetElement() != mRoot)
-    {
-        return;
-    }
-
-    const auto position = mouse_event_position(event);
-    menu_pointer::handle_fallthrough_pointer(
-        position.x, position.y, menu_pointer::Phase::Move, false);
-    event.StopPropagation();
-}
-
-void TouchControls::handle_mouse_down(Rml::Event& event) noexcept {
-    if (mMenuPointerMouseSuppressions > 0) {
-        --mMenuPointerMouseSuppressions;
-        return;
-    }
-    if (!visible() || mWasSuppressed || !menu_pointer::active() || !menu_pointer::enabled() ||
-        event.GetTargetElement() != mRoot)
-    {
-        return;
-    }
-
-    const auto position = mouse_event_position(event);
-    const s32 button = event.GetParameter("button", -1);
-    if (!menu_pointer::handle_fallthrough_pointer(
-            position.x, position.y, menu_pointer::Phase::Press, false, button))
-    {
-        return;
-    }
-    event.StopPropagation();
-}
-
-void TouchControls::handle_mouse_up(Rml::Event& event) noexcept {
-    if (mMenuPointerMouseSuppressions > 0) {
-        --mMenuPointerMouseSuppressions;
-        return;
-    }
-    if (!visible() || mWasSuppressed || !menu_pointer::enabled() ||
-        (!menu_pointer::active() && !menu_pointer::mouse_capture_active()) ||
-        event.GetTargetElement() != mRoot)
-    {
-        return;
-    }
-
-    const auto position = mouse_event_position(event);
-    const s32 button = event.GetParameter("button", -1);
-    if (!menu_pointer::handle_fallthrough_pointer(
-            position.x, position.y, menu_pointer::Phase::Release, false, button))
-    {
-        return;
-    }
-    event.StopPropagation();
 }
 
 }  // namespace dusk::ui

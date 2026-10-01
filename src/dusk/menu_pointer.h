@@ -2,9 +2,13 @@
 
 #include "dolphin/types.h"
 
+#include <cstdint>
+
 class CPaneMgr;
 
 namespace dusk::menu_pointer {
+
+constexpr int32_t kLayerPriority = 10;
 
 using TargetId = u16;
 constexpr TargetId InvalidTarget = 0xffff;
@@ -40,7 +44,6 @@ struct State {
 void begin_game_frame() noexcept;
 void end_game_frame() noexcept;
 void begin_context(Context context) noexcept;
-bool handle_fallthrough_pointer(f32 x, f32 y, Phase phase, bool touch, s32 mouseButton = -1) noexcept;
 
 bool active() noexcept;
 bool enabled() noexcept;
@@ -55,8 +58,6 @@ bool consume_dialog_click(u8& choice) noexcept;
 void defer_activation(Context context, TargetId target) noexcept;
 bool consume_deferred_activation(Context context, TargetId target) noexcept;
 void clear_deferred_activation(Context context) noexcept;
-u32 suppressed_pad_buttons(u32 port) noexcept;
-void finish_pad_suppression_read(u32 port) noexcept;
 
 bool hit_rect(f32 left, f32 top, f32 right, f32 bottom, f32 padding = 0.0f) noexcept;
 bool hit_pane(CPaneMgr* pane, f32 padding = 0.0f) noexcept;

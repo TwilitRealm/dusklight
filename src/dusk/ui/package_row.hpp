@@ -1,7 +1,9 @@
 #pragma once
 
-#include "component.hpp"
 #include "dusk/mods/queue.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/component.hpp>
 
 #include <cstdint>
 #include <optional>

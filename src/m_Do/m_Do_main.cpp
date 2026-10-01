@@ -157,7 +157,6 @@ bool launchUILoop() {
                 if (dusk::mods::svc::window_dispatch_event(event->sdl)) {
                     break;
                 }
-                dusk::mouse::handle_event(event->sdl);
                 dusk::ui::handle_event(event->sdl);
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
                 break;
@@ -236,18 +235,15 @@ void main01(void) {
                 goto eventsDone;
             case AURORA_PAUSED:
                 dusk::audio::SetPaused(true);
-                dusk::mouse::on_focus_lost();
                 break;
             case AURORA_UNPAUSED:
                 dusk::audio::SetPaused(false);
                 dusk::game_clock::reset();
-                dusk::mouse::on_focus_gained();
                 break;
             case AURORA_SDL_EVENT:
                 if (dusk::mods::svc::window_dispatch_event(event->sdl)) {
                     break;
                 }
-                dusk::mouse::handle_event(event->sdl);
                 dusk::ui::handle_event(event->sdl);
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
                 break;

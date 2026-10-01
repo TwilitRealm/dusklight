@@ -1,5 +1,7 @@
 #pragma once
-#include "window.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/window.hpp>
 
 namespace dusk::ui {
 
