@@ -1,7 +1,6 @@
 #pragma once
 
 #include <bit>
-#include <type_traits>
 
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
@@ -14,87 +13,33 @@
 #endif
 
 #if TARGET_LITTLE_ENDIAN
-    #ifdef _MSC_VER
-        #include <stdlib.h>
-        #define BSWAP16(x) _byteswap_ushort(x)
-        #define BSWAP32(x) _byteswap_ulong(x)
-        #define BSWAP64(x) _byteswap_uint64(x)
-    #else
-        #define BSWAP16(x) __builtin_bswap16(x)
-        #define BSWAP32(x) __builtin_bswap32(x)
-        #define BSWAP64(x) __builtin_bswap64(x)
-    #endif
+    #define BSWAP16(x) std::byteswap(x)
+    #define BSWAP32(x) std::byteswap(x)
+    #define BSWAP64(x) std::byteswap(x)
 #else
     #define BSWAP16(x) (x)
     #define BSWAP32(x) (x)
 #endif
 
-// clang-format off
-// yeah ofc Microsoft's _byteswap_* aren't constexpr like the GCC/Clang ones.
-constexpr u16 be16_manual(u16 val)
-{
-    return (val >> 8) |
-           (val << 8);
-}
-
-constexpr u32 be32_manual(u32 val)
-{
-    return (val >> 24) |
-          ((val << 8)  & 0x00FF0000) |
-          ((val >> 8)  & 0x0000FF00) |
-           (val << 24);
-}
-
-constexpr u64 be64_manual(u64 val)
-{
-    return (val >> 56) |
-          ((val << 40) & 0x00FF000000000000) |
-          ((val << 24) & 0x0000FF0000000000) |
-          ((val << 8)  & 0x000000FF00000000) |
-          ((val >> 8)  & 0x00000000FF000000) |
-          ((val >> 24) & 0x0000000000FF0000) |
-          ((val >> 40) & 0x000000000000FF00) |
-           (val << 56);
-}
-// clang-format on
-
 // Big-Endian to Host conversion
 // _manual is behind std::is_constant_evaluated() checks,
 // to avoid pessimizing debug perf too much.
 constexpr u16 be16(u16 val) {
-    if (std::is_constant_evaluated()) {
-        return be16_manual(val);
-    }
     return BSWAP16(val);
 }
 constexpr s16 be16s(s16 val) {
-    if (std::is_constant_evaluated()) {
-        return (s16)be16_manual((u16)val);
-    }
     return (s16)BSWAP16((u16)val);
 }
 constexpr u32 be32(u32 val) {
-    if (std::is_constant_evaluated()) {
-        return be32_manual(val);
-    }
     return BSWAP32(val);
 }
 constexpr s32 be32s(s32 val) {
-    if (std::is_constant_evaluated()) {
-        return (s32)be32_manual((u32)val);
-    }
     return (s32)BSWAP32((u32)val);
 }
 constexpr u64 be64(u64 val) {
-    if (std::is_constant_evaluated()) {
-        return be64_manual(val);
-    }
     return BSWAP64(val);
 }
 constexpr s64 be64s(s64 val) {
-    if (std::is_constant_evaluated()) {
-        return (s64)be64_manual((u64)val);
-    }
     return (s64)BSWAP64((u64)val);
 }
 
