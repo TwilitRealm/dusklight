@@ -13,7 +13,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif ()
 
 add_mod(ao_mod
-    FEATURES webgpu
+    FEATURES webgpu fmt
     SOURCES  src/mod.cpp
     MOD_JSON mod.json
     RES_DIR  res
