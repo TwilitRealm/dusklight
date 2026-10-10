@@ -10,7 +10,142 @@
 #include "SSystem/SComponent/c_math.h"
 #include "d/d_bg_w.h"
 #include "d/d_com_inf_game.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "JSystem/J3DGraphBase/J3DShape.h"
+#include "d/actor/d_a_b_gnd.h"
+#include "d/d_bg_s_gnd_chk.h"
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#include "f_op/f_op_actor_mng.h"
+#include <algorithm>
+#endif
 #include <cstring>
+#if TARGET_PC  // additional actor attribute integration
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+static void adjustFinalBattleBarrierGround(obj_gb_class* i_this) {
+    if (fopAcM_GetParam(i_this) != 0xF0069600 || i_this->scale.x == 1.5f || i_this->scale.x <= 0.0f) {
+        return;
+    }
+
+    J3DModelData* modelData = i_this->mModel->getModelData();
+    if (modelData->getShapeNum() == 0 || i_this->scale.y <= 0.0f) {
+        return;
+    }
+    f32 model_min_y = modelData->getShapeNodePointer(0)->getMin()->y;
+    f32 model_max_y = modelData->getShapeNodePointer(0)->getMax()->y;
+    for (u16 i = 1; i < modelData->getShapeNum(); i++) {
+        model_min_y = std::min(model_min_y, modelData->getShapeNodePointer(i)->getMin()->y);
+        model_max_y = std::max(model_max_y, modelData->getShapeNodePointer(i)->getMax()->y);
+    }
+    if (model_max_y <= model_min_y) {
+        return;
+    }
+
+    const f32 barrier_bottom_y = i_this->current.pos.y + model_min_y * i_this->scale.y;
+    const f32 barrier_top_y = i_this->current.pos.y + model_max_y * i_this->scale.y;
+    f32 lowest_ground_y = barrier_bottom_y;
+    dBgS_ObjGndChk ground_chk;
+    ground_chk.SetActorPid(fopAcM_GetID(i_this));
+    // Obj_gb's ring and its sound positions use a local radius of 1000 units.
+    // Check both sides of the wall so its resized base reaches the hillside.
+    const f32 barrier_radius = i_this->scale.x * 1000.0f;
+    const int ground_samples = 128;
+    for (int i = 0; i < ground_samples; i++) {
+        const s16 angle = i_this->current.angle.y + i * (0x10000 / ground_samples);
+        for (int j = 0; j < 3; j++) {
+            const f32 radius = barrier_radius * (0.99f + j * 0.01f);
+            cXyz ground_pos(i_this->current.pos.x + cM_ssin(angle) * radius, std::max(i_this->current.pos.y, barrier_top_y) + 1000.0f, i_this->current.pos.z + cM_scos(angle) * radius);
+            ground_chk.SetPos(&ground_pos);
+            const f32 ground_y = dComIfG_Bgsp().GroundCross(&ground_chk);
+            if (dComIfG_Bgsp().ChkPolySafe(ground_chk) && ground_y < lowest_ground_y) {
+                lowest_ground_y = ground_y;
+            }
+        }
+    }
+    if (lowest_ground_y >= barrier_bottom_y) {
+        return;
+    }
+
+    // Keep the authored top in place and extend the bottom slightly into the
+    // lowest sampled ground. Execute uses this same transform for the model
+    // and background collision, so Link cannot walk under a floating wall.
+    i_this->scale.y = (barrier_top_y - (lowest_ground_y - 50.0f)) / (model_max_y - model_min_y);
+    i_this->current.pos.y = barrier_top_y - model_max_y * i_this->scale.y;
+    i_this->old.pos.y = i_this->current.pos.y;
+}
+
+static void adjustFinalBattleGanondorfPlacement(obj_gb_class* i_this) {
+    // field_0x684 marks a pending one-time boss placement. The ring itself
+    // is positioned in Create, before its background collision is registered.
+    if (fopAcM_GetParam(i_this) != 0xF0069600 || i_this->field_0x684 == 0.0f) {
+        return;
+    }
+
+    fopAc_ac_c* actor = NULL;
+    if (!fopAcM_SearchByName(fpcNm_B_GND_e, &actor) || actor == NULL) {
+        return;
+    }
+    b_gnd_class* ganondorf = static_cast<b_gnd_class*>(actor);
+    fopAc_ac_c* player = dComIfGp_getPlayer(0);
+    const s16 demo_mode = ganondorf->mDemoCamMode;
+    // The full intro has finished walking at 45/46; retry setup is fixed at
+    // 96. Skip mode 92 still resets both actors before handing back control.
+    if (player == NULL || ganondorf->checkRide() || ganondorf->mNoDrawTimer != 0 || (demo_mode != 45 && demo_mode != 46 && demo_mode != 96 && (demo_mode != 0 || dComIfGp_event_runCheck()))) {
+        return;
+    }
+
+    const f32 size = i_this->scale.x / 1.5f;
+    const f32 start_distance = 1200.0f * size;
+    ganondorf->current.pos.x = player->current.pos.x + cM_ssin(player->shape_angle.y) * start_distance;
+    ganondorf->current.pos.z = player->current.pos.z + cM_scos(player->shape_angle.y) * start_distance;
+    ganondorf->current.angle.y = ganondorf->shape_angle.y = static_cast<s16>(player->shape_angle.y + 0x8000);
+
+    dBgS_ObjGndChk ground_chk;
+    ground_chk.SetActorPid(fopAcM_GetID(ganondorf));
+    cXyz ground_pos = ganondorf->current.pos;
+    ground_pos.y += 1000.0f;
+    ground_chk.SetPos(&ground_pos);
+    const f32 ground_y = dComIfG_Bgsp().GroundCross(&ground_chk);
+    if (dComIfG_Bgsp().ChkPolySafe(ground_chk)) {
+        ganondorf->current.pos.y = ground_y;
+    }
+    ganondorf->old.pos = ganondorf->current.pos;
+    i_this->field_0x684 = 0.0f;
+}
+
+static void adjustFinalBattleBarrierPlacement(obj_gb_class* i_this) {
+    if (fopAcM_GetParam(i_this) != 0xF0069600 || i_this->field_0x684 == 0.0f) {
+        return;
+    }
+
+    fopAc_ac_c* actor = NULL;
+    if (!fopAcM_SearchByName(fpcNm_B_GND_e, &actor) || actor == NULL) {
+        return;
+    }
+    b_gnd_class* ganondorf = static_cast<b_gnd_class*>(actor);
+    fopAc_ac_c* player = dComIfGp_getPlayer(0);
+    if (player == NULL) {
+        return;
+    }
+
+    cXyz link_start = player->current.pos;
+    s16 link_angle = player->shape_angle.y;
+    if (ganondorf->mDemoCamMode == 92) {
+        // This skip path creates the barrier before it installs these authored
+        // fight positions. Use that upcoming Link placement for the new ring.
+        link_start.set(600.0f, 1100.0f, 0.0f);
+        link_angle = -0x4802;
+    }
+
+    const f32 size = i_this->scale.x / 1.5f;
+    const f32 center_distance = 600.0f * size;
+    i_this->current.pos.x = link_start.x + cM_ssin(link_angle) * center_distance;
+    i_this->current.pos.z = link_start.z + cM_scos(link_angle) * center_distance;
+    i_this->old.pos = i_this->current.pos;
+    adjustFinalBattleGanondorfPlacement(i_this);
+}
+#endif
 
 static int daObj_Gb_Draw(obj_gb_class* i_this) {
     g_env_light.settingTevStruct(0x10, &i_this->current.pos, &i_this->tevStr);
@@ -29,6 +164,9 @@ static int daObj_Gb_Draw(obj_gb_class* i_this) {
 }
 
 static int daObj_Gb_Execute(obj_gb_class* i_this) {
+#if TARGET_PC  // enemy attribute integration
+    adjustFinalBattleGanondorfPlacement(i_this);
+#endif
     fopAc_ac_c* player = dComIfGp_getPlayer(0);
     cXyz acStack_30;
     cXyz cStack_3c;
@@ -187,6 +325,27 @@ static int daObj_Gb_Create(fopAc_ac_c* actor) {
         }
         if (i_this->field_0x57c == 0) {
             i_this->scale.x = local_47 * 0.01f;
+#if TARGET_PC  // enemy attribute integration
+
+            // The final Ganondorf barrier is spawned as a separate Obj_gb actor,
+            // so inherit Ganondorf's randomized size explicitly.  Keep the
+            // barrier's encoded vanilla 1.5x ring scale as the baseline and
+            // scale its horizontal radius (X/Z). Place the ring about Link's
+            // start position before registering collision, and put Ganondorf
+            // ahead of Link once the script has finished placing the actors.
+            // Ground fitting keeps the authored top and reaches the terrain.
+            if (fopAcM_GetParam(i_this) == 0xF0069600) {
+                i_this->field_0x684 = 0.0f;
+                fopAc_ac_c* ganondorf = NULL;
+                if (fopAcM_SearchByName(fpcNm_B_GND_e, &ganondorf) && ganondorf != NULL) {
+                    const f32 size = actor_attr::enemy_size_multiplier(ganondorf);
+                    i_this->scale.x *= size;
+                    if (size != 1.0f) {
+                        i_this->field_0x684 = 1.0f;
+                    }
+                }
+            }
+#endif
         } else {
             i_this->scale.x = local_47 * 0.5f;
         }
@@ -208,6 +367,10 @@ static int daObj_Gb_Create(fopAc_ac_c* actor) {
             return cPhs_ERROR_e;
         }
         OS_REPORT("//////////////OBJ_GB SET 2 !!\n");
+#if TARGET_PC  // enemy attribute integration
+        adjustFinalBattleBarrierPlacement(i_this);
+        adjustFinalBattleBarrierGround(i_this);
+#endif
         if (i_this->mpBgW != NULL) {
             if (dComIfG_Bgsp().Regist(i_this->mpBgW, i_this) != 0) {
                 return cPhs_ERROR_e;
