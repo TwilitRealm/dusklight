@@ -3,6 +3,12 @@
 //
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
+#if TARGET_PC  // additional actor attribute integration
+
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+#endif
 
 #include <types.h>
 
@@ -78,11 +84,15 @@ void daE_OctBg_c::setAction(actionFunc param_0) {
 
 void daE_OctBg_c::setSparkEffect() {
     mDoMtx_stack_c::copy(field_0x5b4->getModel()->getAnmMtx(1));
+#if TARGET_PC  // enemy attribute integration
+    cXyz effectScale = actor_attr::enemy_size_multiplier(this, 1.0f);
+#endif
     for (int i = 0; i < 5; i++) {
         field_0xb98[i] = dComIfGp_particle_set(field_0xb98[i], enemyBombID[i], &current.pos, &tevStr);
         JPABaseEmitter* emitter = dComIfGp_particle_getEmitter(field_0xb98[i]);
         if (emitter != NULL) {
             emitter->setGlobalRTMatrix(mDoMtx_stack_c::get());
+            IF_DUSK(emitter->setGlobalScale(effectScale);)
         }
     }
 }
@@ -96,12 +106,23 @@ bool daE_OctBg_c::checkExplode() {
             fopAcM_delete(this);
             return true;
         }
+#if TARGET_PC  // enemy attribute integration
+        if (field_0xb90 < actor_attr::enemy_sync_timer(this, 30)) {
+            actor_attr::enemy_angle_add(this, field_0xb94 , 0x1000);
+        } else if (field_0xb90 < actor_attr::enemy_sync_timer(this, 45)) {
+            actor_attr::enemy_angle_add(this, field_0xb94 , 0x800);
+#else
         if (field_0xb90 < 30) {
             field_0xb94 += 0x1000;
         } else if (field_0xb90 < 45) {
             field_0xb94 += 0x800;
+#endif
         } else {
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_angle_add(this, field_0xb94 , 0x300);
+#else
             field_0xb94 += 0x300;
+#endif
         }
         field_0x5bc.startCreatureSoundLevel(Z2SE_OBJ_BOMB_IGNITION, 0, dComIfGp_getReverb( fopAcM_GetRoomNo(this)));
     }
@@ -125,7 +146,7 @@ void daE_OctBg_c::action() {
         damage_check();
         (this->*field_0xb58)();
         shape_angle = current.angle;
-        fopAcM_posMoveF(this, field_0x884.GetCCMoveP());
+        DUSK_IF_ELSE(actor_attr::enemy_pos_move_f(this, field_0x884.GetCCMoveP()), fopAcM_posMoveF(this, field_0x884.GetCCMoveP()));
         field_0x6ac.CrrPos(dComIfG_Bgsp());
         field_0x5bc.setLinkSearch(field_0xb74);
         if (field_0xb8c > 0x2000) {
@@ -133,7 +154,7 @@ void daE_OctBg_c::action() {
         } else if (field_0xb8c < -0x2000) {
             field_0xb8c = -0x2000;
         }
-        cLib_addCalcAngleS(&field_0xb84[3], field_0xb8c, 0x10, 0x100, 0x10);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(this, &field_0xb84[3], field_0xb8c, 0x10, 0x100, 0x10), cLib_addCalcAngleS(&field_0xb84[3], field_0xb8c, 0x10, 0x100, 0x10));
         f32 dVar9 = field_0xb80 / 4096.0f;
         if (dVar9 > 1.0f) {
             dVar9 = 1.0f;
@@ -186,27 +207,37 @@ void daE_OctBg_c::cc_set() {
     cStack_1c.set(0.0f, l_HIO.field_0x18 * 25.0f, 0.0f);
     mDoMtx_stack_c::multVec(&cStack_1c, &eyePos);
     attention_info.position = eyePos;
-    attention_info.position.y += l_HIO.field_0x18 * 25.0f;
+    attention_info.position.y += DUSK_IF_ELSE(l_HIO.field_0x18 * 25.0f * actor_attr::enemy_size_multiplier(this), l_HIO.field_0x18 * 25.0f);
     mDoMtx_stack_c::copy(model->getAnmMtx(0));
     cStack_1c.set(0.0f, l_HIO.field_0x18 * 25.0f, 0.0f);
     mDoMtx_stack_c::multVec(&cStack_1c, &cStack_28);
     field_0x8c0.SetC(cStack_28);
-    field_0x8c0.SetR(l_HIO.field_0x18 * 35.0f);
+    field_0x8c0.SetR(DUSK_IF_ELSE((l_HIO.field_0x18 * 35.0f) * actor_attr::enemy_size_multiplier(this), l_HIO.field_0x18 * 35.0f));
     dComIfG_Ccsp()->Set(&field_0x8c0);
     mDoMtx_stack_c::copy(model->getAnmMtx(0));
     cStack_1c.set(0.0f, l_HIO.field_0x18 * 25.0f, l_HIO.field_0x18 * 20.0f);
     mDoMtx_stack_c::multVec(&cStack_1c, &cStack_28);
     field_0x9f8.SetC(cStack_28);
-    field_0x9f8.SetR(l_HIO.field_0x18 * 20.0f);
+    field_0x9f8.SetR(DUSK_IF_ELSE((l_HIO.field_0x18 * 20.0f) * actor_attr::enemy_size_multiplier(this), l_HIO.field_0x18 * 20.0f));
     dComIfG_Ccsp()->Set(&field_0x9f8);
 }
 
 void daE_OctBg_c::mtx_set() {
+#if TARGET_PC  // enemy attribute integration
+
+    const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(this);
+#endif
     mDoMtx_stack_c::transS(current.pos.x, current.pos.y, current.pos.z);
-    mDoMtx_stack_c::transM(0.0f, l_HIO.field_0x18 * 25.0f, 0.0f);
+    mDoMtx_stack_c::transM(0.0f, DUSK_IF_ELSE(l_HIO.field_0x18 * 25.0f * sizeMultiplier, l_HIO.field_0x18 * 25.0f), 0.0f);
     mDoMtx_stack_c::ZXYrotM(shape_angle.x, shape_angle.y, shape_angle.z);
+#if TARGET_PC  // enemy attribute integration
+    mDoMtx_stack_c::transM(0.0f, l_HIO.field_0x18 * -25.0f * sizeMultiplier, 0.0f);
+    const f32 modelScale = l_HIO.field_0x18 * sizeMultiplier;
+    mDoMtx_stack_c::scaleM(modelScale, modelScale, modelScale);
+#else
     mDoMtx_stack_c::transM(0.0f, l_HIO.field_0x18 * -25.0f, 0.0f);
     mDoMtx_stack_c::scaleM(l_HIO.field_0x18, l_HIO.field_0x18, l_HIO.field_0x18);
+#endif
     J3DModel* model = field_0x5b4->getModel();
     model->setBaseTRMtx(mDoMtx_stack_c::get());
     for (u16 i = 1; i < model->getModelData()->getJointNum(); i++) {
@@ -224,7 +255,7 @@ bool daE_OctBg_c::checkNormalAttack() {
         return false;
     }
     if (unk_bss_7A < l_HIO.field_0x20 &&
-         home.pos.absXZ(player->current.pos) < l_HIO.field_0x08 &&
+         DUSK_IF_ELSE(home.pos.absXZ(player->current.pos) < actor_attr::enemy_size_value(this, l_HIO.field_0x08) &&, home.pos.absXZ(player->current.pos) < l_HIO.field_0x08 &&)
         player->current.pos.y < l_HIO.field_0x0c &&
           !fopAcM_otherBgCheck(this, player))
     {
@@ -261,16 +292,23 @@ void daE_OctBg_c::born_swim() {
         attention_info.flags = 0;
         speedF = 3.0f;
         speed.y = 10.0f;
-        field_0xbae = cM_rndF(18.0f);
+        field_0xbae = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(18.0f)), cM_rndF(18.0f));
         field_0xb70++;
     } else if (field_0xb70 == -1) {
         field_0x8c0.SetTgType(0xd8fbfdff);
         attention_info.flags = fopAc_AttnFlag_BATTLE_e;
     } else if (field_0xbae == 0) {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &current.angle.x, 0, 0x10, 0xc00, 0x200);
+        actor_attr::enemy_chase_action_float(this, &speedF, 0.0f, 0.05f);
+        actor_attr::enemy_chase_action_float(this, &speed.y, 0.0f, 0.2f);
+        if (actor_attr::enemy_add_action_angle(this, &field_0xb80, 0x400, 0x20, 0x400, 0x80) < 0x80 && !speedF &&
+#else
         cLib_addCalcAngleS(&current.angle.x, 0, 0x10, 0xc00, 0x200);
         cLib_chaseF(&speedF, 0.0f, 0.05f);
         cLib_chaseF(&speed.y, 0.0f, 0.2f);
         if (cLib_addCalcAngleS(&field_0xb80, 0x400, 0x20, 0x400, 0x80) < 0x80 && !speedF &&
+#endif
             !speed.y)
         {
             if (checkChase()) {
@@ -279,7 +317,11 @@ void daE_OctBg_c::born_swim() {
                 setAction(&daE_OctBg_c::swim);
             }
         }
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_angle_add(this, field_0xb7c , field_0xb80);
+#else
         field_0xb7c += field_0xb80;
+#endif
     }
 }
 
@@ -295,7 +337,7 @@ void daE_OctBg_c::swim() {
         field_0x660.y = current.pos.y + cM_rndFX(2000.0f);
         field_0x660.x = cM_ssin(field_0xb96) * 500.0f;
         field_0x660.z = cM_scos(field_0xb96) * 500.0f;
-        field_0xbae = cM_rndFX(30.0f) + 100.0f;
+        field_0xbae = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(30.0f) + 100.0f), cM_rndFX(30.0f) + 100.0f);
         attention_info.distances[fopAc_attn_BATTLE_e] = 3;
         field_0xb70++;
     } else if (field_0xb70 == -1) {
@@ -314,14 +356,29 @@ void daE_OctBg_c::swim() {
             {
                 field_0x660.y = current.pos.y + cM_rndF(2000.0f);
             }
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_chase_action_angle(this, &current.angle.y, field_0xb96, 0x200);
+            actor_attr::enemy_chase_action_angle(this, &current.angle.x, -cLib_targetAngleX(&current.pos, &field_0x660),
+#else
             cLib_chaseAngleS(&current.angle.y, field_0xb96, 0x200);
             cLib_chaseAngleS(&current.angle.x, -cLib_targetAngleX(&current.pos, &field_0x660),
+#endif
                              0x200);
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_chase_action_float(this, &speedF, cM_scos(current.angle.x) * 4.0f, 0.2f);
+            actor_attr::enemy_chase_action_float(this, &speed.y, cM_ssin(current.angle.x) * -4.0f, 0.2f);
+#else
             cLib_chaseF(&speedF, cM_scos(current.angle.x) * 4.0f, 0.2f);
             cLib_chaseF(&speed.y, cM_ssin(current.angle.x) * -4.0f, 0.2f);
+#endif
             field_0xb8c = field_0xb96 - current.angle.y;
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_add_action_angle(this, &field_0xb80, 0x1000, 0x20, 0x400, 0x80);
+            actor_attr::enemy_angle_add(this, field_0xb7c , field_0xb80);
+#else
             cLib_addCalcAngleS(&field_0xb80, 0x1000, 0x20, 0x400, 0x80);
             field_0xb7c += field_0xb80;
+#endif
             if (unk_bss_7B != 0 &&
                 unk_bss_79 < unk_bss_78 >> 1)
             {
@@ -361,7 +418,7 @@ bool daE_OctBg_c::checkCoreFishAttack() {
 void daE_OctBg_c::chase_core() {
     if (field_0xb70 == 0) {
         setChasePos(field_0x660, cM_rndF(l_HIO.field_0x10));
-        field_0xbaf = cM_rndFX(20.0f) + 100.0f;
+        field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(20.0f) + 100.0f), cM_rndFX(20.0f) + 100.0f);
         field_0xb70++;
     } else if (field_0xb70 != -1) {
         cXyz acStack_2c;
@@ -378,32 +435,58 @@ void daE_OctBg_c::chase_core() {
             field_0xb96 = cLib_targetAngleY(&current.pos, &acStack_2c);
             field_0xb8c = field_0xb96 - current.angle.y;
             if (abs(current.angle.y - field_0xb96) > 0x4000) {
+#if TARGET_PC  // enemy attribute integration
+                actor_attr::enemy_chase_action_angle(this, &current.angle.y, field_0xb96, 0x400);
+                actor_attr::enemy_chase_action_angle(this, &current.angle.x, -cLib_targetAngleX(&current.pos, &acStack_2c), 0x400);
+#else
                 cLib_chaseAngleS(&current.angle.y, field_0xb96, 0x400);
                 cLib_chaseAngleS(&current.angle.x, -cLib_targetAngleX(&current.pos, &acStack_2c), 0x400);
+#endif
                 if (current.pos.abs(acStack_2c) < l_HIO.field_0x10 - 100.0f) {
+#if TARGET_PC  // enemy attribute integration
+                    actor_attr::enemy_chase_action_float(this, &speedF, cM_scos(current.angle.x) * 8.0f, 0.2f);
+                    actor_attr::enemy_chase_action_float(this, &speed.y, cM_ssin(current.angle.x) * -8.0f, 0.2f);
+                    actor_attr::enemy_add_action_angle(this, &field_0xb80, 0xc00, 0x20, 0x400, 0x80);
+#else
                     cLib_chaseF(&speedF, cM_scos(current.angle.x) * 8.0f, 0.2f);
                     cLib_chaseF(&speed.y, cM_ssin(current.angle.x) * -8.0f, 0.2f);
                     cLib_addCalcAngleS(&field_0xb80, 0xc00, 0x20, 0x400, 0x80);
+#endif
                 }
             } else {
+#if TARGET_PC  // enemy attribute integration
+                actor_attr::enemy_chase_action_angle(this, &current.angle.y, (int)field_0xb96, 0x200);
+                actor_attr::enemy_chase_action_angle(this, &current.angle.x, -cLib_targetAngleX(&current.pos, &acStack_2c),
+#else
                 cLib_chaseAngleS(&current.angle.y, (int)field_0xb96, 0x200);
                 cLib_chaseAngleS(&current.angle.x, -cLib_targetAngleX(&current.pos, &acStack_2c),
+#endif
                                  0x200);
                 ;
                 if (current.pos.abs(acStack_2c) > l_HIO.field_0x10 - 100.0f) {
+#if TARGET_PC  // enemy attribute integration
+                    actor_attr::enemy_chase_action_float(this, &speedF, 18.0f * cM_scos(current.angle.x), 0.4f);
+                    actor_attr::enemy_chase_action_float(this, &speed.y, (-18.0f * cM_ssin(current.angle.x)), 0.4f);
+                    actor_attr::enemy_add_action_angle(this, &field_0xb80, 0x2400, 0x20, 0x400, 0x80);
+#else
                     cLib_chaseF(&speedF, 18.0f * cM_scos(current.angle.x), 0.4f);
                     cLib_chaseF(&speed.y, (-18.0f * cM_ssin(current.angle.x)), 0.4f);
                     cLib_addCalcAngleS(&field_0xb80, 0x2400, 0x20, 0x400, 0x80);
+#endif
                 }
             }
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_angle_add(this, field_0xb7c , field_0xb80);
+#else
             field_0xb7c += field_0xb80;
+#endif
             if (checkCoreFishAttack()) {
                 setAction(&daE_OctBg_c::core_fish_attack);
             } else if (dComIfGp_event_runCheck()) {
                 setAction(&daE_OctBg_c::swim);
             } else if (field_0xbaf == 0) {
                 setChasePos(field_0x660, cM_rndF(l_HIO.field_0x10));
-                field_0xbaf = cM_rndFX(20.0f) + 100.0f;
+                field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(20.0f) + 100.0f), cM_rndFX(20.0f) + 100.0f);
             }
         }
     }
@@ -414,7 +497,7 @@ void daE_OctBg_c::normal_attack() {
     if (field_0xb70 == 0) {
         field_0xb74 = true;
         unk_bss_7A++;
-        field_0xbae = cM_rndFX(20.0f) + 60.0f;
+        field_0xbae = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(20.0f) + 60.0f), cM_rndFX(20.0f) + 60.0f);
         field_0xb70++;
     } else if (field_0xb70 == -1) {
         field_0xb74 = false;
@@ -429,15 +512,27 @@ void daE_OctBg_c::normal_attack() {
         }
         field_0xb96 = cLib_targetAngleY(&current.pos, &acStack_34);
         field_0xb8c = field_0xb96 - current.angle.y;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_angle(this, &current.angle.y, field_0xb96, 0x400);
+        actor_attr::enemy_chase_action_angle(this, &current.angle.x, -cLib_targetAngleX(&current.pos, &acStack_34), 0x400);
+        actor_attr::enemy_chase_action_float(this, &speedF, cM_scos(current.angle.x) * 0.1f, 0.2f);
+        actor_attr::enemy_chase_action_float(this, &speed.y, cM_ssin(current.angle.x) * -0.1f, 0.2f);
+#else
         cLib_chaseAngleS(&current.angle.y, field_0xb96, 0x400);
         cLib_chaseAngleS(&current.angle.x, -cLib_targetAngleX(&current.pos, &acStack_34), 0x400);
         cLib_chaseF(&speedF, cM_scos(current.angle.x) * 0.1f, 0.2f);
         cLib_chaseF(&speed.y, cM_ssin(current.angle.x) * -0.1f, 0.2f);
+#endif
         field_0xb8c = fopAcM_searchPlayerAngleY(this) - current.angle.y;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &field_0xb80, 0x400, 0x20, 0x400, 0x80);
+        actor_attr::enemy_angle_add(this, field_0xb7c , field_0xb80);
+#else
         cLib_addCalcAngleS(&field_0xb80, 0x400, 0x20, 0x400, 0x80);
         field_0xb7c += field_0xb80;
+#endif
         if (field_0xbae == 0) {
-            field_0xbae = 120;
+            field_0xbae = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 120), 120);
             field_0xb70++;
         }
     } else if (field_0xb70 == 2) {
@@ -450,16 +545,32 @@ void daE_OctBg_c::normal_attack() {
         }
         field_0xb96 = cLib_targetAngleY(&current.pos, &cStack_40);
         field_0xb8c = field_0xb96 - current.angle.y;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_angle(this, &current.angle.y, field_0xb96, 0x400);
+        actor_attr::enemy_chase_action_angle(this, &current.angle.x, -cLib_targetAngleX(&current.pos, &cStack_40), 0x400);
+        actor_attr::enemy_chase_action_float(this, &speedF, cM_scos(current.angle.x) * 8.0f,
+#else
         cLib_chaseAngleS(&current.angle.y, field_0xb96, 0x400);
         cLib_chaseAngleS(&current.angle.x, -cLib_targetAngleX(&current.pos, &cStack_40), 0x400);
         cLib_chaseF(&speedF, cM_scos(current.angle.x) * 8.0f,
+#endif
                                  0.2f);
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_float(this, &speed.y, (cM_ssin(current.angle.x) * -8.0f),
+#else
         cLib_chaseF(&speed.y, (cM_ssin(current.angle.x) * -8.0f),
+#endif
                                  0.2f);
         field_0xb8c = fopAcM_searchPlayerAngleY(this) - current.angle.y;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &field_0xb80, 0x2400, 0x20, 0x400, 0x80);
+        actor_attr::enemy_angle_add(this, field_0xb7c, field_0xb80);
+        if (home.pos.absXZ(player->current.pos) >= actor_attr::enemy_size_value(this, l_HIO.field_0x08) && player->current.pos.y >= l_HIO.field_0x0c) {
+#else
         cLib_addCalcAngleS(&field_0xb80, 0x2400, 0x20, 0x400, 0x80);
         field_0xb7c = field_0xb7c + field_0xb80;
         if (home.pos.absXZ(player->current.pos) >= l_HIO.field_0x08 && player->current.pos.y >= l_HIO.field_0x0c) {
+#endif
             setAction(&daE_OctBg_c::swim);
         } else {
             if (dComIfGp_event_runCheck() || field_0xbae == 0) {
@@ -473,9 +584,9 @@ void daE_OctBg_c::core_fish_attack() {
     daPy_py_c* player = daPy_getPlayerActorClass();
     if (field_0xb70 == 0) {
         field_0xb74 = true;
-        field_0xbb0 = cM_rndF(50.0f) + 230.0f;
+        field_0xbb0 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndF(50.0f) + 230.0f), cM_rndF(50.0f) + 230.0f);
         setChasePos(field_0x660, cM_rndF(800.0f));
-        field_0xbaf = cM_rndFX(20.0f) + 40.0f;
+        field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(20.0f) + 40.0f), cM_rndFX(20.0f) + 40.0f);
         field_0xb70++;
     } else if (field_0xb70 == -1) {
         field_0xb74 = false;
@@ -491,12 +602,21 @@ void daE_OctBg_c::core_fish_attack() {
         cStack_50 = cStack_5c + field_0x660;
         field_0xb96 = cLib_targetAngleY(&current.pos, &cStack_50);
         field_0xb8c = field_0xb96 - current.angle.y;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_angle(this, &current.angle.y, field_0xb96, 0x200);
+        actor_attr::enemy_chase_action_angle(this, &current.angle.x, -cLib_targetAngleX(&current.pos, &cStack_50), 0x200);
+        actor_attr::enemy_chase_action_float(this, &speedF, 14.0f * cM_scos(current.angle.x), 0.4f);
+        actor_attr::enemy_chase_action_float(this, &speed.y, -14.0f * cM_ssin(current.angle.x), 0.4f);
+        actor_attr::enemy_add_action_angle(this, &field_0xb80, 0x3000, 0x20, 0x400, 0x80);
+        actor_attr::enemy_angle_add(this, field_0xb7c , field_0xb80);
+#else
         cLib_chaseAngleS(&current.angle.y, field_0xb96, 0x200);
         cLib_chaseAngleS(&current.angle.x, -cLib_targetAngleX(&current.pos, &cStack_50), 0x200);
         cLib_chaseF(&speedF, 14.0f * cM_scos(current.angle.x), 0.4f);
         cLib_chaseF(&speed.y, -14.0f * cM_ssin(current.angle.x), 0.4f);
         cLib_addCalcAngleS(&field_0xb80, 0x3000, 0x20, 0x400, 0x80);
         field_0xb7c += field_0xb80;
+#endif
         if (field_0xbb0 == 0) {
             setAction(&daE_OctBg_c::chase_core);
         } else if (field_0xbaf == 0) {
@@ -508,27 +628,27 @@ void daE_OctBg_c::core_fish_attack() {
                 if (current.pos.y < groundY + 200.0f) {
                     if (cStack_5c.y < groundY + 200.0f) {
                         in_f31 = cM_rndF(50.0f) + 20.0f;
-                        field_0xbaf = cM_rndFX(20.0f) + 40.0f;
+                        field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(20.0f) + 40.0f), cM_rndFX(20.0f) + 40.0f);
                     } else if (current.pos.abs(cStack_5c) < 400.0f) {
                         in_f31 = cM_rndF(50.0f) + 20.0f;
-                        field_0xbaf = cM_rndFX(20.0f) + 40.0f;
+                        field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(20.0f) + 40.0f), cM_rndFX(20.0f) + 40.0f);
                     } else {
                         in_f31 = cM_rndF(400.0f) + 80.0f;
-                        field_0xbaf = cM_rndFX(80.0f) + 100.0f;
+                        field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(80.0f) + 100.0f), cM_rndFX(80.0f) + 100.0f);
                     }
                 }
             #if AVOID_UB
                 else {
                     in_f31 = cM_rndF(400.0f) + 80.0f;
-                    field_0xbaf = cM_rndFX(80.0f) + 100.0f;
+                    field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(80.0f) + 100.0f), cM_rndFX(80.0f) + 100.0f);
                 }
             #endif
             } else if (current.pos.abs(cStack_5c) < 400.0f) {
                 in_f31 = cM_rndF(50.0f) + 20.0f;
-                field_0xbaf = cM_rndFX(20.0f) + 40.0f;
+                field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(20.0f) + 40.0f), cM_rndFX(20.0f) + 40.0f);
             } else {
                 in_f31 = cM_rndF(400.0f) + 80.0f;
-                field_0xbaf = cM_rndFX(80.0f) + 100.0f;
+                field_0xbaf = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, cM_rndFX(80.0f) + 100.0f), cM_rndFX(80.0f) + 100.0f);
             }
             setChasePos(field_0x660, in_f31);
         }
@@ -538,7 +658,7 @@ void daE_OctBg_c::core_fish_attack() {
 void daE_OctBg_c::back_swim() {
     daPy_py_c* player = daPy_getPlayerActorClass();
     if (field_0xb70 == 0) {
-        field_0xbae = 48;
+        field_0xbae = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 48), 48);
         field_0xb80 = 0x4000;
         field_0xb82 = 0x1000;
         speedF = -10.0f;
@@ -546,14 +666,28 @@ void daE_OctBg_c::back_swim() {
         field_0xb70++;
     } else if (field_0xb70 != -1) {
         cXyz cStack_30;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(this, &field_0xb80, 0x1000, 8, 0x400, 0x100);
+        actor_attr::enemy_add_action_angle(this, &current.angle.y, fopAcM_searchPlayerAngleY(this), 0x10, 0x400, 0x100);
+#else
         cLib_addCalcAngleS(&field_0xb80, 0x1000, 8, 0x400, 0x100);
         cLib_addCalcAngleS(&current.angle.y, fopAcM_searchPlayerAngleY(this), 0x10, 0x400, 0x100);
+#endif
         cStack_30 = player->current.pos;
+#if TARGET_PC  // enemy attribute integration
+        cStack_30.y += actor_attr::enemy_add_action_angle(this, &current.angle.x,
+#else
         cStack_30.y += cLib_addCalcAngleS(&current.angle.x,
+#endif
                                           -cLib_targetAngleX(&current.pos, &player->current.pos),
                                           0x10, 0x400, 0x100);
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_chase_action_float(this, &speedF, cM_scos(current.angle.x) * 0.1f, 0.4f);
+        actor_attr::enemy_chase_action_float(this, &speed.y, cM_ssin(current.angle.x) * 0.1f, 0.4f);
+#else
         cLib_chaseF(&speedF, cM_scos(current.angle.x) * 0.1f, 0.4f);
         cLib_chaseF(&speed.y, cM_ssin(current.angle.x) * 0.1f, 0.4f);
+#endif
         if (field_0xbae == 0) {
             if (field_0xbac != 0) {
                 setAction(&daE_OctBg_c::chase_core);
@@ -597,10 +731,10 @@ void daE_OctBg_c::hook() {
 }
 
 void daE_OctBg_c::damage() {
-    field_0xb90 = 120;
+    field_0xb90 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 120), 120);
     if (field_0xb70 == 0) {
         J3DAnmTransform* transform = (J3DAnmTransform*)dComIfG_getObjectRes("E_bg", 6);
-        field_0x5b4->setAnm(transform, 0, 3.0f, 1.0f, 0.0f, -1.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_set_animation(this, field_0x5b4, transform, 0, 3.0f, 1.0f, 0.0f, -1.0f), field_0x5b4->setAnm(transform, 0, 3.0f, 1.0f, 0.0f, -1.0f));
         field_0xb82 = 0;
         field_0xb8c = 0;
         field_0x8c0.OffTgSetBit();
@@ -612,14 +746,19 @@ void daE_OctBg_c::damage() {
         speed.y = 0.0f;
         field_0xb70++;
     } else if (field_0xb70 != -1) {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_angle_add(this, current.angle.y , field_0xb96);
+        actor_attr::enemy_angle_add(this, current.angle.x , field_0xb96);
+#else
         current.angle.y += field_0xb96;
         current.angle.x += field_0xb96;
+#endif
         if (field_0x6ac.ChkGroundHit()) {
-            cLib_chaseAngleS(&field_0xb96, 0, 0x80);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_angle(this, &field_0xb96, 0, 0x80), cLib_chaseAngleS(&field_0xb96, 0, 0x80));
         } else {
-            cLib_chaseAngleS(&field_0xb96, 0x100, 0x60);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_angle(this, &field_0xb96, 0x100, 0x60), cLib_chaseAngleS(&field_0xb96, 0x100, 0x60));
         }
-        cLib_chaseF(&speedF, 0.0f, 0.2f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, 0.0f, 0.2f), cLib_chaseF(&speedF, 0.0f, 0.2f));
         if (speedF < 5.0f) {
             gravity = -0.1f;
             maxFallSpeed = -3.0f;
@@ -635,47 +774,67 @@ void daE_OctBg_c::damage() {
 void daE_OctBg_c::bomb_wait() {
     if (field_0xb70 == 0) {
         J3DAnmTransform* transform = (J3DAnmTransform*)dComIfG_getObjectRes("E_bg", 5);
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_set_animation(this, field_0x5b4, transform, 2, 3.0f, 1.0f, 0.0f,
+#else
         field_0x5b4->setAnm(transform, 2, 3.0f, 1.0f, 0.0f,
+#endif
                                  -1.0f);
         field_0xb82 = 0;
         field_0xb8c = 0;
         field_0xb70++;
     } else if (field_0xb70 != -1) {
         if (field_0xb70 == 1) {
+#if TARGET_PC  // enemy attribute integration
+            field_0xb90 = actor_attr::enemy_sync_timer(this, 120);
+            actor_attr::enemy_angle_add(this, current.angle.y , field_0xb96);
+            actor_attr::enemy_angle_add(this, current.angle.x , field_0xb96);
+#else
             field_0xb90 = 120;
             current.angle.y += field_0xb96;
             current.angle.x += field_0xb96;
+#endif
             if (field_0x6ac.ChkGroundHit()) {
                 field_0xb70++;
                 speed.y = 1.0f;
             } else {
-                cLib_chaseAngleS(&field_0xb96, 0x100, 0x80);
+                DUSK_IF_ELSE(actor_attr::enemy_chase_action_angle(this, &field_0xb96, 0x100, 0x80), cLib_chaseAngleS(&field_0xb96, 0x100, 0x80));
             }
             if (speedF < 5.0f) {
                 gravity = -0.1f;
                 maxFallSpeed = -3.0f;
             }
-            cLib_chaseF(&speedF, 0.0f, 0.2f);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, 0.0f, 0.2f), cLib_chaseF(&speedF, 0.0f, 0.2f));
         } else if (field_0xb70 == 2) {
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_angle_add(this, current.angle.y , field_0xb96);
+#else
             current.angle.y += field_0xb96;
+#endif
             if (field_0x6ac.ChkGroundHit()) {
                 if (field_0xbae != 0) {
-                    cLib_chaseAngleS(&current.angle.x, -0x8000, 0x80);
+                    DUSK_IF_ELSE(actor_attr::enemy_chase_action_angle(this, &current.angle.x, -0x8000, 0x80), cLib_chaseAngleS(&current.angle.x, -0x8000, 0x80));
                 }
-                cLib_chaseAngleS(&field_0xb96, 0, 0x80);
+                DUSK_IF_ELSE(actor_attr::enemy_chase_action_angle(this, &field_0xb96, 0, 0x80), cLib_chaseAngleS(&field_0xb96, 0, 0x80));
                 if (setBombCarry(0) != 0) {
                     return;
                 }
             } else {
+#if TARGET_PC  // enemy attribute integration
+                field_0xbae = actor_attr::enemy_sync_timer(this, 10);
+                actor_attr::enemy_chase_action_angle(this, &field_0xb96, 0x100, 0x80);
+                actor_attr::enemy_chase_action_angle(this, &current.angle.x, -0x8000, 0x80);
+#else
                 field_0xbae = 10;
                 cLib_chaseAngleS(&field_0xb96, 0x100, 0x80);
                 cLib_chaseAngleS(&current.angle.x, -0x8000, 0x80);
+#endif
             }
             if (speedF < 5.0f) {
                 gravity = -0.1f;
                 maxFallSpeed = -3.0f;
             }
-            cLib_chaseF(&speedF, 0.0, 0.2f);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &speedF, 0.0, 0.2f), cLib_chaseF(&speedF, 0.0, 0.2f));
         }
     }
 }
@@ -701,12 +860,12 @@ void daE_OctBg_c::damage_check() {
                 field_0xb30.mpCollider = field_0x8c0.GetTgHitObj();
                 cc_at_check(this, &field_0xb30);
                 if (field_0xb30.mpCollider->ChkAtType(0xd8000000)) {
-                    field_0xbad = 20;
+                    field_0xbad = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 20), 20);
                 } else {
-                    field_0xbad = 10;
+                    field_0xbad = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
                 }
                 if (field_0xb30.mHitStatus != 0) {
-                    field_0xbad = 10;
+                    field_0xbad = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 10), 10);
                 }
                 dScnPly_c::setPauseTimer(0);
                 field_0x8c0.ClrTgHit();
@@ -809,19 +968,33 @@ int daE_OctBg_c::create() {
         attention_info.flags = fopAc_AttnFlag_BATTLE_e;
         onWolfNoLock();
         fopAcM_SetMtx(this, field_0x5b4->getModel()->getBaseTRMtx());
+#if TARGET_PC  // enemy attribute integration
+        const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(this);
+        fopAcM_SetMin(this, -50.0f * sizeMultiplier, -50.0f * sizeMultiplier, -50.0f * sizeMultiplier);
+        fopAcM_SetMax(this, 50.0f * sizeMultiplier, 50.0f * sizeMultiplier, 50.0f * sizeMultiplier);
+#else
         fopAcM_SetMin(this, -50.0f, -50.0f, -50.0f);
         fopAcM_SetMax(this, 50.0f, 50.0f, 50.0f);
+#endif
         field_0x6ac.Set(fopAcM_GetPosition_p(this), fopAcM_GetOldPosition_p(this), this, 1,
                             &field_0x66c, fopAcM_GetSpeed_p(this), NULL, NULL);
+#if TARGET_PC  // enemy attribute integration
+        field_0x66c.SetWall(l_HIO.field_0x18 * 10.0f * sizeMultiplier,
+                                l_HIO.field_0x18 * 20.0f * sizeMultiplier);
+        health = actor_attr::enemy_health_value(this, 10.0f);
+        field_0x560 = health;
+#else
         field_0x66c.SetWall(l_HIO.field_0x18 * 10.0f,
                                 l_HIO.field_0x18 * 20.0f);
         health = 10;
         field_0x560 = 10;
+#endif
         field_0x884.Init(100, 0, this);
         field_0x8c0.Set(cc_obg_src);
         field_0x8c0.SetStts(&field_0x884);
         field_0x9f8.Set(cc_obg_at_src);
         field_0x9f8.SetStts(&field_0x884);
+        IF_DUSK(field_0x9f8.SetAtAtp(actor_attr::enemy_attack_power_byte(this, 1.0f));)
         field_0x5bc.init(&current.pos, &eyePos, 3, 1);
         field_0x5bc.setEnemyName("E_octbg");
         field_0xb30.mpSound = &field_0x5bc;
@@ -861,8 +1034,14 @@ int daE_OctBg_c::draw() {
     }
     field_0x5b4->entryDL();
     cXyz cStack_48;
+#if TARGET_PC  // enemy attribute integration
+    const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(this);
+    cStack_48.set(current.pos.x, current.pos.y + 100.0f * sizeMultiplier, current.pos.z);
+    field_0xb78 = dComIfGd_setShadow(field_0xb78, 1, model, &cStack_48, 200.0f * sizeMultiplier, 0.0f, current.pos.y, field_0x6ac.GetGroundH(), field_0x6ac.m_gnd, &tevStr, 0, 1.0f, dDlst_shadowControl_c::getSimpleTex());
+#else
     cStack_48.set(current.pos.x, current.pos.y + 100.0f, current.pos.z);
     field_0xb78 = dComIfGd_setShadow(field_0xb78, 1, model, &cStack_48, 200.0f, 0.0f, current.pos.y, field_0x6ac.GetGroundH(), field_0x6ac.m_gnd, &tevStr, 0, 1.0f, dDlst_shadowControl_c::getSimpleTex());
+#endif
     return 1;
 }
 
