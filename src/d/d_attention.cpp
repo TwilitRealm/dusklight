@@ -10,14 +10,29 @@
 #include "f_op/f_op_actor_mng.h"
 #include "m_Do/m_Do_controller_pad.h"
 #include "SSystem/SComponent/c_counter.h"
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
 #include <cstring>
 
 #if TARGET_PC
+#include "d/d_bg_s_lin_chk.h"
 #include "dusk/settings.h"
 #endif
 
 #define DRAW_TYPE_YELLOW 0
 #define DRAW_TYPE_RED    1
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+static f32 attention_vertical_range_scale(const fopAc_ac_c* actor) {
+    const f32 size = actor_attr::resolve_multiplier(
+        actor,
+        ACTOR_ATTRIBUTE_SIZE
+    );
+
+    // Enlarged actors need more room; small actors should not become
+    // unnecessarily difficult to target.
+    return size > 1.0f ? size : 1.0f;
+}
 
 class dAttDrawParam_c : public JORReflexible {
 public:
@@ -459,6 +474,32 @@ static BOOL check_distace(cXyz* i_pos, s16 i_angle, cXyz* i_attnPos, f32 i_distM
     return true;
 }
 
+#if TARGET_PC  // enemy attribute integration
+static bool check_size_extended_lockon(fopAc_ac_c* owner, fopAc_ac_c* actor, cXyz* owner_attn_pos, const dist_entry& range, f32 dist_max, f32 size, u32 attn_type) {
+    if (size <= 1.0f || (attn_type != fopAc_attn_LOCK_e && attn_type != fopAc_attn_BATTLE_e)) {
+        return true;
+    }
+
+    // Estimate the target point at 100% size without moving the actor. Vanilla
+    // has no wall test, so preserve it when this point meets the vanilla limits.
+    cXyz vanilla_attn_pos = actor->current.pos + (actor->attention_info.position - actor->current.pos) / size;
+    cSGlobe vanilla_globe(vanilla_attn_pos - *owner_attn_pos);
+    cSAngle vanilla_angle(vanilla_globe.U() - fopAcM_GetShapeAngle_p(owner)->y);
+    cSAngle vanilla_inv_angle(cSAngle(vanilla_globe.U().Inv()) - fopAcM_GetShapeAngle_p(actor)->y);
+    if (!check_flontofplayer(range.mAngleSelect, vanilla_angle.Val(), vanilla_inv_angle.Val()) && check_distace(owner_attn_pos, vanilla_angle.Val(), &vanilla_attn_pos, dist_max, range.mDistanceAdjust, range.mUpperY, range.mLowerY)) {
+        return true;
+    }
+
+    // Only the extra eligibility from size requires a clear view. Ignore the
+    // target's own background collision so its surface cannot hide itself.
+    cXyz start = owner->eyePos;
+    cXyz end = actor->attention_info.position;
+    dBgS_LinChk line_chk;
+    line_chk.Set(&start, &end, actor);
+    return !dComIfG_Bgsp().LineCross(&line_chk);
+}
+#endif
+
 f32 dAttention_c::calcWeight(int i_listType, fopAc_ac_c* i_actor, f32 i_distance, s16 i_angle,
                              s16 i_invAngle, u32* i_attnType) {
     int i;
@@ -505,6 +546,7 @@ f32 dAttention_c::calcWeight(int i_listType, fopAc_ac_c* i_actor, f32 i_distance
         if (mPlayerAttentionFlags & type_tbl_entry->mask & i_actor->attention_info.flags) {
             dist_index = i_actor->attention_info.distances[type_tbl_entry->type];
             dist_entry* dist_tbl_entry = &dist_table[dist_index];
+            const f32 vertical_scale = attention_vertical_range_scale(i_actor);
 
             if (fopAcM_CheckStatus(i_actor, 0x20000000) ||
                 check_event_condition(type_tbl_entry->type, i_actor->eventInfo.getCondition())) {
@@ -512,9 +554,14 @@ f32 dAttention_c::calcWeight(int i_listType, fopAc_ac_c* i_actor, f32 i_distance
             } else if (check_flontofplayer(dist_tbl_entry->mAngleSelect, i_angle, i_invAngle)) {
                 dist_weight = 0.0f;
             } else if (!check_distace(&mOwnerAttnPos, i_angle, &i_actor->attention_info.position,
-                                      dist_tbl_entry->mDistMax, dist_tbl_entry->mDistanceAdjust, dist_tbl_entry->mUpperY,
-                                      dist_tbl_entry->mLowerY)) {
+                                      dist_tbl_entry->mDistMax, dist_tbl_entry->mDistanceAdjust,
+                                      dist_tbl_entry->mUpperY * vertical_scale,
+                                      dist_tbl_entry->mLowerY * vertical_scale)) {
                 dist_weight = 0.0f;
+#if TARGET_PC  // enemy attribute integration
+            } else if (i_listType == 'L' && !check_size_extended_lockon(mpPlayer, i_actor, &mOwnerAttnPos, *dist_tbl_entry, dist_tbl_entry->mDistMax, vertical_scale, type_tbl_entry->type)) {
+                dist_weight = 0.0f;
+#endif
             } else {
                 dist_weight = distace_weight(i_distance, i_angle, 0.5f);
             }
@@ -803,6 +850,7 @@ bool dAttention_c::chaseAttention() {
         if (weight <= 0.0f) {
             type = mLockOnList[offset].mType;
             int tbl_idx = actor->attention_info.distances[type];
+            const f32 vertical_scale = attention_vertical_range_scale(actor);
 
             if (!chkAttMask(type, actor->attention_info.flags)) {
                 return false;
@@ -810,10 +858,15 @@ bool dAttention_c::chaseAttention() {
                 return false;
             } else if (check_flontofplayer(dist_table[tbl_idx].mAngleSelect, a1.Val(), a2.Val())) {
                 return false;
+#if TARGET_PC  // enemy attribute integration
+            } else if (!check_size_extended_lockon(mpPlayer, actor, &mOwnerAttnPos, dist_table[tbl_idx], dist_table[tbl_idx].mDistMaxRelease, vertical_scale, type)) {
+                return false;
+#endif
             } else if (check_distace(&mOwnerAttnPos, a1.Val(), &actor->attention_info.position,
                                      dist_table[tbl_idx].mDistMaxRelease,
                                      dist_table[tbl_idx].mDistanceAdjust,
-                                     dist_table[tbl_idx].mUpperY, dist_table[tbl_idx].mLowerY)) {
+                                     dist_table[tbl_idx].mUpperY * vertical_scale,
+                                     dist_table[tbl_idx].mLowerY * vertical_scale)) {
                 f32 weight = distace_weight(g1.R(), a1.Val(), 0.5f);
                 mLockOnList[offset].mWeight = weight;
                 return true;
