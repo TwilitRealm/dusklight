@@ -61,6 +61,7 @@ UserSettings g_userSettings = {
         .autoSave {"game.autoSave", false},
         .enhancedMapMenus {"game.enhancedMapMenus", false},
         .aimingReticle {"game.aimingReticle", false},
+        .noHitStun {"game.noHitStun", false},
 
         // Preferences
         .enableMirrorMode {"game.enableMirrorMode", false},
@@ -295,6 +296,7 @@ void registerSettings() {
     Register(g_userSettings.game.autoSave);
     Register(g_userSettings.game.enhancedMapMenus);
     Register(g_userSettings.game.aimingReticle);
+    Register(g_userSettings.game.noHitStun);
     Register(g_userSettings.game.enableMirrorMode);
     Register(g_userSettings.game.invertCameraXAxis);
     Register(g_userSettings.game.invertCameraYAxis);

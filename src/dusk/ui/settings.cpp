@@ -1302,6 +1302,8 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             "Transform instantly by pressing R and Y simultaneously.");
         addOption("Aiming Reticle", getSettings().game.aimingReticle,
             "Shows the aiming reticle for bow and slingshot.");
+        addOption("No Hit Stun", getSettings().game.noHitStun,
+            "Disables hit stun frames after attacks.");
 
         leftPane.add_section("Speedrunning");
         config_bool_select(leftPane, rightPane, getSettings().game.speedrunMode,

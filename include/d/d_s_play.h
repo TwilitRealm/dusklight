@@ -81,7 +81,12 @@ public:
     #else
     static s8 isPause() { return pauseTimer; }
     #endif
+
+    #if TARGET_PC
+    static void setPauseTimer(s8 time);
+    #else
     static void setPauseTimer(s8 time) { nextPauseTimer = time; }
+    #endif
 
     static DUSK_GAME_DATA s8 pauseTimer;
     static DUSK_GAME_DATA s8 nextPauseTimer;

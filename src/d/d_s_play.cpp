@@ -1096,6 +1096,12 @@ void dScnPly_c::offReset() {
     }
 }
 
+#ifdef TARGET_PC
+void dScnPly_c::setPauseTimer(s8 time) {
+    nextPauseTimer = dusk::getSettings().game.noHitStun ? 0 : time;
+}
+#endif
+
 static int phase_00(dScnPly_c* i_this) {
     if (!i_this->resetGame()) {
         return cPhs_INIT_e;
@@ -1585,12 +1591,12 @@ static int phase_5(dScnPly_c* i_this) {
 
             OS_REPORT("\x1b[32mリソースプリロード %d/%d\n\x1b[m", goodLoads, loadNum);
         }
-    
+
         if (phase_state == cPhs_COMPLEATE_e) {
             resPreLoadTime1 = OSGetTime();
             OS_REPORT("\x1b[32mリソースプリロード %lld ms\n\x1b[m", OSTicksToMilliseconds(resPreLoadTime1 - resPreLoadTime0));
         }
-    
+
         return phase_state;
     }
 

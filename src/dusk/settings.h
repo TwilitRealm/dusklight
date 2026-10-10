@@ -226,6 +226,7 @@ struct UserSettings {
         ConfigVar<bool> autoSave;
         ConfigVar<bool> enhancedMapMenus;
         ConfigVar<bool> aimingReticle;
+        ConfigVar<bool> noHitStun;
 
         // Preferences
         ConfigVar<bool> enableMirrorMode;
