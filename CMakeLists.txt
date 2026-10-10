@@ -83,8 +83,10 @@ add_subdirectory(libs/freeverb)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(DUSK_GFX_DEBUG_GROUPS_DEFAULT ON)
+    set(DUSK_MODS_IMGUI ON)
 else ()
     set(DUSK_GFX_DEBUG_GROUPS_DEFAULT OFF)
+    set(DUSK_MODS_IMGUI OFF)
 endif ()
 
 option(DUSK_BUILD_WARNINGS "Enable compiler warnings (off by default)")
@@ -93,6 +95,7 @@ option(DUSK_PACKAGE_INSTALL "Install Dusklight with a Linux-native file structur
 option(DUSK_GFX_DEBUG_GROUPS "Report debug groups to the native graphics API" ${DUSK_GFX_DEBUG_GROUPS_DEFAULT})
 option(DUSK_ENABLE_CODE_MODS "Enable code mods" ON)
 option(DUSK_ENABLE_OPUS "Enable loading Opus audio files for mods" OFF)
+option(DUSK_MODS_IMGUI "Expose Dear Imgui to mods" ${DUSK_GFX_DEBUG_GROUPS_DEFAULT})
 
 
 set(DUSK_HAS_FUNCHOOK OFF)
@@ -307,6 +310,10 @@ endif ()
 if (DUSK_GFX_DEBUG_GROUPS)
     list(APPEND GAME_COMPILE_DEFS DUSK_GFX_DEBUG_GROUPS=1)
     target_compile_definitions(aurora_gx PRIVATE AURORA_GFX_DEBUG_GROUPS)
+endif ()
+
+if (DUSK_MODS_IMGUI)
+    list(APPEND GAME_COMPILE_DEFS DUSK_MODS_IMGUI=1)
 endif ()
 
 # game_debug is for game code files that we know work when compiled with DEBUG=1

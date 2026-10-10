@@ -28,6 +28,8 @@
 #include <chrono>
 #include <string_view>
 
+#include "dusk/imgui.hpp"
+
 #if _WIN32
 #define NOMINMAX
 #include "Windows.h"
@@ -296,6 +298,8 @@ namespace dusk {
         if (showMenu && ImGui::BeginMainMenuBar()) {
             m_menuTools.draw();
 
+            mods::imgui_run_point(IMGUI_CALLBACK_MENU_BAR);
+
             ImGui::EndMainMenuBar();
         }
         ImGui::PopStyleColor();
@@ -386,6 +390,8 @@ namespace dusk {
             m_menuTools.ShowSaveEditor();
             m_menuTools.ShowStateShare();
             m_menuTools.ShowActorSpawner();
+
+            mods::imgui_run_point(IMGUI_CALLBACK_FRAME);
         }
 
     }

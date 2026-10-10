@@ -32,13 +32,22 @@ function(setup_windows_exports target)
     foreach (_lib IN LISTS JSYSTEM_LIBRARIES)
         list(APPEND _rsp_lines "$<TARGET_FILE:${_lib}>")
     endforeach ()
+    if (DUSK_MODS_IMGUI)
+        list(APPEND _rsp_lines "$<TARGET_FILE:imgui>")
+    endif ()
     list(JOIN _rsp_lines "\n" _rsp_content)
     set(_rsp "${CMAKE_BINARY_DIR}/${_config_subdir}dusklight_exports_input.rsp")
     file(GENERATE OUTPUT "${_rsp}" CONTENT "${_rsp_content}")
 
-    set(_sdk_args)
-    foreach (_lib aurora_card aurora_core aurora_dvd aurora_gd aurora_gx aurora_mtx
+    set(_sdk_libs aurora_card aurora_core aurora_dvd aurora_gd aurora_gx aurora_mtx
             aurora_os aurora_pad aurora_si aurora_vi)
+
+    if (DUSK_MODS_IMGUI)
+        list(APPEND _sdk_libs "imgui")
+    endif ()
+
+    set(_sdk_args)
+    foreach (_lib ${_sdk_libs})
         if (TARGET ${_lib})
             list(APPEND _sdk_args --sdk-lib "$<TARGET_FILE:${_lib}>")
         endif ()

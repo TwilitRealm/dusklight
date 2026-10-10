@@ -76,6 +76,7 @@ extern const ServiceModule g_hostModule;
 extern const ServiceModule g_logModule;
 extern const ServiceModule g_resourceModule;
 extern const ServiceModule g_fileModule;
+extern const ServiceModule g_imguiModule;
 extern const ServiceModule g_interpModule;
 extern const ServiceModule g_httpModule;
 extern const ServiceModule g_netModule;
