@@ -5,13 +5,68 @@
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
+#if TARGET_PC  // additional actor attribute integration
+#include "SSystem/SComponent/c_math.h"
+#include "Z2AudioLib/Z2Instances.h"
+#include "d/actor/d_a_alink.h"
+#include "d/actor/d_a_b_ds.h"
+#include "d/actor/d_a_mirror.h"
+#endif
 #include "d/actor/d_a_spinner.h"
 #include "d/actor/d_a_tag_sppath.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#include "dusk/settings.h"
+#else
 #include "d/actor/d_a_alink.h"
 #include "d/actor/d_a_mirror.h"
 #include "Z2AudioLib/Z2Instances.h"
 #include "SSystem/SComponent/c_math.h"
+#endif
 #include "m_Do/m_Do_controller_pad.h"
+
+#if TARGET_PC  // enemy attribute integration
+static void* spinner_path_boss_search(void* i_actor, void* i_data) {
+#endif
+
+#if TARGET_PC  // enemy attribute integration
+    if (!fopAcM_IsActor(i_actor) || fopAcM_GetName(i_actor) != fpcNm_B_DS_e) {
+        return NULL;
+    }
+
+    fopAc_ac_c* actor = static_cast<fopAc_ac_c*>(i_actor);
+    u8 actorType = fopAcM_GetParamBit(actor, 0, 8);
+    if (actorType == 0xFF) {
+        actorType = daB_DS_c::TYPE_BATTLE_1;
+    }
+
+    return actorType == *static_cast<const u8*>(i_data) ? i_actor : NULL;
+}
+
+static f32 spinner_path_boss_speed_multiplier() {
+
+    u8 bossType = daB_DS_c::TYPE_BATTLE_2;
+    fopAc_ac_c* boss = static_cast<fopAc_ac_c*>(fpcM_Search(spinner_path_boss_search, &bossType));
+
+    if (boss == NULL) {
+        bossType = daB_DS_c::TYPE_BATTLE_1;
+        boss = static_cast<fopAc_ac_c*>(fpcM_Search(spinner_path_boss_search, &bossType));
+    }
+
+    if (boss == NULL) {
+        return 1.0f;
+    }
+
+    // Match the player-side spinner rule exactly: Stallord only modifies the
+    // spinner during phase 2.  During phase 1 the spinner remains completely
+    // vanilla regardless of Stallord's randomized movement speed.
+    if (bossType != daB_DS_c::TYPE_BATTLE_2) {
+        return 1.0f;
+    }
+
+    return dusk::mods::svc::actor_attr::resolve_multiplier(boss, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+}
+#endif
 
 static u8 const lit_3768[12] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -415,13 +470,16 @@ void daSpinner_c::setAnm() {
         dComIfGp_getVibration().StartShock(2, 1, cXyz(0.0f, 1.0f, 0.0f));
 
         if (!mJumpFlg) {
-            speed.y = 20.0f;
+            // Gravity is scaled by speed^2 in the Stallord arena so the same
+            // jump arc plays out at the boss's time scale.  Scale the initial
+            // vertical impulse linearly as well to preserve the vanilla height.
+            speed.y = DUSK_IF_ELSE(20.0f * spinner_path_boss_speed_multiplier(), 20.0f);
             mJumpFlg = true;
             mButtonJump = true;
         }
 
         if (mpPathMove != NULL) {
-#if TARGET_PC
+#if TARGET_PC  // enemy attribute integration
             Vec copy = mpPathMove->m_points[mPathNo].m_position;
             s16 targetAngle = cLib_targetAngleY(&copy, &current.pos);
 #else
@@ -603,6 +661,14 @@ int daSpinner_c::checkPathMove() {
             speedF = daAlink_getAlinkActorClass()->getSpinnerRideSpeedF();
         } else {
             speedF = mpPathMove->field_0x7;
+#if TARGET_PC  // enemy attribute integration
+            if (daAlink_c::checkStageName("D_MN10A")) {
+                // Explicit rail speeds bypass getSpinnerRideSpeedF(), so apply
+                // Stallord's multiplier here. The 0xFF branch is already
+                // scaled by getSpinnerRideSpeedF() and must not be scaled twice.
+                speedF *= spinner_path_boss_speed_multiplier();
+            }
+#endif
         }
 
         return 1;
@@ -775,7 +841,23 @@ int daSpinner_c::execute() {
         cLib_chaseF(&field_0xa84, 0.0f, 0.5f);
 
         if (mRideMoveTime == 0) {
+#if TARGET_PC  // enemy attribute integration
+            const f32 decelRate = player->getSpinnerRideDecSpeedRate();
+            const f32 decelMax = player->getSpinnerRideDecSpeedMax();
+            const f32 decelMin = player->getSpinnerRideDecSpeedMin();
+            f32 stopThreshold = 0.1f;
+
+            if (daAlink_c::checkStageName("D_MN10A")) {
+                // The deceleration getters already apply the boss multiplier.
+                // This comparison is against the remaining speed itself, so
+                // its threshold still scales linearly with speed.
+                stopThreshold *= spinner_path_boss_speed_multiplier();
+            }
+
+            if (cLib_addCalc(&speedF, 0.0f, decelRate, decelMax, decelMin) < stopThreshold) {
+#else
             if (cLib_addCalc(&speedF, 0.0f, player->getSpinnerRideDecSpeedRate(), player->getSpinnerRideDecSpeedMax(), player->getSpinnerRideDecSpeedMin()) < 0.1f) {
+#endif
                 mDeleteFlg = true;
                 return 1;
             }
