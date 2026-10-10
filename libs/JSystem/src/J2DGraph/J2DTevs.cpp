@@ -68,7 +68,7 @@ void J2DIndTevStage::load(u8 tevStage) {
 }
 
 void J2DIndTexMtx::load(u8 indTexMtx) {
-#ifdef TARGET_PC
+#if TARGET_PC
     Mtx23 mtx;
     mIndTexMtxInfo.mMtx.to_host(mtx);
     GXSetIndTexMtx((GXIndTexMtxID)(GX_ITM_0 + indTexMtx), mtx, mIndTexMtxInfo.mScaleExp);

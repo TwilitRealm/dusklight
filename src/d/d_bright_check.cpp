@@ -188,7 +188,7 @@ void dBrightCheck_c::modeWait() {}
 void dBrightCheck_c::modeMove() {
     if (mDoCPd_c::getTrigA(PAD_1) || mDoCPd_c::getTrigStart(PAD_1)) {
         mDoAud_seStart(Z2SE_ENTER_GAME, NULL, 0, 0);
-#ifdef TARGET_PC
+#if TARGET_PC
         toggleAutoSave(true);
 
         if (!dusk::getSettings().game.hideTvSettingsScreen) {

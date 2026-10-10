@@ -23,7 +23,7 @@
 #include "d/actor/d_a_npc_tkc.h"
 #include <cstring>
 
-#ifdef TARGET_PC
+#if TARGET_PC
 #include "dusk/game_mode.hpp"
 #include "dusk/imgui/ImGuiConsole.hpp"
 #include "dusk/settings.h"
@@ -578,7 +578,7 @@ void daAlink_c::setNoDrawSwordShield(int param_0, u16 param_1) {
                 onNoResetFlg3(FLG3_UNK_1000000);
             } else {
                 offNoResetFlg3(FLG3_UNK_1000000);
-                
+
             }
         } else if (param_0 == 9) {
             if (param_1 == 1) {
@@ -1280,7 +1280,7 @@ BOOL daAlink_c::checkDeadHP() {
 BOOL daAlink_c::checkDeadAction(int param_0) {
     if (!checkEventRun()) {
         if (checkDeadHP() && mProcID != PROC_HORSE_RIDE && mProcID != PROC_HORSE_GETOFF && mProcID != PROC_LARGE_DAMAGE && mProcID != PROC_LARGE_DAMAGE_WALL && (param_0 || (mProcID != PROC_LARGE_DAMAGE_UP && mProcID != PROC_WOLF_LARGE_DAMAGE_UP))) {
-            if (mLinkAcch.ChkGroundHit() || checkModeFlg(0x40000) || checkBoarRide() || (checkHorseRide() && !dComIfGp_getHorseActor()->checkJump())) { 
+            if (mLinkAcch.ChkGroundHit() || checkModeFlg(0x40000) || checkBoarRide() || (checkHorseRide() && !dComIfGp_getHorseActor()->checkJump())) {
                 return procCoDeadInit(1);
             }
 
@@ -1290,7 +1290,7 @@ BOOL daAlink_c::checkDeadAction(int param_0) {
                 }
 
                 offCargoCarry();
-    
+
                 int poly_exitId;
                 if (dComIfG_Bgsp().ChkPolySafe(mLinkAcch.m_gnd) && -G_CM3D_F_INF != mLinkAcch.GetGroundH()) {
                     poly_exitId = dComIfG_Bgsp().GetExitId(mLinkAcch.m_gnd);
@@ -3701,7 +3701,7 @@ int daAlink_c::procZoraMoveInit() {
 
 int daAlink_c::procZoraMove() {
     dComIfGp_evmng_cutEnd(mAlinkStaffId);
-    fopAc_ac_c* zora = dComIfGp_event_getPt1();    
+    fopAc_ac_c* zora = dComIfGp_event_getPt1();
     field_0x2f99 = 0x60;
 
     if (zora != NULL) {
@@ -4332,7 +4332,7 @@ int daAlink_c::procDungeonWarpSceneStart() {
 static fopAc_ac_c* daAlink_searchPortal(fopAc_ac_c* i_actor, void* i_data) {
     cXyz* pos = (cXyz*)i_data;
 
-    if (fopAcM_GetName(i_actor) == fpcNm_KYTAG04_e) {        
+    if (fopAcM_GetName(i_actor) == fpcNm_KYTAG04_e) {
         if (i_actor->current.pos.abs2XZ(*pos) < 1.0f) {
             return i_actor;
         }

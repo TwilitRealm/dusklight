@@ -97,7 +97,7 @@ constexpr s64 be64s(s64 val) {
     return (s64)BSWAP64((u64)val);
 }
 
-#ifdef TARGET_PC
+#if TARGET_PC
 // Helper wrappers so code below reads nicely:
 constexpr u16 RES_U16(u16 v) {
     return be16(v);
@@ -129,7 +129,7 @@ constexpr f32 RES_F32(f32 v) {
 #define RES_S32(x) (x)
 #endif
 
-#ifdef TARGET_PC
+#if TARGET_PC
 
 /*
  * Declares a big-endian integer type.

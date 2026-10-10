@@ -82,7 +82,7 @@ dSelect_cursor_c::dSelect_cursor_c(u8 param_0, f32 param_1, JKRArchive* param_2)
         field_0x84[i] = 0.0f;
     }
     mParam1 = mpCursorHIO->mXAxisExpansion;
-#ifdef TARGET_PC
+#if TARGET_PC
     mBaseParam1 = mParam1;
 #endif
     mParam2 = mpCursorHIO->mYAxisExpansion;
@@ -440,7 +440,7 @@ void dSelect_cursor_c::setPos(f32 i_posX, f32 i_posY, J2DPane* i_pane, bool i_sc
     f32 tmp7 = -1.0f;
 
     for (int i = 0; i < 4; i++) {
-        
+
         field_0x94[i] = width;
         field_0xa4[i] = height;
 
@@ -458,7 +458,7 @@ void dSelect_cursor_c::setPos(f32 i_posX, f32 i_posY, J2DPane* i_pane, bool i_sc
 void dSelect_cursor_c::setParam(f32 i_param1, f32 i_param2, f32 i_param3, f32 i_param4,
                                     f32 i_param5) {
     mParam1 = i_param1;
-#ifdef TARGET_PC
+#if TARGET_PC
     mBaseParam1 = i_param1;
 #endif
     mParam2 = i_param2;
@@ -562,7 +562,7 @@ void dSelect_cursor_c::setBtk0Animation(J2DAnmTextureSRTKey* param_0) {
     switch (mNameIdx) {
     case 0: {
         static u64 const tag_4197[8] = {
-            MULTI_CHAR('i_c_ld1'), MULTI_CHAR('i_c_ld2'), MULTI_CHAR('i_c_lu1'), MULTI_CHAR('i_c_lu2'), MULTI_CHAR('i_c_rd1'), MULTI_CHAR('i_c_rd2'), MULTI_CHAR('i_c_ru1'), MULTI_CHAR('i_c_ru2'), 
+            MULTI_CHAR('i_c_ld1'), MULTI_CHAR('i_c_ld2'), MULTI_CHAR('i_c_lu1'), MULTI_CHAR('i_c_lu2'), MULTI_CHAR('i_c_rd1'), MULTI_CHAR('i_c_rd2'), MULTI_CHAR('i_c_ru1'), MULTI_CHAR('i_c_ru2'),
         };
         for (int i = 0; i < 8; i++) {
             mpScreen->search(tag_4197[i])->setAnimation(param_0);

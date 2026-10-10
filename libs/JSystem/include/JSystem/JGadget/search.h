@@ -11,7 +11,7 @@ namespace JGadget {
 namespace search {
 template <typename T>
 struct TExpandStride_ {
-#ifdef TARGET_PC
+#if TARGET_PC
     static T get(T n) { return n << 3; }
 #endif
 };
@@ -58,7 +58,7 @@ inline const T& toValueFromIndex(int idx, const T* pValue, u32 count, const T& f
 template <typename T, typename Predicate>
 inline int toIndexFromValue_linear_if(Predicate p, const T* pValue, u32 count, int fallback) {
     JUT_ASSERT(212, pValue!=NULL);
-    
+
     const T* first = pValue;
     const T* last = pValue + count;
     const T* found = std::find_if(first, last, p);

@@ -155,10 +155,10 @@ void fapGm_HIO_c::genMessage(JORMContext* mctx) {
     mctx->genLabel("−−−−−−−【肩ボタン】−−−−−−−", 0x4000001);
     mctx->genSlider(" しきい値  オン", &g_HIO.mLROnValue, 0.0f, 1.0f);
     mctx->genSlider("           オフ", &g_HIO.mLROffValue, 0.0f, 1.0f);
-    
+
     mctx->genLabel("−−−−−−−【デバッグ用】−−−−−−", 0x4000001);
     mctx->genCheckBox("メモリーブロックＯＦＦ", &mMemBlockOff, 0x1);
-    
+
     mctx->genLabel("−−−−−−−【システムレジスタ】−−−", 0x4000001);
     mctx->genSlider("レジスタ０", &mRegister0, -0x8000, 0x7fff);
     mctx->genSlider("レジスタ１", &mRegister1, -0x8000, 0x7fff);
@@ -167,10 +167,10 @@ void fapGm_HIO_c::genMessage(JORMContext* mctx) {
 
     mctx->genLabel("−−−−−−−【ＢＤＬファイルへの変換】", 0x4000001);
     mctx->genButton("変換", 0x4000014);
-    
+
     mctx->genLabel("−−−−−−−【メモリファイル】−", 0x4000001);
     mctx->genButton("出力", 0x4000016);
-    
+
     mctx->genLabel("−−−−−−−【エラーメッセージ】−", 0x4000001);
     mctx->genSlider("文字色上ｒ", &mLetterTopColor.r, 0, 0xFF);
     mctx->genSlider("文字色上ｇ", &mLetterTopColor.g, 0, 0xFF);
@@ -309,7 +309,7 @@ void fapGm_dataMem::printfTag(int i_att, int i_type, int i_heapType, const char*
         "stage",
         NULL,
     };
-    
+
     if (i_type < TagType_Heap_e) {
         if (i_object != NULL) {
             i_heapType = fapGm_dataMem::findParentHeap(i_object);
@@ -594,7 +594,7 @@ void fapGm_HIO_c::listenPropertyEvent(const JORPropertyEvent* property) {
     case 0x4000014: {
         u8* bdlData;
         void* model_buffer = mDoExt_getArchiveHeap()->alloc(0x96000, 0x20);
-        
+
         if (model_buffer == NULL) {
             OSReport("ＢＭＤファイル読み込みメモリがありません！！\n");
         } else if (!file.open(1, "ＢＭＤファイル(*.bmd)", NULL, NULL, NULL)) {
@@ -671,7 +671,7 @@ void fapGm_HIO_c::listenPropertyEvent(const JORPropertyEvent* property) {
                 JKRFree(model_buffer);
                 JKR_DELETE_ARRAY(bdlData);
             }
-        }   
+        }
         break;
     }
     case 0x4000016:
@@ -733,7 +733,7 @@ void fapGm_After() {
     fopCamM_Management();
 }
 
-#ifdef TARGET_PC
+#if TARGET_PC
 static void fapGm_Before() {
     dusk::interp::begin_record();
 }
@@ -824,7 +824,7 @@ void fapGm_Execute() {
     duskExecute();
 #endif
 
-#ifdef TARGET_PC
+#if TARGET_PC
     fpcM_Management(fapGm_Before, fapGm_AfterRecord);
 #else
     fpcM_ManagementFunc(NULL, fapGm_After);
@@ -857,7 +857,7 @@ void fapGm_Create() {
     fopOvlpM_Init();
     fopCamM_Init();
     fopDwTg_CreateQueue();
-    
+
     #if DEBUG
     fapGm_HIO_c::createCaptureScreen();
     #endif

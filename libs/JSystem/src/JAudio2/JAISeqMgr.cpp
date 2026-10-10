@@ -120,7 +120,7 @@ void JAISeqMgr::mixOut() {
 }
 
 JAISeq* JAISeqMgr::beginStartSeq_() {
-#ifdef TARGET_PC
+#if TARGET_PC
     if (JAISeq::getFreeMemCount() == 0) {
         JUT_WARN(273, "%s", "JASPoolAllocObject::<JAISeq>::operator new failed .\n");
         return NULL;

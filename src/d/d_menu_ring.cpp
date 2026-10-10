@@ -1,7 +1,7 @@
 /**
  * @file d_menu_ring.cpp
  * @brief dolzel2 Menu - Item Wheel
- * 
+ *
  */
 
 #include "d/dolzel.h" // IWYU pragma: keep
@@ -662,8 +662,8 @@ void dMenu_Ring_c::_delete() {
 }
 
 /** @details
- * This is the update function which runs every frame. 
- * It runs a process based on mStatus every frame or 
+ * This is the update function which runs every frame.
+ * It runs a process based on mStatus every frame or
  * initializes a new process if mStatus changes
 */
 void dMenu_Ring_c::_move() {
@@ -914,7 +914,7 @@ u8 dMenu_Ring_c::getStickInfo(STControl* i_stick) {
         }
 
         if (mCurrentSlot != val2) {
-            #ifdef TARGET_PC
+            #if TARGET_PC
             if ((mDoCPd_c::getHoldL(PAD_1) && !dusk::getSettings().game.swapDirectSelect) ||
                 (!mDoCPd_c::getHoldL(PAD_1) && dusk::getSettings().game.swapDirectSelect)) {
             #else
@@ -1509,7 +1509,7 @@ void dMenu_Ring_c::drawItem2() {
 }
 
 void dMenu_Ring_c::stick_wait_init() {
-    #ifdef TARGET_PC
+    #if TARGET_PC
     if ((mDoCPd_c::getHoldL(PAD_1) && !dusk::getSettings().game.swapDirectSelect) ||
         (!mDoCPd_c::getHoldL(PAD_1) && dusk::getSettings().game.swapDirectSelect)) {
     #else
@@ -2095,7 +2095,7 @@ void dMenu_Ring_c::drawNumber(int i_itemNum, int i_itemMaxNum, f32 i_posX, f32 i
         mpItemNumTex[i]->setBlackWhite(colorBlack, colorWhite);
     }
     if (i_itemNum < 100) {
-        // If player has less than 100 arrows, only display 
+        // If player has less than 100 arrows, only display
         // the first two digits and hide the last one
         ResTIMG* texture = (ResTIMG*)dComIfGp_getMain2DArchive()->getResource(
             'TIMG', dMeter2Info_getNumberTextureName(i_itemNum / 10));
@@ -2126,9 +2126,9 @@ void dMenu_Ring_c::drawNumber(int i_itemNum, int i_itemMaxNum, f32 i_posX, f32 i
     for (int i = 0; i < 3; i++) {
         mpItemNumTex[i]->setAlpha(itemIconAlpha * mAlphaRate);
 
-        // Even though the statement iterates through all digits, 
-        // the last digit wouldn't be visible to the player with  
-        // less than 100 arrows because the hide() function was used 
+        // Even though the statement iterates through all digits,
+        // the last digit wouldn't be visible to the player with
+        // less than 100 arrows because the hide() function was used
         mpItemNumTex[i]->draw(i_posX + i * 16.0f, i_posY - 16.0f, 16.0f, 16.0f, 0, 0, 0);
     }
 }

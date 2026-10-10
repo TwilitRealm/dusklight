@@ -72,7 +72,7 @@ void* JKRDecomp::run() {
             OSSendMessage(&command->mMessageQueue, (OSMessage)1, OS_MESSAGE_NOBLOCK);
         }
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     return NULL;
 #endif
 }

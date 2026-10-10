@@ -7,7 +7,7 @@
 
 /**
  * @ingroup jsystem-jkernel
- * 
+ *
  */
 struct JKRThreadName_ {
     s32 id;
@@ -18,7 +18,7 @@ class JUTConsole;
 
 /**
  * @ingroup jsystem-jkernel
- * 
+ *
  */
 class JKRThread : public JKRDisposer {
 public:
@@ -101,7 +101,7 @@ public:
         }
         return message;
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     OSMessage waitMessageBlock(BOOL* received) {
         OSMessage message;
         BOOL rv = OSReceiveMessage(&mMessageQueue, &message, OS_MESSAGE_BLOCK);
@@ -163,7 +163,7 @@ typedef void (*JKRThreadSwitch_PostCallback)(OSThread* current, OSThread* next);
 
 /**
  * @ingroup jsystem-jkernel
- * 
+ *
  */
 class JKRThreadSwitch {
 public:

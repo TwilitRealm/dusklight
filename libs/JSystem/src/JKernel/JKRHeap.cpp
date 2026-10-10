@@ -135,7 +135,7 @@ bool JKRHeap::initArena(char** memory, u32* size, int maxHeaps) {
     if (arenaLo == arenaHi)
         return false;
 
-#ifdef TARGET_PC
+#if TARGET_PC
     // PC: Simple arena setup without GameCube-specific memory management
     arenaLo = (void*)ALIGN_NEXT((uintptr_t)arenaLo, 0x20);
     arenaHi = (void*)ALIGN_PREV((uintptr_t)arenaHi, 0x20);

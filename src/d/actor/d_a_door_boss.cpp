@@ -254,7 +254,7 @@ BOOL daBdoor_c::checkArea() {
     if (fabsf(vec.z) > 100.0f) {
         return false;
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     return (s16)((s32)fabs(current.angle.y - 0x7fff - player->current.angle.y) & 0xffff) <= 0x4000 ? 1 : 0;
 #else
     return (s16)fabs((f64)(current.angle.y - 0x7fff - player->current.angle.y)) <= 0x4000 ? 1 : 0;

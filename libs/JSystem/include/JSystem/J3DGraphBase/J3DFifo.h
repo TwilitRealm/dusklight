@@ -16,7 +16,7 @@ inline void J3DFifoWriteXFCmdHdr(u16 addr, u8 len) {
 }
 
 inline void J3DFifoLoadIndx(u8 cmd, u16 indx, u16 addr) {
-#ifdef TARGET_PC
+#if TARGET_PC
     GXCmd1u8(cmd);
     GXCmd1u16(indx);
     GXCmd1u16(addr);
@@ -28,7 +28,7 @@ inline void J3DFifoLoadIndx(u8 cmd, u16 indx, u16 addr) {
 }
 
 inline void J3DFifoWriteCPCmd(u8 cmd, u32 param) {
-#ifdef TARGET_PC
+#if TARGET_PC
     GXCmd1u8(GX_LOAD_CP_REG);
     GXCmd1u8(cmd);
     GXCmd1u32(param);
@@ -46,7 +46,7 @@ inline void J3DFifoLoadCPCmd(u8 reg, u32 value) {
 }
 
 inline void J3DFifoWriteXFCmd(u16 cmd, u16 len) {
-#ifdef TARGET_PC
+#if TARGET_PC
     GXCmd1u8(GX_LOAD_XF_REG);
     GXCmd1u16(len - 1);
     GXCmd1u16(cmd);

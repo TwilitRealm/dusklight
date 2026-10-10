@@ -14,7 +14,7 @@
 #include "m_Do/m_Do_lib.h"
 #include <cstring>
 
-#ifdef TARGET_PC
+#if TARGET_PC
 #include "dusk/settings.h"
 #include "dusk/hq_minimap.hpp"
 #include "m_Do/m_Do_graphic.h"
@@ -346,7 +346,7 @@ void dDrawPath_c::rendering(dDrawPath_c::floor_class const* p_floor) {
     }
 }
 
-#ifdef TARGET_PC
+#if TARGET_PC
 static u32 getRoomPosArraySize(const dDrawPath_c::room_class* room) {
     if (room->mpFloor == NULL || room->mpFloatData == NULL || room->mFloorNum == 0) {
         return 0;
@@ -387,7 +387,7 @@ void dRenderingMap_c::makeResTIMG(ResTIMG* p_image, u16 width, u16 height, u8* p
                                   u8* p_palette, u16 param_5) const {
     p_image->format = GX_TF_C8;
     p_image->alphaEnabled = 2;
-#ifdef TARGET_PC
+#if TARGET_PC
     const auto [rw, rh] = map_render_size_for(width, height);
     p_image->width = rw;
     p_image->height = rh;
@@ -472,7 +472,7 @@ void dRenderingFDAmap_c::drawBack() const {
 }
 
 void dRenderingFDAmap_c::preRenderingMap() {
-#ifdef TARGET_PC
+#if TARGET_PC
     const auto [rw, rh] = map_render_size_for(mTexWidth, mTexHeight);
     GXCreateFrameBuffer(rw, rh);
     // Set logical viewport dimensions
@@ -517,7 +517,7 @@ void dRenderingFDAmap_c::preRenderingMap() {
 
 void dRenderingFDAmap_c::postRenderingMap() {
     GXSetCopyFilter(GX_FALSE, NULL, GX_FALSE, NULL);
-#ifdef TARGET_PC
+#if TARGET_PC
     const auto [rw, rh] = map_render_size_for(mTexWidth, mTexHeight);
     GXSetTexCopySrc(0, 0, rw, rh);
     GXSetTexCopyDst(rw, rh, GX_CTF_R8, GX_FALSE);

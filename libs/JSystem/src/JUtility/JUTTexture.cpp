@@ -147,7 +147,7 @@ void JUTTexture::initTexObj() {
     u8* image = ((u8*)mTexInfo);
     s32 imgOffset = mTexInfo->imageOffset;
     image += (imgOffset ? imgOffset : 0x20);
-#ifdef TARGET_PC
+#if TARGET_PC
     mTexObj.reset();
 #endif
     GXInitTexObj(&mTexObj, image, mTexInfo->width, mTexInfo->height,
@@ -169,7 +169,7 @@ void JUTTexture::initTexObj(GXTlut param_0) {
            (void*)mTexInfo);
     */
     image += (imgOffset ? imgOffset : 0x20);
-#ifdef TARGET_PC
+#if TARGET_PC
     mTexObj.reset();
 #endif
     GXInitTexObjCI(&mTexObj, image, mTexInfo->width, mTexInfo->height,

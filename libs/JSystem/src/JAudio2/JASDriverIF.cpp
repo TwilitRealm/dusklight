@@ -31,7 +31,7 @@ void JASDriver::setOutputMode(u32 mode) {
 }
 
 u32 JASDriver::getOutputMode() {
-#ifdef TARGET_PC
+#if TARGET_PC
     switch (dusk::getSettings().audio.outputMode) {
         case dusk::AudioOutputMode::StereoSpeakers:
             return JAS_OUTPUT_STEREO;

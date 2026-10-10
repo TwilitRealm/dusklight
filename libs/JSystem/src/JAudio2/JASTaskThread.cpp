@@ -89,7 +89,7 @@ void* JASTaskThread::run() {
     JASThreadCallStack* callstack;
     OSInitFastCast();
     do {
-#ifdef TARGET_PC
+#if TARGET_PC
         BOOL received = FALSE;
         callstack = static_cast<JASThreadCallStack*>(waitMessageBlock(&received));
         if (!received) {
@@ -110,7 +110,7 @@ void* JASTaskThread::run() {
 
         JASKernel::getCommandHeap()->free(callstack);
     } while (true);
-#ifdef TARGET_PC
+#if TARGET_PC
     return NULL;
 #endif
 }

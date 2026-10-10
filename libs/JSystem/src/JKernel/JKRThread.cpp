@@ -315,7 +315,7 @@ void* JKRTask::run() {
     };
     OSInitFastCast();
     while (true) {
-#ifdef TARGET_PC
+#if TARGET_PC
         BOOL received = FALSE;
         TaskMessage* msg = (TaskMessage*)waitMessageBlock(&received);
         if (!received) {
@@ -333,7 +333,7 @@ void* JKRTask::run() {
         }
         msg->field_0x0 = NULL;
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     return NULL;
 #endif
 }

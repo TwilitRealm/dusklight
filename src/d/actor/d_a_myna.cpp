@@ -1,6 +1,6 @@
 /**
  * @file d_a_myna.cpp
- * 
+ *
 */
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
@@ -363,7 +363,7 @@ int daMyna_c::destroy() {
         mpMorf->stopZelAnime();
     }
 
-#ifdef TARGET_PC
+#if TARGET_PC
     // !@bug d_a_myna.rel unload used to zero these file-statics; with static linking they dangle across scenes.
     daMyna_LightActor = NULL;
     daMyna_evtTagActor0 = NULL;

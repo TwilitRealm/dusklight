@@ -454,7 +454,7 @@ void dFlower_data_c::WorkAt_NoCutAnim(fopAc_ac_c* i_hitActor, u32 i_massFlg, int
     if (field_0x01 < 8) {
         int temp_r3_2 = daGrass_c::getFlower()->newAnm();
         if (temp_r3_2 < 0) {
-           return; 
+           return;
         }
         field_0x01 = temp_r3_2;
         var_r29 = daGrass_c::getFlower()->getAnm(field_0x01);
@@ -508,8 +508,8 @@ void dFlower_data_c::WorkAt(fopAc_ac_c* i_hitActor, u32 i_massFlg, int i_roomNo,
                     WorkAt_NoCutAnim(i_hitActor, i_massFlg, i_roomNo, i_hitinf, hitobj_p);
                     return;
                 }
-            } 
-            
+            }
+
             if ((daPy_getPlayerActorClass()->getCutType() >= daPy_py_c::CUT_TYPE_NM_RIGHT) && (daPy_getPlayerActorClass()->getCutType() <= daPy_py_c::CUT_TYPE_FINISH_VERTICAL)) {
                 if (m_pos.abs(temp_r26->current.pos) > 128.0f) {
                     if (m_pos.abs(temp_r26->current.pos) < 200.0f) {
@@ -675,7 +675,7 @@ dFlower_packet_c::dFlower_packet_c() {
         for (int i = 0; i < (ARRAY_SIZE(l_flowerNormal2) / sizeof(Vec)); i++) {
             be_swap(((Vec*)l_flowerNormal2)[i]);
         }
-        
+
         initialized = true;
     }
 #endif
@@ -1452,7 +1452,7 @@ void dFlower_packet_c::update() {
                 temp_r28[2][3] = data_p->m_pos.z;
 
                 f32 temp_f31 = 0.69999999f + (0.3f * ((((s16)data_p->m_pos.x * 3535) & 0xFFF) / 4096.0f));
-                
+
                 mDoMtx_stack_c::copy(temp_r28);
                 mDoMtx_stack_c::scaleM(temp_f31, temp_f31, temp_f31);
 #if TARGET_PC
@@ -1460,7 +1460,7 @@ void dFlower_packet_c::update() {
 #else
                 cMtx_concat(j3dSys.getViewMtx(), temp_r28, data_p->m_modelMtx);
 #endif
-#ifdef TARGET_PC
+#if TARGET_PC
                 dusk::interp::record_final_mtx(temp_r28, data_p->m_modelMtx);
 #endif
             }

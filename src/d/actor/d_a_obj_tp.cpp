@@ -1,6 +1,6 @@
 /**
  * @file d_a_obj_tp.cpp
- * 
+ *
 */
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
@@ -292,7 +292,7 @@ static int bmd[2] = {
     0x11, 0x12,
 };
 
-#ifdef TARGET_PC
+#if TARGET_PC
 static int brk_res[2] = {
 #else
 static int brk[2] = {
@@ -341,7 +341,7 @@ static int useHeapInit(fopAc_ac_c* i_this) {
     if (tp->mBrk == NULL) {
         return 0;
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     J3DAnmTevRegKey* regKey = (J3DAnmTevRegKey*)dComIfG_getObjectRes("Obj_tp", brk_res[tp->field_0x594]);
 #else
     J3DAnmTevRegKey* regKey = (J3DAnmTevRegKey*)dComIfG_getObjectRes("Obj_tp", brk[tp->field_0x594]);
@@ -440,7 +440,7 @@ static int daObj_Tp_Create(fopAc_ac_c* i_this) {
             dPath* path = dPath_GetRoomPath(tp->field_0x595, fopAcM_GetRoomNo(tp));
             if (path == NULL) {
                 return cPhs_ERROR_e;
-            } 
+            }
             dPnt* pPoint = path->m_points;
             cXyz cStack_28;
             csXyz cStack_30(0, 0, 0);

@@ -6003,7 +6003,7 @@ void daAlink_c::setItemMatrix(int param_0) {
         mpLinkBootModels[0]->setAnmMtx(3, mpLinkModel->getAnmMtx(0x15));
 
         mDoMtx_stack_c::XrotS(-0x8000);
-#ifdef TARGET_PC
+#if TARGET_PC
         if (dusk::interp::is_enabled()) {
             Mtx boot_mtx;
             mDoMtx_concat(mpLinkModel->getAnmMtx(0x18), mDoMtx_stack_c::get(), boot_mtx);
@@ -6017,7 +6017,7 @@ void daAlink_c::setItemMatrix(int param_0) {
             mDoMtx_concat(mpLinkModel->getAnmMtx(0x18), mDoMtx_stack_c::get(), mpLinkBootModels[1]->getAnmMtx(1));
             mDoMtx_concat(mpLinkModel->getAnmMtx(0x19), mDoMtx_stack_c::get(), mpLinkBootModels[1]->getAnmMtx(2));
             mDoMtx_concat(mpLinkModel->getAnmMtx(0x1A), mDoMtx_stack_c::get(), mpLinkBootModels[1]->getAnmMtx(3));
-#ifdef TARGET_PC
+#if TARGET_PC
         }
 #endif
     }
@@ -16149,7 +16149,7 @@ int daAlink_c::procSlideLand() {
 
 int daAlink_c::procFrontRollInit() {
     BOOL is_guard_anime = checkUpperGuardAnime();
-#ifdef TARGET_PC    
+#if TARGET_PC
     const f32 fastRollMultiplier = dusk::getSettings().game.fastRoll ? 2.0f : 1.0f;
 #endif
 
@@ -16168,15 +16168,15 @@ int daAlink_c::procFrontRollInit() {
     }
 
     setSingleAnime(ANM_FRONT_ROLL,
-#ifdef TARGET_PC        
-                   mpHIO->mFrontRoll.m.mRollAnm.mSpeed * fastRollMultiplier, 
+#if TARGET_PC
+                   mpHIO->mFrontRoll.m.mRollAnm.mSpeed * fastRollMultiplier,
 #else
                    mpHIO->mFrontRoll.m.mRollAnm.mSpeed,
 #endif
                    roll_anm_speed,
                    mpHIO->mFrontRoll.m.mRollAnm.mEndFrame,
                    mpHIO->mFrontRoll.m.mRollAnm.mInterpolation);
-                   
+
     mNormalSpeed = speedF * mpHIO->mFrontRoll.m.mSpeedRate + mpHIO->mFrontRoll.m.mInitSpeed;
 
     f32 max_speed = mpHIO->mFrontRoll.m.mInitSpeed + mpHIO->mMove.m.mMaxSpeed * mpHIO->mFrontRoll.m.mSpeedRate;
@@ -16199,7 +16199,7 @@ int daAlink_c::procFrontRollInit() {
         mNormalSpeed *= mHeavySpeedMultiplier;
     }
 
-#ifdef TARGET_PC        
+#if TARGET_PC
     mNormalSpeed *= fastRollMultiplier;
 #endif
 
@@ -16433,7 +16433,7 @@ int daAlink_c::procFrontRollSuccess() {
 
 int daAlink_c::procSideRollInit(int param_0) {
     BOOL is_prev_guardAnm = checkUpperGuardAnime();
-#ifdef TARGET_PC            
+#if TARGET_PC
     const f32 fastRollMultiplier = dusk::getSettings().game.fastRoll ? 2.0f : 1.0f;
 #endif
 
@@ -16452,8 +16452,8 @@ int daAlink_c::procSideRollInit(int param_0) {
         current.angle.y = shape_angle.y + -0x4000;
     }
 
-    setSingleAnime(anmID, 
-#ifdef TARGET_PC        
+    setSingleAnime(anmID,
+#if TARGET_PC
                    mpHIO->mGuard.mTurnMove.m.mSideRollAnmSpeed * fastRollMultiplier,
 #else
                    mpHIO->mGuard.mTurnMove.m.mSideRollAnmSpeed,
@@ -16473,7 +16473,7 @@ int daAlink_c::procSideRollInit(int param_0) {
     } else if (checkHeavyStateOn(TRUE, TRUE)) {
         mNormalSpeed *= mHeavySpeedMultiplier;
     }
-#ifdef TARGET_PC        
+#if TARGET_PC
     mNormalSpeed *= fastRollMultiplier;
 #endif
 

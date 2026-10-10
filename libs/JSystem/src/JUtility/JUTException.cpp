@@ -103,7 +103,7 @@ JUTException* JUTException::create(JUTDirectPrint* directPrint) {
 DUSK_GAME_DATA OSMessage JUTException::sMessageBuffer[1] = {0};
 
 void* JUTException::run() {
-#ifdef TARGET_PC
+#if TARGET_PC
     return NULL;
 #else
     u32 msr = PPCMfmsr();
@@ -750,7 +750,7 @@ void JUTException::printContext(OSError error, OSContext* context, u32 dsisr, u3
             }
 
             waitTime(30);
-        } 
+        }
     }
 
     while (true) {
@@ -923,7 +923,7 @@ bool JUTException::queryMapAddress_single(char* mapPath, u32 address, s32 sectio
 		if (section_id >= 0 && section_id != section_idx)
 			continue;
 
-        
+
         int length;
         while (true) {
             if ((length = file.fgets(buffer, ARRAY_SIZEU(buffer))) <= 4) {

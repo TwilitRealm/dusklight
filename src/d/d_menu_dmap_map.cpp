@@ -316,7 +316,7 @@ void dMenu_DmapMap_c::_delete() {
 
 void dMenu_DmapMap_c::setTexture(u16 width, u16 height, u16 param_2, u16 param_3) {
     for (int lp1 = 0; lp1 < 2; lp1++) {
-#ifdef TARGET_PC
+#if TARGET_PC
         u32 sz = 0x20; // No need to allocate memory for texture
 #else
         u32 sz = GXGetTexBufferSize(width, height, 9, 0, 0);
@@ -970,7 +970,7 @@ void dMenu_StageMapCtrl_c::_create(u16 width, u16 height, u16 param_2, u16 param
     f32 var_f26 = field_0x98 > field_0x94 ? field_0x98 : field_0x94;
 
     dMenu_DmapMap_c::_create(width, height, param_2, param_3, param_5);
-    
+
     getInitDispCenter(&field_0x9c, &field_0xa0);
     field_0xa4 = field_0x9c;
     field_0xa8 = field_0xa0;

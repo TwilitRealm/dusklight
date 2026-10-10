@@ -77,7 +77,7 @@ static u8 MemCardStack[STACK_SIZE];
 static OSThread MemCardThread;
 
 void mDoMemCd_Ctrl_c::ThdInit() {
-#ifdef TARGET_PC
+#if TARGET_PC
     if (mInitialized) {
         return;
     }
@@ -120,7 +120,7 @@ void mDoMemCd_Ctrl_c::ThdInit() {
 void mDoMemCd_Ctrl_c::main() {
     do {
         OSLockMutex(&mMutex);
-#ifdef TARGET_PC
+#if TARGET_PC
         bool shutdownThread = dusk::IsShuttingDown;
         while (mCardCommand == COMM_NONE_e && !shutdownThread) {
             OSWaitCond(&mCond, &mMutex);
@@ -235,7 +235,7 @@ void mDoMemCd_Ctrl_c::restore() {
     CARDFileInfo file;
     field_0x1fc8 = 0;
 
-#ifdef TARGET_PC
+#if TARGET_PC
     const char* fileName = getFileName();
 #else
     const char* fileName = "gczelda2";
@@ -311,7 +311,7 @@ void mDoMemCd_Ctrl_c::store() {
     }
 #endif
 
-#ifdef TARGET_PC
+#if TARGET_PC
     const char* fileName = getFileName();
 #else
     const char* fileName = "gczelda2";
@@ -582,7 +582,7 @@ s32 mDoMemCd_Ctrl_c::mount() {
 s32 mDoMemCd_Ctrl_c::loadfile() {
     CARDFileInfo file;
 
-#ifdef TARGET_PC
+#if TARGET_PC
     const char* fileName = getFileName();
 #else
     const char* fileName = "gczelda2";
@@ -945,7 +945,7 @@ s32 mDoMemCd_Ctrl_c::checkspaceNAND() {
 }
 #endif
 
-#ifdef TARGET_PC
+#if TARGET_PC
 void mDoMemCd_Ctrl_c::setFileName(const std::string& fileName) {
     if (mInitialized == false) {
         mFileName = fileName;

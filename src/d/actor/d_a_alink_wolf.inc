@@ -149,7 +149,7 @@ void daAlink_c::changeWolf() {
 
     mpLinkModel = initModel(static_cast<J3DModelData*>(dComIfG_getObjectRes(l_wArcName, 14)), 0x20200);
 
-#ifdef TARGET_PC
+#if TARGET_PC
     // Update Wolf Link's eye maxLOD to prevent the eyes from disappearing
     {
         J3DTexture* tex = mpLinkModel->getModelData()->getTexture();
@@ -179,7 +179,7 @@ void daAlink_c::changeWolf() {
     mpWlMidnaHairModel =
         initModelEnv(static_cast<J3DModelData*>(dComIfG_getObjectRes(l_wArcName, 11)), 0x1000000);
 
-#ifdef TARGET_PC
+#if TARGET_PC
     // Update Midna's eye maxLOD to prevent the eyes from disappearing
     {
         J3DTexture* tex = mpWlMidnaModel->getModelData()->getTexture();
@@ -376,7 +376,7 @@ void daAlink_c::changeLink(int param_0) {
             initModel(static_cast<J3DModelData*>(dComIfG_getObjectRes(mArcName, "zl_face.bmd")), 0x20200);
     }
 
-#ifdef TARGET_PC
+#if TARGET_PC
     // Update Adult Link's eye maxLOD to prevent the eyes from disappearing
     {
         J3DTexture* tex = mpLinkFaceModel->getModelData()->getTexture();
@@ -9323,7 +9323,7 @@ int daAlink_c::procWolfDigThroughInit(int param_0) {
     } else {
         effList = smokeID;
     }
-    
+
     for (int i = 0; i < 4; i++, effList++) {
         dComIfGp_particle_set(*effList, &current.pos, &shape_angle, NULL);
     }

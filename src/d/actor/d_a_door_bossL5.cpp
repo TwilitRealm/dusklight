@@ -146,7 +146,7 @@ int daBdoorL5_c::create() {
 
     if (fopAcM_entrySolidHeap(this, CheckCreateHeap, 0xd40) == 0) {
         return cPhs_ERROR_e;
-    } 
+    }
     if (CreateInit() != 0) {
         return cPhs_COMPLEATE_e;
     }
@@ -348,7 +348,7 @@ int daBdoorL5_c::checkArea() {
     if (fabsf(local_48.z) > 100.0f) {
         return 0;
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     if ((s16)((s32)fabs(current.angle.y - 0x7fff - player->current.angle.y) & 0xffff) <= 0x4000) {
 #else
     if ((s16)fabs((f64)(current.angle.y - 0x7fff - player->current.angle.y)) <= 0x4000) {
@@ -374,7 +374,7 @@ int daBdoorL5_c::checkOpen() {
 
     if (!dComIfGs_isDungeonItemBossKey()) {
         return 0;
-    } 
+    }
     if (!checkFront()) {
         return 0;
     }
