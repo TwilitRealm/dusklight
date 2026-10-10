@@ -7,6 +7,11 @@
 
 #include "d/actor/d_a_e_yd_leaf.h"
 #include "d/d_com_inf_game.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+#endif
 
 static int daE_YD_LEAF_Draw(e_yd_leaf_class* i_this) {
     g_env_light.settingTevStruct(2, &i_this->current.pos, &i_this->tevStr);
@@ -27,7 +32,12 @@ static int daE_YD_LEAF_Execute(e_yd_leaf_class* i_this) {
             i_this->field_0x5ba = 1;
         }
     } else {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionCalcParams params = actor_attr::action_calc_params(1.0f, 0.08f, i_this->speedF);
+        cLib_addCalc0(&i_this->scale.y, params.fraction, params.maximumStep);
+#else
         cLib_addCalc0(&i_this->scale.y, 1.0f, 0.08f);
+#endif
 
         if (i_this->scale.y <= 0.01f) {
             fopAcM_delete(i_this);
@@ -82,6 +92,7 @@ static int daE_YD_LEAF_Create(fopAc_ac_c* i_this) {
 
         fopAcM_SetMtx(a_this, a_this->mpMorf->getModel()->getBaseTRMtx());
         a_this->scale.y = 1.0f;
+        IF_DUSK(a_this->speedF = 1.0f;)
         daE_YD_LEAF_Execute(a_this);
     }
 

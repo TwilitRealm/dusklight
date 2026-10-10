@@ -62,7 +62,11 @@ public:
     /* 0x684 */ u32 mShadowId;
     /* 0x688 */ s16 mTargetAngle;
     /* 0x68A */ s16 mStepAngle;
+#if TARGET_PC
+    /* 0x68C */ s16 mWaitTimer; // changing from u8 to s16 to use with actor_attribute_helpers, thanks to padding 0x68D is free to use
+#else
     /* 0x68C */ u8 mWaitTimer;
+#endif
     /* 0x68E */ s16 mInvulnerabilityTimer;
     /* 0x690 */ u8 mIsReturnHome;
     /* 0x691 */ u8 arg0;
