@@ -6,6 +6,9 @@
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
 #include "d/actor/d_a_e_hzelda.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 #include "d/actor/d_a_player.h"
 #include "d/d_com_inf_game.h"
 #include "SSystem/SComponent/c_math.h"
@@ -13,6 +16,9 @@
 #include "f_op/f_op_msg_mng.h"
 #include "m_Do/m_Do_graphic.h"
 #include "d/d_s_play.h"
+#if TARGET_PC  // additional actor attribute integration
+namespace actor_attr = dusk::mods::svc::actor_attr;
+#endif
 
 #define ANM_ATTACKC         6
 #define ANM_ATTACKC_A       7
@@ -105,6 +111,11 @@ daE_HZELDA_HIO_c::daE_HZELDA_HIO_c() {
 
 static void anm_init(e_hzelda_class* i_this, int i_resID, f32 i_morf, u8 i_attr,
                      f32 i_speed) {
+#if TARGET_PC  // enemy attribute integration
+    const actor_attr::ActionAnimationParams params = actor_attr::enemy_animation_params(i_this, i_morf, i_speed);
+        i_morf = params.morph;
+        i_speed = params.playbackSpeed;
+#endif
     i_this->mpModelMorf->setAnm((J3DAnmTransform*)dComIfG_getObjectRes("Hzelda", i_resID), i_attr, i_morf, i_speed, 0.0f, -1.0f);
     i_this->mAnm = i_resID;
 }
@@ -197,7 +208,7 @@ static void e_hzelda_wait(e_hzelda_class* i_this) {
     cXyz sp24;
     cXyz sp30;
 
-    i_this->field_0x6b4 = 5;
+    i_this->field_0x6b4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 5), 5);
     i_this->mSound.startCreatureSoundLevel(Z2SE_EN_HZE_MOVE, 0, -1);
 
     switch (i_this->mMode) {
@@ -206,7 +217,7 @@ static void e_hzelda_wait(e_hzelda_class* i_this) {
     case 0:
         anm_init(i_this, ANM_FWAIT, 10.0f, J3DFrameCtrl::EMode_LOOP, 1.0f);
         i_this->mMode = 1;
-        i_this->mTimers[TIMER_ATTACK_WAIT] = cM_rndF(150.0f) + 100.0f;
+        i_this->mTimers[TIMER_ATTACK_WAIT] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(150.0f) + 100.0f), cM_rndF(150.0f) + 100.0f);
         i_this->mMoveStep = 0.0f;
         i_this->field_0x5d0 = i_this->mAngleToPlayer + 0x8000;
         break;
@@ -214,20 +225,38 @@ static void e_hzelda_wait(e_hzelda_class* i_this) {
         break;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_calc2(i_this, &a_this->speedF, 0.0f, 1.0f, 3.0f);
+    actor_attr::enemy_add_action_angle(i_this, &a_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x300);
+#else
     cLib_addCalc2(&a_this->speedF, 0.0f, 1.0f, 3.0f);
     cLib_addCalcAngleS2(&a_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x300);
+#endif
 
     cMtx_YrotS(*calc_mtx, i_this->field_0x5d0);
+#if TARGET_PC  // enemy attribute integration
+    sp24.x = cM_ssin(actor_attr::enemy_action_phase_angle(i_this, i_this->mCounter, 300)) * 300.0f;
+    sp24.y = cM_ssin(actor_attr::enemy_action_phase_angle(i_this, i_this->mCounter, 700)) * 30.0f + 300.0f;
+    sp24.z = cM_ssin(actor_attr::enemy_action_phase_angle(i_this, i_this->mCounter, 400)) * 150.0f + 600.0f;
+#else
     sp24.x = cM_ssin(i_this->mCounter * 300) * 300.0f;
     sp24.y = cM_ssin(i_this->mCounter * 700) * 30.0f + 300.0f;
     sp24.z = cM_ssin(i_this->mCounter * 400) * 150.0f + 600.0f;
+#endif
     MtxPosition(&sp24, &i_this->mTargetMovePos);
     i_this->mTargetMovePos += player->current.pos;
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.x, i_this->mTargetMovePos.x, 0.1f, i_this->mMoveStep);
+    actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.y, i_this->mTargetMovePos.y, 0.1f, i_this->mMoveStep);
+    actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.z, i_this->mTargetMovePos.z, 0.1f, i_this->mMoveStep);
+    actor_attr::enemy_add_action_calc2(i_this, &i_this->mMoveStep, 30.0f, 1.0f, 0.5f);
+#else
     cLib_addCalc2(&a_this->current.pos.x, i_this->mTargetMovePos.x, 0.1f, i_this->mMoveStep);
     cLib_addCalc2(&a_this->current.pos.y, i_this->mTargetMovePos.y, 0.1f, i_this->mMoveStep);
     cLib_addCalc2(&a_this->current.pos.z, i_this->mTargetMovePos.z, 0.1f, i_this->mMoveStep);
     cLib_addCalc2(&i_this->mMoveStep, 30.0f, 1.0f, 0.5f);
+#endif
 
     i_this->mIsLookatPlayer = true;
 
@@ -274,9 +303,9 @@ static void e_hzelda_wait(e_hzelda_class* i_this) {
     sp24.y = 0.0f;
     sp24.z = i_this->mDodgeMove;
     MtxPosition(&sp24, &sp30);
-    a_this->current.pos += sp30;
+    a_this->current.pos += DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, sp30), sp30);
 
-    cLib_addCalc0(&i_this->mDodgeMove, 1.0f, 2.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc0(i_this, &i_this->mDodgeMove, 1.0f, 2.0f), cLib_addCalc0(&i_this->mDodgeMove, 1.0f, 2.0f));
 }
 
 static int e_hzelda_attack_a(e_hzelda_class* i_this) {
@@ -289,7 +318,7 @@ static int e_hzelda_attack_a(e_hzelda_class* i_this) {
     BOOL move_to_target = FALSE;
     int ret = 1;
 
-    i_this->field_0x6b4 = 5;
+    i_this->field_0x6b4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 5), 5);
     int anm_frame = i_this->mpModelMorf->getFrame();
     s16 sp8 = 0;
 
@@ -323,7 +352,7 @@ static int e_hzelda_attack_a(e_hzelda_class* i_this) {
         if (i_this->mpModelMorf->isStop()) {
             i_this->mMode = 3;
             anm_init(i_this, ANM_ATTACK_A, 0.0f, 2, 1.0f);
-            i_this->mTimers[TIMER_ATTACK_WAIT] = 90;
+            i_this->mTimers[TIMER_ATTACK_WAIT] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 90), 90);
         }
         break;
     case 3:
@@ -353,23 +382,41 @@ static int e_hzelda_attack_a(e_hzelda_class* i_this) {
     }
 
     if (move_to_target) {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(i_this, &a_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x300);
+        actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.x, i_this->mTargetMovePos.x, 0.05f, i_this->mMoveStep);
+        actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.y, i_this->mTargetMovePos.y + (30.0f * cM_ssin((actor_attr::enemy_action_phase_angle(i_this, i_this->mCounter, 1000)))), 0.1f, 30.0f);
+        actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.z, i_this->mTargetMovePos.z, 0.05f, i_this->mMoveStep);
+#else
         cLib_addCalcAngleS2(&a_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x300);
         cLib_addCalc2(&a_this->current.pos.x, i_this->mTargetMovePos.x, 0.05f, i_this->mMoveStep);
         cLib_addCalc2(&a_this->current.pos.y, i_this->mTargetMovePos.y + (30.0f * cM_ssin((i_this->mCounter * 1000))), 0.1f, 30.0f);
         cLib_addCalc2(&a_this->current.pos.z, i_this->mTargetMovePos.z, 0.05f, i_this->mMoveStep);
+#endif
     }
 
     if (target_speed > 0.0f) {
         target_dist = i_this->mTargetMovePos - a_this->current.pos;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(i_this, &a_this->current.angle.y, (s16)cM_atan2s(target_dist.x, target_dist.z), 8, 0x800);
+        actor_attr::enemy_add_action_angle(i_this, &a_this->current.angle.x, -cM_atan2s(target_dist.y, JMAFastSqrt((target_dist.x * target_dist.x) + (target_dist.z * target_dist.z))), 2, 0x1000);
+        actor_attr::enemy_add_action_angle(i_this, &a_this->shape_angle.x, a_this->current.angle.x, 2, 0x2000);
+#else
         cLib_addCalcAngleS2(&a_this->current.angle.y, (s16)cM_atan2s(target_dist.x, target_dist.z), 8, 0x800);
         cLib_addCalcAngleS2(&a_this->current.angle.x, -cM_atan2s(target_dist.y, JMAFastSqrt((target_dist.x * target_dist.x) + (target_dist.z * target_dist.z))), 2, 0x1000);
         cLib_addCalcAngleS2(&a_this->shape_angle.x, a_this->current.angle.x, 2, 0x2000);
+#endif
     } else {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(i_this, &a_this->current.angle.x, sp8, 4, 0x400);
+        actor_attr::enemy_add_action_angle(i_this, &a_this->shape_angle.x, a_this->current.angle.x, 8, 0x1000);
+#else
         cLib_addCalcAngleS2(&a_this->current.angle.x, sp8, 4, 0x400);
         cLib_addCalcAngleS2(&a_this->shape_angle.x, a_this->current.angle.x, 8, 0x1000);
+#endif
     }
 
-    cLib_addCalc2(&a_this->speedF, target_speed, 0.5f, speed_step);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &a_this->speedF, target_speed, 0.5f, speed_step), cLib_addCalc2(&a_this->speedF, target_speed, 0.5f, speed_step));
     return ret;
 }
 
@@ -379,7 +426,7 @@ static void e_hzelda_attack_b(e_hzelda_class* i_this) {
     cXyz sp18;
     cXyz spC;
 
-    i_this->field_0x6b4 = 5;
+    i_this->field_0x6b4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 5), 5);
     i_this->mSound.startCreatureSoundLevel(Z2SE_EN_HZE_MOVE, 0, -1);
 
     switch (i_this->mMode) {
@@ -394,7 +441,7 @@ static void e_hzelda_attack_b(e_hzelda_class* i_this) {
         if (i_this->mpModelMorf->isStop()) {
             i_this->mMode = 2;
             anm_init(i_this, ANM_ATTACK_WAIT, 10.0f, 2, 1.0f);
-            i_this->mTimers[TIMER_ATTACK_WAIT] = 60;
+            i_this->mTimers[TIMER_ATTACK_WAIT] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 60), 60);
             i_this->mDrawTriangleAt = TRUE;
             i_this->mTrianglePos = player->current.pos;
             i_this->mTrianglePos.y = 5.0f;
@@ -435,14 +482,27 @@ static void e_hzelda_attack_b(e_hzelda_class* i_this) {
         break;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(i_this, &i_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x400);
+    actor_attr::enemy_add_action_calc2(i_this, &i_this->current.pos.x, i_this->mTargetMovePos.x, 0.05f, i_this->mMoveStep);
+    actor_attr::enemy_add_action_calc2(i_this, &i_this->current.pos.y, i_this->mTargetMovePos.y, 0.1f, 30.0f);
+    actor_attr::enemy_add_action_calc2(i_this, &i_this->current.pos.z, i_this->mTargetMovePos.z, 0.05f, i_this->mMoveStep);
+#else
     cLib_addCalcAngleS2(&i_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x400);
     cLib_addCalc2(&i_this->current.pos.x, i_this->mTargetMovePos.x, 0.05f, i_this->mMoveStep);
     cLib_addCalc2(&i_this->current.pos.y, i_this->mTargetMovePos.y, 0.1f, 30.0f);
     cLib_addCalc2(&i_this->current.pos.z, i_this->mTargetMovePos.z, 0.05f, i_this->mMoveStep);
+#endif
 }
 
 static void ball_crash_eff_set(e_hzelda_class* i_this, f32 i_size) {
+#if TARGET_PC  // additional actor attribute integration
+    const f32 size_mul = actor_attr::enemy_size_multiplier(i_this);
+    const f32 scaled_size = i_size * size_mul;
+    cXyz size(scaled_size, scaled_size, scaled_size);
+#else
     cXyz size(i_size, i_size, i_size);
+#endif
     for (int i = 0; i < 3; i++) {
         static u16 b_id[] = {0x8915, 0x8916, 0x8917};
         dComIfGp_particle_set(b_id[i], &i_this->mBallPos, NULL, &size);
@@ -456,11 +516,12 @@ static void e_hzelda_attack_c(e_hzelda_class* i_this) {
     cXyz sp54;
     int anm_frame = i_this->mpModelMorf->getFrame();
     
-    i_this->field_0x6b4 = 5;
+    i_this->field_0x6b4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 5), 5);
     i_this->mSound.startCreatureSoundLevel(Z2SE_EN_HZE_MOVE, 0, -1);
     
     sp60 = a_this->current.pos - i_this->mBallPos;
-    sp60.y += 150.0f;
+    // Return aim and its arrival check must follow Zelda's scaled body.
+    sp60.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 150.0f), 150.0f);
 
     f32 dist_to_ball = sp60.abs();
 
@@ -482,7 +543,7 @@ static void e_hzelda_attack_c(e_hzelda_class* i_this) {
         if (i_this->mpModelMorf->isStop()) {
             i_this->mMode = 2;
             anm_init(i_this, ANM_ATTACK_WAIT, 10.0f, 2, 1.0f);
-            i_this->mTimers[TIMER_ATTACK_WAIT] = 60;
+            i_this->mTimers[TIMER_ATTACK_WAIT] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 60), 60);
             i_this->field_0x6e4 = 1;
             i_this->field_0x6e8 = 0.0f;
         }
@@ -564,7 +625,7 @@ static void e_hzelda_attack_c(e_hzelda_class* i_this) {
 
     if (i_this->field_0x6e4 == 3) {
         sp60 = a_this->current.pos - i_this->mBallPos;
-        sp60.y += 150.0f;
+        sp60.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 150.0f), 150.0f);
 
         cMtx_YrotS(*calc_mtx, cM_atan2s(sp60.x, sp60.z));
         cMtx_XrotM(*calc_mtx, -cM_atan2s(sp60.y, JMAFastSqrt((sp60.x * sp60.x) + (sp60.z * sp60.z))));
@@ -599,10 +660,17 @@ static void e_hzelda_attack_c(e_hzelda_class* i_this) {
         }
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(i_this, &a_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x400);
+    actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.x, i_this->mTargetMovePos.x, 0.05f, i_this->mMoveStep);
+    actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.y, i_this->mTargetMovePos.y + (30.0f * cM_ssin((actor_attr::enemy_action_phase_angle(i_this, i_this->mCounter, 1000)))), 0.1f, 30.0f);
+    actor_attr::enemy_add_action_calc2(i_this, &a_this->current.pos.z, i_this->mTargetMovePos.z, 0.05f, i_this->mMoveStep);
+#else
     cLib_addCalcAngleS2(&a_this->current.angle.y, i_this->mAngleToPlayer, 2, 0x400);
     cLib_addCalc2(&a_this->current.pos.x, i_this->mTargetMovePos.x, 0.05f, i_this->mMoveStep);
     cLib_addCalc2(&a_this->current.pos.y, i_this->mTargetMovePos.y + (30.0f * cM_ssin((i_this->mCounter * 1000))), 0.1f, 30.0f);
     cLib_addCalc2(&a_this->current.pos.z, i_this->mTargetMovePos.z, 0.05f, i_this->mMoveStep);
+#endif
 }
 
 static void e_hzelda_damage(e_hzelda_class* i_this) {
@@ -611,7 +679,7 @@ static void e_hzelda_damage(e_hzelda_class* i_this) {
     cXyz unused;
     cXyz unused2;
 
-    i_this->field_0x6b4 = 5;
+    i_this->field_0x6b4 = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 5), 5);
 
     switch (i_this->mMode) {
     case 0:
@@ -621,7 +689,7 @@ static void e_hzelda_damage(e_hzelda_class* i_this) {
     case 1:
         if (i_this->mpModelMorf->isStop()) {
             anm_init(i_this, ANM_DAMAGE_LOOP, 5.0f, 2, 1.0f);
-            i_this->mTimers[TIMER_ATTACK_WAIT] = 60;
+            i_this->mTimers[TIMER_ATTACK_WAIT] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 60), 60);
             i_this->mMode = 2;
         }
         break;
@@ -641,7 +709,7 @@ static void e_hzelda_damage(e_hzelda_class* i_this) {
         anm_init(i_this, ANM_LAST_DAMAGE, 5.0f, 2, 1.0f);
         i_this->mMode = 11;
     case 11:
-        a_this->current.pos.y -= 1.0f;
+        a_this->current.pos.y -= DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, 1.0f), 1.0f);
         break;
     }
 }
@@ -696,14 +764,14 @@ static void action(e_hzelda_class* i_this) {
         a_this->attention_info.flags = 0;
     }
 
-    cLib_addCalcAngleS2(&a_this->shape_angle.y, a_this->current.angle.y, 2, 0x2000);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &a_this->shape_angle.y, a_this->current.angle.y, 2, 0x2000), cLib_addCalcAngleS2(&a_this->shape_angle.y, a_this->current.angle.y, 2, 0x2000));
     cMtx_YrotS(*calc_mtx, a_this->current.angle.y);
     cMtx_XrotM(*calc_mtx, a_this->current.angle.x);
     sp50.x = 0.0f;
     sp50.y = 0.0f;
     sp50.z = a_this->speedF;
     MtxPosition(&sp50, &a_this->speed);
-    a_this->current.pos += a_this->speed;
+    a_this->current.pos += DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, a_this->speed), a_this->speed);
 
     s16 head_target_rotx = 0;
     s16 head_target_rotz = 0;
@@ -733,8 +801,13 @@ static void action(e_hzelda_class* i_this) {
         }
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(i_this, &i_this->mHeadRotX, head_target_rotx, 2, rot_step);
+    actor_attr::enemy_add_action_angle(i_this, &i_this->mHeadRotZ, head_target_rotz, 2, rot_step);
+#else
     cLib_addCalcAngleS2(&i_this->mHeadRotX, head_target_rotx, 2, rot_step);
     cLib_addCalcAngleS2(&i_this->mHeadRotZ, head_target_rotz, 2, rot_step);
+#endif
 
     if (sp10 != 0) {
         if (sp10 == 1) {
@@ -753,7 +826,7 @@ static void action(e_hzelda_class* i_this) {
                 sp44.x = 3500.0f;
             }
 
-            cLib_addCalc2(&i_this->mArmLRotY, sp44.x, 0.2f, 200.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &i_this->mArmLRotY, sp44.x, 0.2f, 200.0f), cLib_addCalc2(&i_this->mArmLRotY, sp44.x, 0.2f, 200.0f));
 
             if (var_f29 > 1000.0f) {
                 var_f29 = 1000.0f;
@@ -761,7 +834,7 @@ static void action(e_hzelda_class* i_this) {
                 var_f29 = -3500.0f;
             }
 
-            cLib_addCalc2(&i_this->mArmRRotY, var_f29, 0.2f, 200.0f);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &i_this->mArmRRotY, var_f29, 0.2f, 200.0f), cLib_addCalc2(&i_this->mArmRRotY, var_f29, 0.2f, 200.0f));
 
             if (var_f30 > 2000.0f) {
                 var_f30 = 2000.0f;
@@ -775,10 +848,17 @@ static void action(e_hzelda_class* i_this) {
                 sp44.z = -2000.0f;
             }
 
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_add_action_calc2(i_this, &i_this->mBodyRotY, var_f30, 0.2f, 200.0f);
+            actor_attr::enemy_add_action_calc2(i_this, &i_this->mBodyRotZ, sp44.z, 0.2f, 200.0f);
+            actor_attr::enemy_add_action_angle(i_this, &a_this->shape_angle.z, -0.5f * var_f30, 8, 0x400);
+            actor_attr::enemy_add_action_angle(i_this, &a_this->shape_angle.x, 0.5f * sp44.z, 8, 0x400);
+#else
             cLib_addCalc2(&i_this->mBodyRotY, var_f30, 0.2f, 200.0f);
             cLib_addCalc2(&i_this->mBodyRotZ, sp44.z, 0.2f, 200.0f);
             cLib_addCalcAngleS2(&a_this->shape_angle.z, -0.5f * var_f30, 8, 0x400);
             cLib_addCalcAngleS2(&a_this->shape_angle.x, 0.5f * sp44.z, 8, 0x400);
+#endif
         } else {
             f32 target_body_rot = a_this->current.angle.y - a_this->old.angle.y;
             target_body_rot *= -10.0f;
@@ -789,10 +869,24 @@ static void action(e_hzelda_class* i_this) {
                 target_body_rot = -9000.0f;
             }
 
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_add_action_calc2(i_this, &i_this->mBodyRotY, target_body_rot, 0.5f, 1000.0f);
+            actor_attr::enemy_add_action_angle(i_this, &a_this->shape_angle.z, 0, 8, 0x800);
+#else
             cLib_addCalc2(&i_this->mBodyRotY, target_body_rot, 0.5f, 1000.0f);
             cLib_addCalcAngleS2(&a_this->shape_angle.z, 0, 8, 0x800);
+#endif
         }
     } else {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc0(i_this, &i_this->mArmLRotY, 0.1f, 100.0f);
+        actor_attr::enemy_add_action_calc0(i_this, &i_this->mArmRRotY, 0.1f, 100.0f);
+        actor_attr::enemy_add_action_calc0(i_this, &i_this->field_0x6cc, 0.1f, 100.0f);
+        actor_attr::enemy_add_action_calc0(i_this, &i_this->field_0x6c4, 0.1f, 100.0f);
+        actor_attr::enemy_add_action_calc0(i_this, &i_this->mBodyRotY, 0.1f, 100.0f);
+        actor_attr::enemy_add_action_calc0(i_this, &i_this->mBodyRotZ, 0.1f, 100.0f);
+        actor_attr::enemy_add_action_angle(i_this, &a_this->shape_angle.z, 0, 8, 0x800);
+#else
         cLib_addCalc0(&i_this->mArmLRotY, 0.1f, 100.0f);
         cLib_addCalc0(&i_this->mArmRRotY, 0.1f, 100.0f);
         cLib_addCalc0(&i_this->field_0x6cc, 0.1f, 100.0f);
@@ -800,6 +894,7 @@ static void action(e_hzelda_class* i_this) {
         cLib_addCalc0(&i_this->mBodyRotY, 0.1f, 100.0f);
         cLib_addCalc0(&i_this->mBodyRotZ, 0.1f, 100.0f);
         cLib_addCalcAngleS2(&a_this->shape_angle.z, 0, 8, 0x800);
+#endif
     }
 }
 
@@ -863,7 +958,7 @@ static void demo_camera(e_hzelda_class* i_this) {
             
             i_this->mDemoCamEye = target_eye;
             i_this->mDemoCamCenter = target_center;
-        } else if (i_this->mDemoTimer == 60) {
+        } else if (i_this->mDemoTimer == DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 60), 60)) {
             offset.x = -100.0f;
             offset.y = -50.0f;
             offset.z = 300.0f;
@@ -871,7 +966,7 @@ static void demo_camera(e_hzelda_class* i_this) {
             
             target_eye += a_this->current.pos;
             i_this->mDemoCamEye = target_eye;
-        } else if (i_this->mDemoTimer == 160) {
+        } else if (i_this->mDemoTimer == DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 160), 160)) {
             offset.x = -100.0f;
             offset.y = 250.0f + -50.0f;
             offset.z = 300.0f - 200.0f;
@@ -880,13 +975,13 @@ static void demo_camera(e_hzelda_class* i_this) {
             i_this->mDemoCamEye = target_eye;
         }
 
-        cLib_addCalc2(&i_this->mDemoCamCenter.y, target_center.y, 0.1f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &i_this->mDemoCamCenter.y, target_center.y, 0.1f, 5.0f), cLib_addCalc2(&i_this->mDemoCamCenter.y, target_center.y, 0.1f, 5.0f));
 
-        if (i_this->mDemoTimer == 220) {
+        if (i_this->mDemoTimer == DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 220), 220)) {
             mDoGph_gInf_c::fadeOut(0.0166f, g_blackColor);
         }
 
-        if (i_this->mDemoTimer == 280) {
+        if (i_this->mDemoTimer == DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 280), 280)) {
             dStage_changeScene(1, 0.0f, 0, fopAcM_GetRoomNo(i_this), 0, -1);
         }
     }
@@ -964,7 +1059,11 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
     mDoMtx_stack_c::ZrotM(a_this->shape_angle.z);
     
     f32 model_scale = l_HIO.mModelSize * a_this->scale.x;
+#if TARGET_PC  // enemy attribute integration
+    mDoMtx_stack_c::scaleM((model_scale) * actor_attr::enemy_size_multiplier(i_this), (model_scale) * actor_attr::enemy_size_multiplier(i_this), (model_scale) * actor_attr::enemy_size_multiplier(i_this));
+#else
     mDoMtx_stack_c::scaleM(model_scale, model_scale, model_scale);
+#endif
 
     J3DModel* model = i_this->mpModelMorf->getModel();
     model->setBaseTRMtx(mDoMtx_stack_c::get());
@@ -977,7 +1076,7 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
     sp114.set(0.0f, 0.0f, 0.0f);
     MtxPosition(&sp114, &a_this->eyePos);
     a_this->attention_info.position = a_this->eyePos;
-    a_this->attention_info.position.y += 80.0f;
+    a_this->attention_info.position.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 80.0f), 80.0f);
 
     cXyz spF0(0.0f, 0.0f, 0.0f);
     if (i_this->field_0x6b4 != 0) {
@@ -985,21 +1084,21 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
     }
 
     i_this->mSphCc[0].SetC(a_this->eyePos + spF0);
-    i_this->mSphCc[0].SetR(25.0f);
+    i_this->mSphCc[0].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 25.0f), 25.0f));
     dComIfG_Ccsp()->Set(&i_this->mSphCc[0]);
 
     MTXCopy(model->getAnmMtx(JNT_WAIST), *calc_mtx);
     sp114.set(0.0f, 0.0f, 0.0f);
     MtxPosition(&sp114, &sp108);
     i_this->mSphCc[1].SetC(sp108 + spF0);
-    i_this->mSphCc[1].SetR(30.0f);
+    i_this->mSphCc[1].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 30.0f), 30.0f));
     dComIfG_Ccsp()->Set(&i_this->mSphCc[1]);
 
     MTXCopy(model->getAnmMtx(JNT_LEG_L2), *calc_mtx);
     sp114.set(0.0f, 0.0f, 0.0f);
     MtxPosition(&sp114, &sp108);
     i_this->mSphCc[2].SetC(sp108 + spF0);
-    i_this->mSphCc[2].SetR(35.0f);
+    i_this->mSphCc[2].SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 35.0f), 35.0f));
     dComIfG_Ccsp()->Set(&i_this->mSphCc[2]);
 
     if (i_this->mpSwordModel != NULL) {
@@ -1010,7 +1109,7 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
             sp114.set(20.0f, 0.0f, -40.0f);
             MtxPosition(&sp114, &sp108);
             i_this->mSphAt.SetC(sp108);
-            i_this->mSphAt.SetR(30.0f);
+            i_this->mSphAt.SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 30.0f), 30.0f));
             dComIfG_Ccsp()->Set(&i_this->mSphAt);
             i_this->field_0x6b8 = 0;
         }
@@ -1064,10 +1163,53 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
             i_this->mpSwordModel->setBaseTRMtx(*calc_mtx);
             sp114.set(20.0f, 0.0f, -80.0f);
             MtxPosition(&sp114, &i_this->mBallPos);
-            cLib_addCalc2(&i_this->field_0x6e8, 1.0f, 1.0f, 0.02f);
+            DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &i_this->field_0x6e8, 1.0f, 1.0f, 0.02f), cLib_addCalc2(&i_this->field_0x6e8, 1.0f, 1.0f, 0.02f));
         } else {
+            // At high movement multipliers the ball can travel farther in one
+            // game frame than its attack sphere is wide.  In particular, at
+            // 400% the initial 35-unit step becomes 140 units/frame.  The
+            // following background line check also looks two movement deltas
+            // ahead, so a fast ball can visually cross Link and then explode
+            // on geometry behind him before Link receives a real overlap.
+            //
+            // Keep the requested fast travel in open space, but once an
+            // outbound ball is within one scaled step of Link, use the
+            // authored per-frame step until the collision is resolved.  This
+            // gives the normal dCcD attack sphere at least one real overlap
+            // sample instead of tunneling through him.
+
+			// -real person here, should probbaly fix this globally.
             i_this->mOldBallPos = i_this->mBallPos;
+#if TARGET_PC  // enemy attribute integration
+
+            cXyz ballMove =
+                actor_attr::enemy_move_step(i_this, i_this->mBallMove);
+
+            if (i_this->field_0x6e4 == 2) {
+                const f32 scaledStep = ballMove.abs();
+                const f32 vanillaStep = i_this->mBallMove.abs();
+
+                if (scaledStep > vanillaStep) {
+                    cXyz playerTarget = player->eyePos;
+                    playerTarget.y -= 40.0f;
+
+                    const f32 distToPlayer = (playerTarget - i_this->mBallPos).abs();
+
+                    // Include the live attack-sphere radius plus a small
+                    // buffer for Link's body collider.  The sphere radius is
+                    // already size-scaled by the existing create integration.
+                    const f32 safeApproach = scaledStep + i_this->mBallSphAt.GetR() + 60.0f;
+
+                    if (distToPlayer <= safeApproach) {
+                        ballMove = i_this->mBallMove;
+                    }
+                }
+            }
+
+            i_this->mBallPos += ballMove;
+#else
             i_this->mBallPos += i_this->mBallMove;
+#endif
 
             cXyz spE4(i_this->mBallPos);
             BOOL sp64 = 0;
@@ -1084,7 +1226,7 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
                                 sp64 = 1;
                             } else {
                                 sp114 = a_this->current.pos - i_this->mBallPos;
-                                sp114.y += 140.0f;
+                                sp114.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 140.0f), 140.0f);
 
                                 s16 spE = 0;
                                 s16 spC = 0;
@@ -1104,13 +1246,13 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
                                 dScnPly_c::setPauseTimer(2);
 
                                 spE4.y += 10000.0f;
-                                i_this->mTimers[2] = 80;
+                                i_this->mTimers[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 80), 80);
                             }
                         }
                     }
                 } else if (i_this->mBallTgSph.ChkTgHit()) {
                     sp114 = a_this->current.pos - i_this->mBallPos;
-                    sp114.y += 140.0f;
+                    sp114.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 140.0f), 140.0f);
 
                     s16 spA = 0;
                     s16 sp8 = 0;
@@ -1148,7 +1290,7 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
                     dScnPly_c::setPauseTimer(2);
 
                     spE4.y += 10000.0f;
-                    i_this->mTimers[2] = 0x50;
+                    i_this->mTimers[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 0x50), 0x50);
                 }
             } else if (i_this->field_0x6e4 >= 3) {
                 spE4.y += 10000.0f;
@@ -1172,9 +1314,14 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
             dComIfG_Ccsp()->Set(&i_this->mBallSphAt);
         }
 
+#if TARGET_PC  // enemy attribute integration
+        const f32 ball_size_mul = actor_attr::enemy_size_multiplier(i_this);
+        cXyz ball_particle_scale(ball_size_mul, ball_size_mul, ball_size_mul);
+
+#endif
         for (int i = 0; i < 3; i++) {
             static u16 b_id[] = {0x8918, 0x8919, 0x891A};
-            i_this->field_0x141c[i] = dComIfGp_particle_set(i_this->field_0x141c[i], b_id[i], &i_this->mBallPos, NULL, NULL);
+            i_this->field_0x141c[i] = dComIfGp_particle_set(i_this->field_0x141c[i], b_id[i], &i_this->mBallPos, NULL, DUSK_IF_ELSE(&ball_particle_scale, NULL));
         }
     } else if (i_this->field_0x6e4 < 0) {
         for (int i = 0; i < 3; i++) {
@@ -1194,20 +1341,36 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
         mDoMtx_stack_c::YrotM(i_this->mTriangleRotY + 0x8000);
 
         f32 size = i_this->mTriangleSize;
+#if TARGET_PC  // enemy attribute integration
+        mDoMtx_stack_c::scaleM(actor_attr::enemy_size_multiplier(i_this, size));
+#else
         mDoMtx_stack_c::scaleM(size, size, size);
+#endif
         i_this->mpTriangleAtModel->setBaseTRMtx(mDoMtx_stack_c::get());
 
         i_this->mpTriangleAtBrk->setFrame(i_this->mTriangleAnmFrame);
         i_this->mpTriangleAtBtk->setFrame(i_this->mTriangleAnmFrame);
 
+#if TARGET_PC  // enemy attribute integration
+        const int triangleSteps = actor_attr::enemy_action_event_count(i_this, i_this->mCounter, 1);
+        for (int step = 0; step < triangleSteps && i_this->mTriangleAnmFrame < 210; ++step)
+        {
+            const int previousFrame = i_this->mTriangleAnmFrame;
+#else
         if (i_this->mTriangleAnmFrame < 210) {
+#endif
             if (i_this->mTriangleAnmFrame < 100) {
+#if TARGET_PC  // enemy attribute integration
+                i_this->mTriangleAnmFrame = std::min(i_this->mTriangleAnmFrame + 2, 100);
+                if (previousFrame < 2 && i_this->mTriangleAnmFrame >= 2) {
+#else
                 i_this->mTriangleAnmFrame += 2;
                 if (i_this->mTriangleAnmFrame == 2) {
+#endif
                     Z2GetAudioMgr()->seStart(Z2SE_EN_HZE_ATK_B_LIGHT, &i_this->mTrianglePos, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
                 }
 
-                if (i_this->mTriangleAnmFrame == 100) {
+                if (DUSK_IF_ELSE(previousFrame < 100 && i_this->mTriangleAnmFrame >= 100, i_this->mTriangleAnmFrame == 100)) {
                     Z2GetAudioMgr()->seStart(Z2SE_EN_HZE_ATK_B_LIGHTWALL, &i_this->mTrianglePos, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
                     i_this->mSound.startCreatureVoice(Z2SE_EN_HZE_V_ATK_B_LIGHTWALL, -1);
 
@@ -1243,7 +1406,7 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
             f32 temp_f28 = 1.0f / cM_fcos(M_PI * (var_f31 / 180.0f));
             if (JMAFastSqrt((sp114.x * sp114.x) + (sp114.z * sp114.z)) < temp_f28 * (50.0f * i_this->mTriangleSize)) {
                 i_this->mTriAtSph.SetC(player->current.pos);
-                i_this->mTriAtSph.SetR(5.0f);
+                i_this->mTriAtSph.SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 5.0f), 5.0f));
                 dComIfG_Ccsp()->Set(&i_this->mTriAtSph);
 
                 i_this->mSound.startCreatureVoice(Z2SE_EN_HZE_V_LAUGH, -1);
@@ -1252,17 +1415,16 @@ static int daE_HZELDA_Execute(e_hzelda_class* i_this) {
     }
 
     if (i_this->field_0x68c != 0) {
-        cLib_addCalc2(&i_this->mSwordColorIntensity, 1.0f, 1.0f, 0.025f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &i_this->mSwordColorIntensity, 1.0f, 1.0f, 0.025f), cLib_addCalc2(&i_this->mSwordColorIntensity, 1.0f, 1.0f, 0.025f));
         i_this->field_0x68c = 0;
         i_this->field_0x1418 = dComIfGp_particle_set(i_this->field_0x1418, 0x895F, &a_this->current.pos, NULL, NULL);
-        
         JPABaseEmitter* emitter = dComIfGp_particle_getEmitter(i_this->field_0x1418);
         if (emitter != NULL) {
-            emitter->setGlobalRTMatrix(i_this->mpSwordModel->getBaseTRMtx());
+            DUSK_IF_ELSE(emitter->setGlobalSRTMatrix(i_this->mpSwordModel->getBaseTRMtx()), emitter->setGlobalRTMatrix(i_this->mpSwordModel->getBaseTRMtx()));
             dComIfGp_particle_levelEmitterOnEventMove(i_this->field_0x1418);
         }
     } else {
-        cLib_addCalc0(&i_this->mSwordColorIntensity, 1.0f, 0.05f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc0(i_this, &i_this->mSwordColorIntensity, 1.0f, 0.05f), cLib_addCalc0(&i_this->mSwordColorIntensity, 1.0f, 0.05f));
     }
 
     if (i_this->mAnm == ANM_DAMAGE || i_this->mAnm == ANM_LAST_DAMAGE || i_this->mAnm == ANM_DAMAGE_LOOP) {
@@ -1313,7 +1475,7 @@ static int useHeapInit(fopAc_ac_c* i_this) {
 
     a_this->mpModelMorf = JKR_NEW mDoExt_McaMorfSO(static_cast<J3DModelData*>(dComIfG_getObjectRes("Hzelda", 0x1B)), NULL, NULL,
                                                static_cast<J3DAnmTransform*>(dComIfG_getObjectRes("Hzelda", 0x15)),
-                                               J3DFrameCtrl::EMode_LOOP, 1.0f, 0, -1, &a_this->mSound, 0x80000, 0x11000284);
+                                               J3DFrameCtrl::EMode_LOOP, DUSK_IF_ELSE(actor_attr::enemy_action_step(a_this, 1.0f), 1.0f), 0, -1, &a_this->mSound, 0x80000, 0x11000284);
     if (a_this->mpModelMorf == NULL || a_this->mpModelMorf->getModel() == NULL) {
         return 0;
     }
@@ -1345,7 +1507,7 @@ static int useHeapInit(fopAc_ac_c* i_this) {
     }
 
     if (a_this->mpTriangleAtBrk->init(modelData, static_cast<J3DAnmTevRegKey*>(dComIfG_getObjectRes("Hzelda", 0x1F)),
-                                       TRUE, J3DFrameCtrl::EMode_LOOP, 1.0f, 0, -1) == FALSE) {
+                                       TRUE, J3DFrameCtrl::EMode_LOOP, DUSK_IF_ELSE(actor_attr::enemy_action_step(a_this, 1.0f), 1.0f), 0, -1) == FALSE) {
         return 0;
     }
 
@@ -1356,7 +1518,7 @@ static int useHeapInit(fopAc_ac_c* i_this) {
 
     if (a_this->mpTriangleAtBtk->init(a_this->mpTriangleAtModel->getModelData(),
                                        static_cast<J3DAnmTextureSRTKey*>(dComIfG_getObjectRes("Hzelda", 0x23)),
-                                       TRUE, J3DFrameCtrl::EMode_LOOP, 1.0f, 0, -1) == FALSE) {
+                                       TRUE, J3DFrameCtrl::EMode_LOOP, DUSK_IF_ELSE(actor_attr::enemy_action_step(a_this, 1.0f), 1.0f), 0, -1) == FALSE) {
         return 0;
     }
 
@@ -1399,10 +1561,18 @@ static int daE_HZELDA_Create(fopAc_ac_c* i_this) {
 
         a_this->mAcch.Set(fopAcM_GetPosition_p(i_this), fopAcM_GetOldPosition_p(i_this), i_this, 1,
                           &a_this->mAcchCir, fopAcM_GetSpeed_p(i_this), NULL, NULL);
+#if TARGET_PC  // enemy attribute integration
+        a_this->mAcchCir.SetWall(actor_attr::enemy_size_value(a_this, 50.0f), actor_attr::enemy_size_value(a_this, 70.0f));
+#else
         a_this->mAcchCir.SetWall(50.0f, 70.0f);
+#endif
 
+#if TARGET_PC  // enemy attribute integration
+        i_this->field_0x560 = i_this->health = actor_attr::enemy_health_value(a_this, 3.0f);
+#else
         i_this->health = 3;
         i_this->field_0x560 = 3;
+#endif
 
         a_this->field_0x958.Init(200, 0, i_this);
         for (int i = 0; i <= 2; i++) {
@@ -1419,6 +1589,12 @@ static int daE_HZELDA_Create(fopAc_ac_c* i_this) {
             };
     
             a_this->mSphCc[i].Set(cc_sph_src);
+#if TARGET_PC  // enemy attribute integration
+
+            a_this->mSphCc[i].SetR(actor_attr::enemy_size_value(a_this, a_this->mSphCc[i].GetR()));
+
+            a_this->mSphCc[i].SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, a_this->mSphCc[i].GetAtAtp()));
+#endif
             a_this->mSphCc[i].SetStts(&a_this->field_0x958);
         }
 
@@ -1437,7 +1613,14 @@ static int daE_HZELDA_Create(fopAc_ac_c* i_this) {
         };
 
         a_this->mSphAt.Set(at_sph_src);
+#if TARGET_PC  // enemy attribute integration
+
+        a_this->mSphAt.SetR(actor_attr::enemy_size_value(a_this, a_this->mSphAt.GetR()));
+
+        a_this->mSphAt.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, a_this->mSphAt.GetAtAtp()));
+#endif
         a_this->mSphAt.SetStts(&a_this->field_0xd3c);
+        IF_DUSK(a_this->mSphAt.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, 2.0f));)
         a_this->mSphAt.OnTgShield();
         a_this->mSphAt.SetTgHitMark(CcG_Tg_UNK_MARK_2);
 
@@ -1454,7 +1637,14 @@ static int daE_HZELDA_Create(fopAc_ac_c* i_this) {
         };
 
         a_this->mBallSphAt.Set(ball_at_sph_src);
+#if TARGET_PC  // enemy attribute integration
+
+        a_this->mBallSphAt.SetR(actor_attr::enemy_size_value(a_this, a_this->mBallSphAt.GetR()));
+
+        a_this->mBallSphAt.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, a_this->mBallSphAt.GetAtAtp()));
+#endif
         a_this->mBallSphAt.SetStts(&a_this->field_0xd3c);
+        IF_DUSK(a_this->mBallSphAt.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, 4.0f));)
         a_this->mBallSphAt.SetAtMtrl(dCcD_MTRL_ELECTRIC);
 
         static dCcD_SrcSph ball_tg_sph_src = {
@@ -1470,6 +1660,12 @@ static int daE_HZELDA_Create(fopAc_ac_c* i_this) {
         };
 
         a_this->mBallTgSph.Set(ball_tg_sph_src);
+#if TARGET_PC  // enemy attribute integration
+
+        a_this->mBallTgSph.SetR(actor_attr::enemy_size_value(a_this, a_this->mBallTgSph.GetR()));
+
+        a_this->mBallTgSph.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, a_this->mBallTgSph.GetAtAtp()));
+#endif
         a_this->mBallTgSph.SetStts(&a_this->field_0x958);
         a_this->mBallTgSph.OnTgNoHitMark();
 
@@ -1486,7 +1682,14 @@ static int daE_HZELDA_Create(fopAc_ac_c* i_this) {
         };
 
         a_this->mTriAtSph.Set(tri_at_sph_src);
+#if TARGET_PC  // enemy attribute integration
+
+        a_this->mTriAtSph.SetR(actor_attr::enemy_size_value(a_this, a_this->mTriAtSph.GetR()));
+
+        a_this->mTriAtSph.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, a_this->mTriAtSph.GetAtAtp()));
+#endif
         a_this->mTriAtSph.SetStts(&a_this->field_0x958);
+        IF_DUSK(a_this->mTriAtSph.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, 4.0f));)
 
         a_this->field_0x127c.Init(0xFF, 0, dComIfGp_getPlayer(0));
 
@@ -1515,7 +1718,7 @@ static int daE_HZELDA_Create(fopAc_ac_c* i_this) {
         a_this->mBallSound.init(&a_this->mBallPos, 1);
 
         if (!dComIfGs_isSaveDunSwitch(2)) {
-            a_this->mMsgSetTimer = 30;
+            a_this->mMsgSetTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(a_this, 30), 30);
             dComIfGs_onSaveDunSwitch(2);
         }
 
