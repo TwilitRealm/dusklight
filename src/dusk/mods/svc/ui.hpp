@@ -6,13 +6,13 @@
 #include <string>
 #include <vector>
 
-namespace dusk::ui {
+namespace borealis::ui {
 class Pane;
-}  // namespace dusk::ui
+}  // namespace borealis::ui
 
 namespace dusk::mods::svc {
 
-void ui_build_mods_panels(LoadedMod& mod, ui::Pane& pane);
+void ui_build_mods_panels(LoadedMod& mod, borealis::ui::Pane& pane);
 void ui_update_mods_panels(LoadedMod& mod);
 
 struct ModMenuTabEntry {

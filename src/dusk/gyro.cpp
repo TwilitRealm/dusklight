@@ -70,7 +70,8 @@ bool rollgoal_gyro_enabled() {
 }
 
 bool queryGyroAimContext() {
-    return getSettings().game.enableGyroAim.getValue() && dCamera_c::isAimActive();
+    return getSettings().game.enableGyroAim.getValue() && dCamera_c::isAimActive() &&
+           !PADIsInputCaptured(PAD_CHAN0);
 }
 
 void read(float dt) {

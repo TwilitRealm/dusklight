@@ -6,9 +6,10 @@
 
 #include <RmlUi/Core/ElementUtilities.h>
 #include <SDL3/SDL_timer.h>
+#include <borealis/ui/pane.hpp>
 #include <fmt/format.h>
 
-#include "pane.hpp"
+#include "ui.hpp"
 
 namespace dusk::ui {
 namespace {

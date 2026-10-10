@@ -1,9 +1,10 @@
 #pragma once
 
 #include "dusk/mod_loader.hpp"
-#include "modal.hpp"
+#include "ui.hpp"
 
 #include <borealis/task.hpp>
+#include <borealis/ui/modal.hpp>
 
 #include <cstdint>
 #include <filesystem>

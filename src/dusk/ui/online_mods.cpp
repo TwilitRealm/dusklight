@@ -1,22 +1,23 @@
 #include "online_mods.hpp"
 
-#include "bool_button.hpp"
-#include "document.hpp"
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/queue.hpp"
 #include "dusk/settings.h"
 #include "format.hpp"
-#include "icon_button.hpp"
 #include "mod_browser.hpp"
 #include "mod_texture_provider.hpp"
 #include "mod_updates.hpp"
-#include "nav_group.hpp"
 #include "package_row.hpp"
-#include "pane.hpp"
 #include "remote_texture_provider.hpp"
+#include "ui.hpp"
 
 #include <algorithm>
 #include <borealis/http.hpp>
+#include <borealis/ui/bool_button.hpp>
+#include <borealis/ui/document.hpp>
+#include <borealis/ui/icon_button.hpp>
+#include <borealis/ui/nav_group.hpp>
+#include <borealis/ui/pane.hpp>
 #include <fmt/format.h>
 
 namespace dusk::ui {

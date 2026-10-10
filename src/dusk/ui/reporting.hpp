@@ -2,8 +2,10 @@
 
 #if BOREALIS_HAS_SENTRY
 
-#include "component.hpp"
-#include "window.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/component.hpp>
+#include <borealis/ui/window.hpp>
 
 #include <memory>
 #include <vector>

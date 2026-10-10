@@ -1,7 +1,9 @@
 #pragma once
 
-#include "document.hpp"
 #include "dusk/commands.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/document.hpp>
 
 #include <chrono>
 #include <deque>
@@ -16,6 +18,9 @@ namespace dusk::ui {
 class CommandConsole : public Document {
 public:
     CommandConsole();
+
+    static void register_shortcut();
+    static void unregister_shortcut();
 
     void update() override;
     void show() override;
