@@ -13,24 +13,24 @@ u32 JASWSParser::getGroupCount(void const* stream) {
 }
 
 
-JASWaveBank* JASWSParser::createWaveBank(void const* stream, JKRHeap* heap) {
+JASWaveBank* JASWSParser::createWaveBank(void const* stream, JKRHeap* heap IF_DUSK_ARG(u32 bank_no)) {
     if (getGroupCount(stream) == 1) {
-        return createSimpleWaveBank(stream, heap);
+        return createSimpleWaveBank(stream, heap IF_DUSK_ARG(bank_no));
     } else {
-        return createBasicWaveBank(stream, heap);
+        return createBasicWaveBank(stream, heap IF_DUSK_ARG(bank_no));
     }
 }
 
 DUSK_GAME_DATA u32 JASWSParser::sUsedHeapSize;
 
-JASBasicWaveBank* JASWSParser::createBasicWaveBank(void const* stream, JKRHeap* heap) {
+JASBasicWaveBank* JASWSParser::createBasicWaveBank(void const* stream, JKRHeap* heap IF_DUSK_ARG(u32 bank_no)) {
     if (heap == NULL) {
         heap = JASDram;
     }
     u32 free_size = heap->getFreeSize();
 
     THeader* header = (THeader*)stream;
-    JASBasicWaveBank* wave_bank = JKR_NEW_ARGS (heap, 0) JASBasicWaveBank IF_DUSK((header->mId));
+    JASBasicWaveBank* wave_bank = JKR_NEW_ARGS (heap, 0) JASBasicWaveBank IF_DUSK((bank_no));
     if (wave_bank == NULL) {
         return NULL;
     }
@@ -70,7 +70,7 @@ JASBasicWaveBank* JASWSParser::createBasicWaveBank(void const* stream, JKRHeap* 
     return wave_bank;
 }
 
-JASSimpleWaveBank* JASWSParser::createSimpleWaveBank(void const* stream, JKRHeap* heap) {
+JASSimpleWaveBank* JASWSParser::createSimpleWaveBank(void const* stream, JKRHeap* heap IF_DUSK_ARG(u32 bank_no)) {
     if (heap == NULL) {
         heap = JASDram;
     }
@@ -82,7 +82,7 @@ JASSimpleWaveBank* JASWSParser::createSimpleWaveBank(void const* stream, JKRHeap
         return NULL;
     }
 
-    JASSimpleWaveBank* wave_bank = JKR_NEW_ARGS (heap, 0) JASSimpleWaveBank IF_DUSK((header->mId));
+    JASSimpleWaveBank* wave_bank = JKR_NEW_ARGS (heap, 0) JASSimpleWaveBank IF_DUSK((bank_no));
     if (wave_bank == NULL) {
         return NULL;
     }
