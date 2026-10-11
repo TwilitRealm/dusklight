@@ -31,6 +31,7 @@ public:
     int Delete();
     int Execute();
     int Draw();
+    int IsDelete();
     static int createHeapCallBack(fopAc_ac_c*);
 
     static s16 sProcName;

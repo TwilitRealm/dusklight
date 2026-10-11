@@ -1239,6 +1239,9 @@ svc_game_mode->register_game_mode(mod_ctx, &gameModeDesc);
 A service that manages registering and creating custom actors. These actors will be run by the game as if they are part of the engine. These actors can be created by the game either by its 16-bit actor name, or a 7-character long name that can
 be loaded by a stage.
 
+> [!TIP]
+> Much of this boilerplate can be eliminated with the C++ wrapper: `mods/svc/actor.hpp`!
+
 ```cpp
 #include "mods/svc/actor.h"
 IMPORT_SERVICE(ActorService, svc_actor);

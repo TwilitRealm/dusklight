@@ -5,6 +5,7 @@
 
 #include "m_a_obj_wrock.hpp"
 #include "d/d_com_inf_game.h"
+#include "mods/svc/actor.hpp"
 #include "res/Object/WRock.h"
 
 // The name of the archive in /res/Object/
@@ -159,37 +160,17 @@ int maObj_Wrock_c::Draw() {
     return 1;
 }
 
-static cPhs_Step maObj_Wrock_Create(void* i_this) {
-    return static_cast<maObj_Wrock_c*>(i_this)->create();
-}
-
-static int maObj_Wrock_Delete(void* i_this) {
-    return static_cast<maObj_Wrock_c*>(i_this)->Delete();
-}
-
-static int maObj_Wrock_Execute(void* i_this) {
-    return static_cast<maObj_Wrock_c*>(i_this)->Execute();
-}
-
-static int maObj_Wrock_Draw(void* i_this) {
-    return static_cast<maObj_Wrock_c*>(i_this)->Draw();
-}
-
-static int maObj_Wrock_IsDelete(void*) {
+int maObj_Wrock_c::IsDelete() {
     return 1;
 }
 
 s16 maObj_Wrock_c::sProcName = -1;
 ActorHandle maObj_Wrock_c::sActorHandle = -1;
-const ActorProfileDesc maObj_Wrock_c::sProfile = {.name = MAOBJ_WROCK_NAME,
+const ActorProfileDesc maObj_Wrock_c::sProfile = mods::actor::FillInfo<maObj_Wrock_c>({
+    .name = MAOBJ_WROCK_NAME,
     .priority_group = 7,
-    .process_size = sizeof(maObj_Wrock_c),
     .draw_priority = fpcDwPi_OBJ_LBOX_e,  // An unused draw priority
     .status = fopAcStts_UNK_0x40000_e | fopAcStts_UNK_0x4000_e | fopAcStts_CULL_e,
     .group = fopAc_ACTOR_e,
     .cull_type = fopAc_CULLBOX_CUSTOM_e,
-    .create_function = maObj_Wrock_Create,
-    .delete_function = maObj_Wrock_Delete,
-    .execute_function = maObj_Wrock_Execute,
-    .is_delete_function = maObj_Wrock_IsDelete,
-    .draw_function = maObj_Wrock_Draw};
+});
