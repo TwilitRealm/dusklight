@@ -238,12 +238,18 @@ enum class JKRHeapToken {
     Dummy
 };
 
-inline void* operator new(size_t, JKRHeapToken, void* where) noexcept {
+[[nodiscard]] inline void* operator new(size_t, JKRHeapToken, void* where) noexcept {
     return where;
 }
 
-inline void* operator new[](size_t, JKRHeapToken, void* where) noexcept {
+[[nodiscard]] inline void* operator new[](size_t, JKRHeapToken, void* where) noexcept {
     return where;
+}
+
+inline void operator delete(void*, JKRHeapToken, void*) noexcept {
+}
+
+inline void operator delete[](void*, JKRHeapToken, void*) noexcept {
 }
 
 #define JKR_NEW new (JKRHeapToken::Dummy)
