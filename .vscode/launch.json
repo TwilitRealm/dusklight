@@ -2,16 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch Dusklight MSVC",
-            "type": "cppvsdbg",
+            "name": "Launch Dusklight",
+            "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": ["-l", "1", "--dvd", "${workspaceRoot}/orig/GZ2E01/GZ2E01.iso", "--console"],
-            "MIMode": "gdb",
-            "miDebuggerPath": "gdb",
-            "symbolSearchPath": "${command:cmake.launchTargetPath}",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "cwd":"${workspaceRoot}"
+            "windows": {
+                "type": "cppvsdbg"
+            },
+            "linux": {
+                "type": "lldb"
+            }
         }
     ]
 }
