@@ -13,6 +13,8 @@
 #include <optional>
 #include <string_view>
 #include <unordered_map>
+#include <cstdlib>
+#include <cstring>
 
 using namespace std::string_literals;
 
@@ -32,9 +34,9 @@ struct TextureRawData {
 
 constexpr borealis::Log Log{"dusk::mods::textures"};
 
-// Referenced by Aurora's lazy virtual-file reads (from arbitrary threads, under Aurora's registry
-// lock) and by raw-entry spans. Immutable after construction; freed only after the corresponding
-// unregister_replacement returns, at which point Aurora guarantees no further reads.
+// Referenced by Aurora's lazy virtual-file reads from arbitrary threads and by raw-entry spans.
+// Immutable after construction; freed only after the corresponding unregister_replacement returns,
+// at which point Aurora guarantees no further reads.
 struct TextureKeepalive {
     std::shared_ptr<ModBundle> bundle;
     std::string bundlePath;
@@ -78,6 +80,7 @@ struct ModTextureRecord {
 // Game thread only: all mutations happen in service calls made from mod code (init/update/hooks
 // run inside ModLoader::tick), in the loader's sync/deactivate paths, or at shutdown.
 std::unordered_map<const LoadedMod*, ModTextureRecord> s_modTextures;
+std::unordered_map<void*, const LoadedMod*> s_resolvedBuffers;
 uint64_t s_nextTextureHandle = 1;
 
 // Position in m_mods (dependency-sorted load order) + 1; later-loaded mods win. The user
@@ -324,13 +327,38 @@ bool texture_unregister(LoadedMod& mod, uint64_t handle) {
     return true;
 }
 
+const RuntimeTextureEntry* find_runtime_entry(const LoadedMod& mod, uint64_t handle) {
+    const auto record = s_modTextures.find(&mod);
+    if (record == s_modTextures.end()) {
+        return nullptr;
+    }
+
+    const auto& runtime = record->second.runtime;
+    const auto entry =
+        std::ranges::find_if(runtime, [&](const auto& e) { return e.handle == handle; });
+    return entry == runtime.end() ? nullptr : &*entry;
+}
+
 void textures_remove_mod(LoadedMod& mod) {
     const auto it = s_modTextures.find(&mod);
-    if (it == s_modTextures.end()) {
-        return;
+    if (it != s_modTextures.end()) {
+        unregister_record(it->second);
+        s_modTextures.erase(it);
     }
-    unregister_record(it->second);
-    s_modTextures.erase(it);
+
+    size_t reclaimed = 0;
+    std::erase_if(s_resolvedBuffers, [&](const auto& entry) {
+        if (entry.second != &mod) {
+            return false;
+        }
+        std::free(entry.first);
+        ++reclaimed;
+        return true;
+    });
+    if (reclaimed != 0) {
+        Log.warn("[{}] reclaimed {} resolved texture buffer(s) that were never freed",
+            mod.metadata.id, reclaimed);
+    }
 }
 
 std::optional<aurora::texture::ReplacementKey> translate_key(const TextureKey* key) {
@@ -358,6 +386,29 @@ std::optional<aurora::texture::ReplacementKey> translate_key(const TextureKey* k
     default:
         return std::nullopt;
     }
+}
+
+TextureResolvedFormat translate_resolved_format(aurora::texture::ResolvedTextureFormat format) {
+    switch (format) {
+    case aurora::texture::ResolvedTextureFormat::Gx:
+        return TEXTURE_RESOLVED_GX;
+    case aurora::texture::ResolvedTextureFormat::Rgba8:
+        return TEXTURE_RESOLVED_RGBA8;
+    case aurora::texture::ResolvedTextureFormat::Bgra8:
+        return TEXTURE_RESOLVED_BGRA8;
+    case aurora::texture::ResolvedTextureFormat::Bc1:
+        return TEXTURE_RESOLVED_BC1;
+    case aurora::texture::ResolvedTextureFormat::Bc3:
+        return TEXTURE_RESOLVED_BC3;
+    case aurora::texture::ResolvedTextureFormat::Bc5:
+        return TEXTURE_RESOLVED_BC5;
+    case aurora::texture::ResolvedTextureFormat::Bc7:
+        return TEXTURE_RESOLVED_BC7;
+    case aurora::texture::ResolvedTextureFormat::Astc:
+        return TEXTURE_RESOLVED_ASTC;
+    }
+
+    return TEXTURE_RESOLVED_GX;
 }
 
 ModResult texture_register_data(ModContext* context, const TextureKey* key, const TextureData* data,
@@ -430,6 +481,106 @@ ModResult texture_register_file(
     return MOD_OK;
 }
 
+ModResult texture_resolve_data(ModContext* context, const TextureLookup* lookup,
+    TextureReplacementHandle exclude, TextureResolvedData* outData) {
+    if (outData == nullptr || outData->struct_size < sizeof(TextureResolvedData)) {
+        return MOD_INVALID_ARGUMENT;
+    }
+
+    outData->data = nullptr;
+    outData->size = 0;
+
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || lookup == nullptr || lookup->struct_size < sizeof(TextureLookup) ||
+        lookup->source.kind != TEXTURE_KEY_SOURCE)
+    {
+        return MOD_INVALID_ARGUMENT;
+    }
+
+    const auto translated = translate_key(&lookup->source);
+    if (!translated.has_value()) {
+        return MOD_INVALID_ARGUMENT;
+    }
+
+    const auto* source = std::get_if<aurora::texture::TextureSourceKey>(&*translated);
+    if (source == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+
+    uint64_t excludedId = 0;
+    if (exclude != 0) {
+        const auto* entry = find_runtime_entry(*mod, exclude);
+        if (entry == nullptr) {
+            return MOD_INVALID_ARGUMENT;
+        }
+        excludedId = entry->registration.id;
+    }
+
+    const aurora::texture::ReplacementLookup replacementLookup{
+        .pointer = lookup->pointer,
+        .source = *source,
+    };
+
+    auto resolved = aurora::texture::resolve_replacement(replacementLookup, excludedId);
+    if (!resolved.has_value()) {
+        return MOD_UNAVAILABLE;
+    }
+
+    void* copy = nullptr;
+    if (!resolved->data.empty()) {
+        copy = std::malloc(resolved->data.size());
+        if (copy == nullptr) {
+            return MOD_ERROR;
+        }
+
+        std::memcpy(copy, resolved->data.data(), resolved->data.size());
+        s_resolvedBuffers.emplace(copy, mod);
+    }
+
+    outData->data = copy;
+    outData->size = resolved->data.size();
+    outData->width = resolved->width;
+    outData->height = resolved->height;
+    outData->mip_count = resolved->mipCount;
+    outData->format = translate_resolved_format(resolved->format);
+    outData->gx_format = resolved->gxFormat;
+    outData->block_width = resolved->blockWidth;
+    outData->block_height = resolved->blockHeight;
+    outData->block_size = resolved->blockSize;
+    outData->srgb = resolved->srgb;
+    outData->match = resolved->match == aurora::texture::ResolvedTextureMatch::Pointer ?
+                         TEXTURE_RESOLVED_MATCH_POINTER :
+                         TEXTURE_RESOLVED_MATCH_SOURCE;
+
+    return MOD_OK;
+}
+
+void texture_free_resolved_data(ModContext* context, TextureResolvedData* data) {
+    if (data == nullptr || data->struct_size < sizeof(TextureResolvedData) || data->data == nullptr)
+    {
+        return;
+    }
+
+    auto* mod = mod_from_context(context);
+    const auto it = s_resolvedBuffers.find(data->data);
+    if (it == s_resolvedBuffers.end()) {
+        Log.error("[{}] texture free_resolved_data: not a live resolved buffer",
+            mod_id_from_context(context));
+        return;
+    }
+    if (mod == nullptr || it->second != mod) {
+        Log.error("[{}] texture free_resolved_data: buffer is owned by '{}'",
+            mod_id_from_context(context),
+            it->second != nullptr ? it->second->metadata.id : "unknown");
+        return;
+    }
+
+    s_resolvedBuffers.erase(it);
+    std::free(data->data);
+    data->data = nullptr;
+    data->size = 0;
+}
+
 ModResult texture_unregister(ModContext* context, TextureReplacementHandle handle) {
     auto* mod = mod_from_context(context);
     if (mod == nullptr || handle == 0) {
@@ -448,6 +599,8 @@ constexpr TextureService s_textureService{
     .register_data = texture_register_data,
     .register_file = texture_register_file,
     .unregister = texture_unregister,
+    .resolve_data = texture_resolve_data,
+    .free_resolved_data = texture_free_resolved_data,
 };
 
 }  // namespace

@@ -8,7 +8,7 @@
 
 #define TEXTURE_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "texture"
 #define TEXTURE_SERVICE_MAJOR 1u
-#define TEXTURE_SERVICE_MINOR 0u
+#define TEXTURE_SERVICE_MINOR 1u
 
 /* Handle for a runtime texture replacement registration. 0 is never a valid handle. */
 typedef uint64_t TextureReplacementHandle;
@@ -51,6 +51,48 @@ typedef struct TextureData {
 
 #define TEXTURE_DATA_INIT {sizeof(TextureData), NULL, 0u, 0u, 0u, 1u, 0u}
 
+typedef enum TextureResolvedFormat {
+    TEXTURE_RESOLVED_GX = 0,
+    TEXTURE_RESOLVED_RGBA8,
+    TEXTURE_RESOLVED_BGRA8,
+    TEXTURE_RESOLVED_BC1,
+    TEXTURE_RESOLVED_BC3,
+    TEXTURE_RESOLVED_BC5,
+    TEXTURE_RESOLVED_BC7,
+    TEXTURE_RESOLVED_ASTC,
+} TextureResolvedFormat;
+
+typedef enum TextureResolvedMatch {
+    TEXTURE_RESOLVED_MATCH_SOURCE = 0,
+    TEXTURE_RESOLVED_MATCH_POINTER,
+} TextureResolvedMatch;
+
+typedef struct TextureLookup {
+    uint32_t struct_size;
+    const void* pointer;
+    TextureKey source;
+} TextureLookup;
+
+#define TEXTURE_LOOKUP_INIT {sizeof(TextureLookup), NULL, TEXTURE_KEY_INIT}
+
+typedef struct TextureResolvedData {
+    uint32_t struct_size;
+    void* data;
+    size_t size;
+    uint32_t width;
+    uint32_t height;
+    uint32_t mip_count;
+    TextureResolvedFormat format;
+    uint32_t gx_format;
+    uint32_t block_width;
+    uint32_t block_height;
+    uint32_t block_size;
+    bool srgb;
+    TextureResolvedMatch match;
+} TextureResolvedData;
+
+#define TEXTURE_RESOLVED_DATA_INIT {sizeof(TextureResolvedData), NULL, 0u, 0u, 0u, 0u, TEXTURE_RESOLVED_GX, 0u, 0u, 0u, 0u, false, TEXTURE_RESOLVED_MATCH_SOURCE}
+
 /*
  * Runtime texture replacements.
  *
@@ -79,6 +121,17 @@ typedef struct TextureService {
 
     /* Remove a replacement previously registered by the calling mod. */
     ModResult (*unregister)(ModContext* ctx, TextureReplacementHandle handle);
+
+    /*
+     * Resolve the replacement Aurora would select. If exclude is nonzero, that runtime
+     * registration is ignored while resolving the underlying replacement.
+     *
+     * The returned data must be released with free_resolved_data.
+     */
+    ModResult (*resolve_data)(ModContext* ctx, const TextureLookup* lookup,
+        TextureReplacementHandle exclude, TextureResolvedData* out_data);
+
+    void (*free_resolved_data)(ModContext* ctx, TextureResolvedData* data);
 } TextureService;
 
 MOD_DECLARE_SERVICE(
