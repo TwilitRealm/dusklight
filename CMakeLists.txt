@@ -289,7 +289,7 @@ if (DUSK_ENABLE_OPUS)
 endif ()
 
 if (WIN32)
-    list(APPEND GAME_LIBS Ws2_32)
+    list(APPEND GAME_LIBS Ws2_32 Amsi.lib)
 endif ()
 
 if (DUSK_ENABLE_CODE_MODS)
