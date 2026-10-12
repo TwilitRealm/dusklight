@@ -1478,6 +1478,8 @@ set(DUSK_FILES
         src/dusk/layout.cpp
         src/dusk/livesplit.cpp
         src/dusk/logging.cpp
+        src/dusk/map_pointer.cpp
+        src/dusk/map_pointer.h
         src/dusk/menu_pointer.cpp
         src/dusk/menu_pointer.h
         src/dusk/mods/loader/bundle_disk.cpp
