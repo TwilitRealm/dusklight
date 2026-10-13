@@ -1851,7 +1851,7 @@ int dDlst_peekZ_c::newData(s16 x, s16 y, u32* dst) {
 }
 
 #if TARGET_PC
-static AuroraReadbackGroup l_peekZGroup;
+static AuroraReadbackStream l_peekZStream;
 static std::vector<AuroraReadbackPeekRequest> l_peekZRequests;
 #endif
 
@@ -1888,8 +1888,8 @@ void dDlst_peekZ_c::peekData() {
     }
 
 #if TARGET_PC
-    if (l_peekZGroup != 0 && mCount != 0) {
-        AuroraReadbackGet(l_peekZGroup, results, mCount);
+    if (l_peekZStream != 0 && mCount != 0) {
+        AuroraReadbackGet(l_peekZStream, results, mCount);
     }
 #endif
 
@@ -1901,10 +1901,10 @@ void dDlst_peekZ_c::capture() {
     if (l_peekZRequests.empty()) {
         return;
     }
-    if (l_peekZGroup == 0) {
-        l_peekZGroup = AuroraReadbackCreateGroup("dDlst_peekZ");
+    if (l_peekZStream == 0) {
+        l_peekZStream = AuroraReadbackCreateStream();
     }
-    AuroraReadbackCapturePeeks(l_peekZGroup, l_peekZRequests.data(), static_cast<u32>(l_peekZRequests.size()));
+    AuroraReadbackCapturePeeks(l_peekZStream, l_peekZRequests.data(), static_cast<u32>(l_peekZRequests.size()));
     l_peekZRequests.clear();
 }
 #endif
