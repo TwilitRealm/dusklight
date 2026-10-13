@@ -26,7 +26,9 @@
 #include <absl/container/flat_hash_map.h>
 #include <tracy/Tracy.hpp>
 
+#include <algorithm>
 #include <typeindex>
+#include <vector>
 
 static const void* getInterpKey(const void* base, int idx) {
     return reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(base) ^ idx);
@@ -1299,7 +1301,7 @@ u8 dDlst_shadowReal_c::setShadowRealMtx(cXyz* param_0, cXyz* param_1, f32 param_
     cMtx_lookAt(mViewMtx, &local_64, param_1, 0);
     C_MTXOrtho(mRenderProjMtx, param_2, -param_2, -param_2, param_2, 1.0f, 10000.0f);
     C_MTXLightOrtho(mReceiverProjMtx, param_2, -param_2, -param_2, param_2, 0.5f, -0.5f, 0.5f, 0.5f);
-    
+
 #ifdef TARGET_PC
     const auto keybase = mpModels[0];
     dusk::interp::record_final_mtx(mViewMtx, getInterpKey(keybase, 1));
@@ -1828,7 +1830,11 @@ void dDlst_shadowControl_c::setSimpleTex(ResTIMG const* i_timg) {
     mDoLib_setResTimgObj(i_timg, &mSimpleTexObj, 0, NULL);
 }
 
+#if TARGET_PC
+int dDlst_peekZ_c::newData(s16 x, s16 y, u32* dst, u64 key) {
+#else
 int dDlst_peekZ_c::newData(s16 x, s16 y, u32* dst) {
+#endif
     if (mCount >= 64 || x < 0 || x > 607 || y < 0 || y > 447) {
         return 0;
     }
@@ -1837,20 +1843,71 @@ int dDlst_peekZ_c::newData(s16 x, s16 y, u32* dst) {
     entry->x = x;
     entry->y = y;
     entry->dst = dst;
+#if TARGET_PC
+    entry->key = key;
+#endif
     mCount++;
     return 1;
 }
 
+#if TARGET_PC
+static AuroraReadbackStream l_peekZStream;
+static std::vector<AuroraReadbackPeekRequest> l_peekZRequests;
+#endif
+
 void dDlst_peekZ_c::peekData() {
     dDlst_peekZ_entry* entry = mEntries;
 
+#if TARGET_PC
+    AuroraReadbackDest results[0x40];
+#endif
     for (int i = 0; i < mCount; i++) {
+#if TARGET_PC
+        results[i] = {
+            .key = entry->key,
+            .dest = entry->dst,
+            .size = sizeof(u32),
+        };
+        const auto request =
+            std::ranges::find(l_peekZRequests, entry->key, &AuroraReadbackPeekRequest::key);
+        if (request != l_peekZRequests.end()) {
+            request->x = entry->x;
+            request->y = entry->y;
+        } else {
+            l_peekZRequests.push_back({
+                .key = entry->key,
+                .kind = AURORA_READBACK_PEEK_Z,
+                .x = static_cast<u16>(entry->x),
+                .y = static_cast<u16>(entry->y),
+            });
+        }
+#else
         GXPeekZ(entry->x, entry->y, entry->dst);
+#endif
         entry++;
     }
 
+#if TARGET_PC
+    if (l_peekZStream != 0 && mCount != 0) {
+        AuroraReadbackGet(l_peekZStream, results, mCount);
+    }
+#endif
+
     mCount = 0;
 }
+
+#if TARGET_PC
+void dDlst_peekZ_c::capture() {
+    if (l_peekZRequests.empty()) {
+        return;
+    }
+    if (l_peekZStream == 0) {
+        l_peekZStream = AuroraReadbackCreateStream();
+    }
+    AuroraReadbackCapturePeeks(l_peekZStream, l_peekZRequests.data(), static_cast<u32>(l_peekZRequests.size()));
+    l_peekZRequests.clear();
+}
+#endif
 
 dDlst_list_c::dDlst_list_c() {
     mpCopy2DEnd = &mpCopy2DDrawLists[4];

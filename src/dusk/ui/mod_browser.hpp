@@ -1,7 +1,9 @@
 #pragma once
 
 #include "dusk/mods/catalog.hpp"
-#include "window.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/window.hpp>
 
 #include <cstdint>
 #include <optional>

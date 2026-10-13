@@ -1,7 +1,6 @@
 #pragma once
 
-#include "context_menu.hpp"
-#include "window.hpp"
+#include "ui.hpp"
 
 #include <cstddef>
 #include <string>
@@ -11,9 +10,14 @@
 
 #include "dusk/mod_loader.hpp"
 
-namespace dusk::ui {
+#include <borealis/ui/context_menu.hpp>
+#include <borealis/ui/window.hpp>
 
+namespace borealis::ui {
 class Pane;
+}  // namespace borealis::ui
+
+namespace dusk::ui {
 
 class ModsWindow : public Window {
 public:

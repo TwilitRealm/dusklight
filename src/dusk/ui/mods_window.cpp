@@ -1,27 +1,26 @@
 #include "mods_window.hpp"
 
-#include "clamped_text.hpp"
 #include "dusk/mods/updates.hpp"
 #include "format.hpp"
-#include "icon_button.hpp"
 #include "logs_window.hpp"
 #include "mod_texture_provider.hpp"
 #include "mod_updates.hpp"
-#include "modal.hpp"
 #include "mods/svc/http.h"
 #include "online_mods.hpp"
 #include "package_row.hpp"
-#include "pane.hpp"
+#include "ui.hpp"
 
 #include <borealis/http.hpp>
+#include <borealis/ui/clamped_text.hpp>
+#include <borealis/ui/icon_button.hpp>
+#include <borealis/ui/modal.hpp>
+#include <borealis/ui/pane.hpp>
 
 #include "dusk/data.hpp"
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/queue.hpp"
 #include "dusk/mods/svc/net.hpp"
 #include "dusk/mods/svc/ui.hpp"
-
-#include "m_Do/m_Do_audio.h"
 
 #include <fmt/format.h>
 #include <fmt/ranges.h>
@@ -235,8 +234,8 @@ public:
             button.on_pressed(std::move(item.onPressed));
         }
 
-        listen(Rml::EventId::Keydown, [this](Rml::Event& event) {
-            const auto cmd = map_nav_event(event);
+        listen(kNavCommandEvent, [this](Rml::Event& event) {
+            const auto cmd = nav_command(event);
             if (cmd != NavCommand::Left && cmd != NavCommand::Right) {
                 return;
             }
@@ -252,7 +251,7 @@ public:
             }
             const int next = index + (cmd == NavCommand::Right ? 1 : -1);
             if (next >= 0 && next < static_cast<int>(mButtons.size()) && mButtons[next]->focus()) {
-                mDoAud_seStartMenu(kSoundItemFocus);
+                play_nav_sound(NavSound::ItemFocus);
                 event.StopPropagation();
             }
         });

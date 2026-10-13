@@ -1,9 +1,6 @@
 #include "mod_browser.hpp"
 
 #include <borealis/update.hpp>
-#include "bool_button.hpp"
-#include "button.hpp"
-#include "dropdown_button.hpp"
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/loader/packages.hpp"
 #include "dusk/mods/queue.hpp"
@@ -11,16 +8,20 @@
 #include "dusk/mods/updates.hpp"
 #include "fmt/format.h"
 #include "format.hpp"
-#include "icon_button.hpp"
 #include "mod_updates.hpp"
 #include "mods_window.hpp"
-#include "nav_group.hpp"
 #include "package_row.hpp"
 #include "remote_texture_provider.hpp"
-#include "string_button.hpp"
+#include "ui.hpp"
 
 #include <SDL3/SDL_misc.h>
 #include <borealis/http.hpp>
+#include <borealis/ui/bool_button.hpp>
+#include <borealis/ui/button.hpp>
+#include <borealis/ui/dropdown_button.hpp>
+#include <borealis/ui/icon_button.hpp>
+#include <borealis/ui/nav_group.hpp>
+#include <borealis/ui/string_button.hpp>
 #include <tracy/Tracy.hpp>
 
 #include <algorithm>

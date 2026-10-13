@@ -191,7 +191,11 @@ void daAlink_c::preKandelaarDraw() {
     }
 
     if (proj.x > 0.0f && proj.x < FB_WIDTH && proj.y > trimHeight && proj.y < FB_HEIGHT - trimHeight) {
+#if TARGET_PC
+        dComIfGd_peekZ(proj.x, proj.y, &field_0x32c8, fopAcM_GetID(this));
+#else
         dComIfGd_peekZ(proj.x, proj.y, &field_0x32c8);
+#endif
     } else {
         field_0x32c8 = 0;
     }

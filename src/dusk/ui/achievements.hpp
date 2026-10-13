@@ -1,7 +1,9 @@
 #pragma once
 
 #include "dusk/achievements.h"
-#include "window.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/window.hpp>
 
 #include <vector>
 

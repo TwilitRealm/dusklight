@@ -2161,7 +2161,7 @@ DUSK_NOINLINE J3DDrawBuffer* dComIfGd_getOpaListDark();
 DUSK_NOINLINE J3DDrawBuffer* dComIfGd_getXluListBG();
 DUSK_NOINLINE void dComIfGd_setListFilter();
 DUSK_NOINLINE void dComIfGd_init();
-DUSK_NOINLINE void dComIfGd_peekZ(s16 param_0, s16 param_1, u32* param_2);
+DUSK_NOINLINE void dComIfGd_peekZ(s16 param_0, s16 param_1, u32* param_2, u64 key);
 DUSK_NOINLINE void dComIfGd_peekZdata();
 DUSK_NOINLINE void dComIfGd_setView(view_class* view);
 DUSK_NOINLINE void dComIfGd_setWindow(dDlst_window_c* window);

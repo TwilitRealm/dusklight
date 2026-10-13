@@ -1,9 +1,11 @@
 #pragma once
 
-#include "button.hpp"
-#include "document.hpp"
 #include "dusk/iso_validate.hpp"
 #include "dusk/settings.h"
+#include "ui.hpp"
+
+#include <borealis/ui/button.hpp>
+#include <borealis/ui/document.hpp>
 
 #include <memory>
 #include <string>

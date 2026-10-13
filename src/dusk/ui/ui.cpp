@@ -3,82 +3,40 @@
 #include "command_console.hpp"
 #include "drop_install_modal.hpp"
 #include "icon_provider.hpp"
-#include "input.hpp"
 #include "mod_texture_provider.hpp"
 #include "prelaunch.hpp"
 #include "remote_texture_provider.hpp"
 #include "saves_window.hpp"
-#include "window.hpp"
 
+#include "Z2AudioLib/Z2SeMgr.h"
+#include "dusk/action_bindings.h"
 #include "dusk/config.hpp"
 #include "dusk/mods/queue.hpp"
 #include "dusk/mods/updates.hpp"
+#include "m_Do/m_Do_audio.h"
 
 #include <RmlUi/Core.h>
-#include <RmlUi/Core/ElementText.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_power.h>
-#include <SDL3/SDL_video.h>
 #include <absl/container/flat_hash_set.h>
-#include <aurora/lib/window.hpp>
 #include <aurora/rmlui.hpp>
 #include <borealis/io.hpp>
+#include <borealis/ui/document.hpp>
+#include <borealis/ui/input.hpp>
 #include <fmt/format.h>
 #include <tracy/Tracy.hpp>
 
-#include <algorithm>
 #include <filesystem>
-#include <ranges>
 #include <utility>
 
 namespace dusk::ui {
 namespace {
 
-void load_font(const char* filename, bool fallback = false) {
-    Rml::LoadFontFace(borealis::io::fs_path_to_string(resource_path(filename)), fallback);
-}
-
 bool sInitialized = false;
-std::vector<std::unique_ptr<Document>> sDocumentStack;
-// Documents that don't participate in the focus stack
-std::vector<std::unique_ptr<Document>> sPassiveDocuments;
-
-struct ScopedStyles {
-    DocumentScope scope;
-    std::string id;
-    Rml::SharedPtr<Rml::StyleSheetContainer> sheet;
-};
-
-std::vector<ScopedStyles> sScopedStyles;
-
-std::vector<const Rml::StyleSheetContainer*> scoped_sheets(DocumentScope scope) {
-    std::vector<const Rml::StyleSheetContainer*> sheets;
-    for (const auto& entry : sScopedStyles) {
-        if (entry.scope == scope) {
-            sheets.push_back(entry.sheet.get());
-        }
-    }
-    return sheets;
-}
-
-void restyle_scope(DocumentScope scope) {
-    const auto sheets = scoped_sheets(scope);
-    const auto restyle_documents = [&sheets, scope](auto& documents) {
-        for (auto& doc : documents) {
-            if (doc != nullptr && doc->scope() == scope && !doc->closed()) {
-                doc->restyle(sheets);
-            }
-        }
-    };
-    restyle_documents(sDocumentStack);
-    restyle_documents(sPassiveDocuments);
-}
-
 std::deque<Toast> sToasts;
 bool sMenuNotificationRequested = false;
-bool sConsoleShortcutHeld = false;
 std::vector<std::filesystem::path> sDroppedPackages;
 
 struct PendingDrop {
@@ -93,13 +51,75 @@ std::vector<PendingDrop> sPendingDrops;
 // notifications for gamepads that we sent a connected notification for.
 absl::flat_hash_set<SDL_JoystickID> sConnectedGamepads;
 
+u32 nav_sound_effect(NavSound sound) noexcept {
+    switch (sound) {
+    case NavSound::Click:
+        return Z2SE_SY_CURSOR_OK;
+    case NavSound::Play:
+        return Z2SE_SY_ITEM_COMBINE_ON;
+    case NavSound::BindingChanged:
+        return Z2SE_SY_ITEM_SET_X;
+    case NavSound::MenuOpen:
+        return Z2SE_SY_MENU_SUB_IN;
+    case NavSound::MenuClose:
+        return Z2SE_SY_MENU_SUB_OUT;
+    case NavSound::WindowOpen:
+        return Z2SE_SY_MENU_NEXT;
+    case NavSound::WindowClose:
+        return Z2SE_SY_MENU_BACK;
+    case NavSound::TabChanged:
+        return Z2SE_SY_MENU_CURSOR_COMMON;
+    case NavSound::ItemFocus:
+        return Z2SE_SY_CURSOR_ITEM;
+    case NavSound::ItemChange:
+        return Z2SE_SY_NAME_CURSOR;
+    case NavSound::ItemEnable:
+        return Z2SE_SUBJ_VIEW_IN;
+    case NavSound::ItemDisable:
+        return Z2SE_SUBJ_VIEW_OUT;
+    case NavSound::AchievementUnlock:
+        return Z2SE_NAVI_FLY;
+    case NavSound::Warning:
+        return Z2SE_SY_COW_GET_IN;
+    case NavSound::None:
+    default:
+        return 0;
+    }
+}
+
+void play_menu_sound(NavSound sound) {
+    if (const u32 effect = nav_sound_effect(sound); effect != 0) {
+        mDoAud_seStartMenu(effect);
+    }
+}
+
+// A bound menu action replaces the R + Start chord.
+void sync_input_settings() {
+    bool menuBound = false;
+    for (u32 port = 0; port < PAD_CHANMAX; ++port) {
+        menuBound = menuBound || getActionBindButton(ActionBinds::OPEN_DUSKLIGHT_MENU, port) !=
+                                     static_cast<int>(PAD_NATIVE_BUTTON_INVALID);
+    }
+    const borealis::ui::input::Settings settings{
+        .menuControl = getActionControl(ActionBinds::OPEN_DUSKLIGHT_MENU),
+        .menuChord = !menuBound,
+        .menuTap = true,
+    };
+    const auto& current = borealis::ui::input::settings();
+    if (current.menuControl != settings.menuControl || current.menuChord != settings.menuChord ||
+        current.menuTap != settings.menuTap)
+    {
+        borealis::ui::input::apply_settings(settings);
+    }
+}
+
 }  // namespace
 
 bool initialize() noexcept {
     if (sInitialized) {
         return true;
     }
-    if (!aurora::rmlui::is_initialized()) {
+    if (!borealis::ui::initialize()) {
         return false;
     }
 
@@ -111,6 +131,10 @@ bool initialize() noexcept {
     load_font("AlegreyaSC-Bold.ttf");
     load_font("MaterialSymbolsRounded-Regular.ttf");
     load_font("NotoMono-Regular.ttf");
+
+    set_nav_sound_handler(&play_menu_sound);
+    sync_input_settings();
+    CommandConsole::register_shortcut();
 
     register_icon_texture_provider();
     register_mod_texture_provider();
@@ -134,12 +158,9 @@ void shutdown() noexcept {
     unregister_remote_texture_provider();
     unregister_mod_texture_provider();
     unregister_icon_texture_provider();
-    sDocumentStack.clear();
-    sPassiveDocuments.clear();
+    CommandConsole::unregister_shortcut();
+    borealis::ui::shutdown();
     sConnectedGamepads.clear();
-    sConsoleShortcutHeld = false;
-    input::reset_input_state();
-    input::release_input_block();
     sInitialized = false;
 }
 
@@ -282,193 +303,21 @@ void handle_event(const SDL_Event& event) noexcept {
             });
         }
         sConnectedGamepads.erase(event.gdevice.which);
-    } else if (event.type == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED) {
-        apply_scale();
     }
-    if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
-        sConsoleShortcutHeld = false;
-    }
-    if (event.type == SDL_EVENT_KEY_UP && event.key.key == SDLK_SLASH && sConsoleShortcutHeld) {
-        sConsoleShortcutHeld = false;
-        return;
-    }
-    if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_SLASH &&
-        getSettings().backend.enableAdvancedSettings)
-    {
-        auto* console = static_cast<CommandConsole*>(find_document(DocumentScope::CommandConsole));
-        if (sConsoleShortcutHeld) {
-            return;
-        }
-        if (console != nullptr && !console->input_active() && !event.key.repeat) {
-            sConsoleShortcutHeld = true;
-            bring_document_to_front(*console);
-            console->show();
-            input::sync_input_block();
-            return;
-        }
-    }
-    input::handle_event(event);
-}
-
-bool register_scoped_styles(DocumentScope scope, std::string id, const std::string& rcss) noexcept {
-    auto sheet = Rml::Factory::InstanceStyleSheetString(rcss);
-    if (sheet == nullptr) {
-        return false;
-    }
-    const auto it = std::ranges::find_if(sScopedStyles,
-        [scope, &id](const ScopedStyles& entry) { return entry.scope == scope && entry.id == id; });
-    if (it != sScopedStyles.end()) {
-        it->sheet = std::move(sheet);
-    } else {
-        sScopedStyles.push_back({scope, std::move(id), std::move(sheet)});
-    }
-    restyle_scope(scope);
-    return true;
-}
-
-void unregister_scoped_styles(DocumentScope scope, std::string_view id) noexcept {
-    const auto erased = std::erase_if(sScopedStyles,
-        [scope, id](const ScopedStyles& entry) { return entry.scope == scope && entry.id == id; });
-    if (erased != 0) {
-        restyle_scope(scope);
-    }
-}
-
-void apply_scoped_styles(Document& doc) noexcept {
-    doc.restyle(scoped_sheets(doc.scope()));
-}
-
-Document& push_document(std::unique_ptr<Document> doc, bool show, bool passive) noexcept {
-    Document& ret = *doc;
-    if (passive) {
-        sPassiveDocuments.push_back(std::move(doc));
-    } else {
-        sDocumentStack.push_back(std::move(doc));
-    }
-    if (show) {
-        ret.show();
-    }
-    input::sync_input_block();
-    return ret;
-}
-
-Document& detail::pop_to_or_push_document(bool (*matches)(Document&),
-    const std::function<std::unique_ptr<Document>()>& create,
-    const std::function<void(Document&)>& configure) {
-    Document* destination = nullptr;
-    size_t destinationIndex = 0;
-    for (size_t i = sDocumentStack.size(); i > 0; --i) {
-        auto& document = *sDocumentStack[i - 1];
-        if (!document.closed() && !document.pending_close() && matches(document)) {
-            destination = &document;
-            destinationIndex = i - 1;
-            break;
-        }
-    }
-
-    if (destination != nullptr) {
-        std::vector<Document*> closing;
-        for (size_t i = sDocumentStack.size(); i > destinationIndex + 1; --i) {
-            closing.push_back(sDocumentStack[i - 1].get());
-        }
-        for (auto* document : closing) {
-            if (!document->closed() && !document->pending_close()) {
-                if (document->visible()) {
-                    document->hide(true);
-                } else {
-                    document->force_hide(true);
-                }
-            }
-        }
-        configure(*destination);
-    } else {
-        auto document = create();
-        configure(*document);
-        if (auto* current = top_document()) {
-            current->cover();
-        }
-        destination = &push_document(std::move(document), false);
-    }
-
-    destination->show();
-    destination->focus();
-    input::sync_input_block();
-    return *destination;
-}
-
-void bring_document_to_front(Document& doc) noexcept {
-    const auto it = std::ranges::find_if(
-        sDocumentStack, [&doc](const auto& entry) { return entry.get() == &doc; });
-    if (it == sDocumentStack.end() || std::next(it) == sDocumentStack.end()) {
-        return;
-    }
-    auto entry = std::move(*it);
-    sDocumentStack.erase(it);
-    sDocumentStack.push_back(std::move(entry));
-}
-
-void uncover_top_document() noexcept {
-    if (auto* doc = top_document()) {
-        doc->uncover();
-    }
-    input::sync_input_block();
-}
-
-Document* find_document(DocumentScope scope) noexcept {
-    for (auto& doc : std::views::reverse(sDocumentStack)) {
-        if (!doc->closed() && doc->scope() == scope) {
-            return doc.get();
-        }
-    }
-    return nullptr;
-}
-
-void close_all_documents() noexcept {
-    for (auto& doc : sDocumentStack) {
-        if (!doc->closed()) {
-            doc->force_hide(!doc->permanent());
-        }
-    }
-    input::sync_input_block();
-}
-
-bool any_document_visible() noexcept {
-    return std::any_of(sDocumentStack.begin(), sDocumentStack.end(),
-        [](const auto& doc) { return doc && doc->visible() && !doc->pending_close(); });
+    borealis::ui::handle_event(event);
 }
 
 bool is_prelaunch_open() noexcept {
-    return std::any_of(sDocumentStack.begin(), sDocumentStack.end(), [](const auto& doc) {
-        const auto* prelaunch = dynamic_cast<const Prelaunch*>(doc.get());
-        return prelaunch != nullptr && prelaunch->active();
-    });
-}
-
-bool game_obscured_below(const Document& doc) noexcept {
-    for (const auto& entry : sDocumentStack) {
-        if (entry.get() == &doc) {
-            break;
-        }
-        if (entry->active() && entry->obscures_game()) {
-            return true;
-        }
-    }
-    return false;
-}
-
-Document* top_document() noexcept {
-    for (auto& doc : std::views::reverse(sDocumentStack)) {
-        if (doc->active()) {
-            return doc.get();
-        }
-    }
-    return nullptr;
+    const auto* prelaunch = find_document(kScopePrelaunch);
+    return prelaunch != nullptr && prelaunch->active();
 }
 
 void update() noexcept {
     ZoneScopedN("Dusk UI update");
     mods::queue::update();
     mods::updates::update();
+    syncActionBindings();
+    sync_input_settings();
     if (!aurora::rmlui::is_initialized()) {
         return;
     }
@@ -497,195 +346,7 @@ void update() noexcept {
         }
         sPendingDrops.erase(sPendingDrops.begin() + static_cast<std::ptrdiff_t>(index));
     }
-    input::update_input();
-    const auto update_documents = [](auto& documents) {
-        const size_t count = documents.size();
-        for (size_t i = 0; i < count && i < documents.size(); ++i) {
-            Document* doc = documents[i].get();
-            if (doc != nullptr && !doc->closed()) {
-                doc->update();
-            }
-        }
-    };
-    update_documents(sDocumentStack);
-    update_documents(sPassiveDocuments);
-
-    // Remove closed documents
-    {
-        const auto [first, last] =
-            std::ranges::remove_if(sDocumentStack, [](const auto& doc) { return doc->closed(); });
-        sDocumentStack.erase(first, last);
-    }
-    {
-        const auto [first, last] = std::ranges::remove_if(
-            sPassiveDocuments, [](const auto& doc) { return doc->closed(); });
-        sPassiveDocuments.erase(first, last);
-    }
-
-    // Keep focus on the highest active document.
-    if (aurora::rmlui::get_context() != nullptr) {
-        for (auto& doc : std::views::reverse(sDocumentStack)) {
-            if (doc->active() && (doc->has_focus() || doc->focus())) {
-                break;
-            }
-        }
-    }
-
-    input::sync_input_block();
-}
-
-std::filesystem::path resource_path(const std::filesystem::path& filename) noexcept {
-    return std::filesystem::path("res") / filename;
-}
-
-std::string escape(std::string_view str) noexcept {
-    std::string result;
-    result.reserve(str.size());
-    for (const char c : str) {
-        switch (c) {
-        case '&':
-            result += "&amp;";
-            break;
-        case '<':
-            result += "&lt;";
-            break;
-        case '>':
-            result += "&gt;";
-            break;
-        case '"':
-            result += "&quot;";
-            break;
-        default:
-            result += c;
-            break;
-        }
-    }
-    return result;
-}
-
-Rml::Element* append(Rml::Element* parent, const Rml::String& tag) noexcept {
-    if (parent == nullptr) {
-        return nullptr;
-    }
-    auto* doc = parent->GetOwnerDocument();
-    if (doc == nullptr) {
-        return nullptr;
-    }
-    return parent->AppendChild(doc->CreateElement(tag));
-}
-
-Rml::Element* append_text(Rml::Element* parent, const Rml::String& text) noexcept {
-    if (parent == nullptr) {
-        return nullptr;
-    }
-    auto* doc = parent->GetOwnerDocument();
-    if (doc == nullptr) {
-        return nullptr;
-    }
-    return parent->AppendChild(doc->CreateTextNode(text));
-}
-
-Rml::Element* append_text_element(
-    Rml::Element* parent, const Rml::String& tag, const Rml::String& text) noexcept {
-    auto* element = append(parent, tag);
-    append_text(element, text);
-    return element;
-}
-
-void clear_children(Rml::Element* parent) noexcept {
-    if (parent == nullptr) {
-        return;
-    }
-    while (parent->GetNumChildren() > 0) {
-        parent->RemoveChild(parent->GetFirstChild());
-    }
-}
-
-void set_text_content(Rml::Element* parent, const Rml::String& text) noexcept {
-    if (parent == nullptr) {
-        return;
-    }
-    if (!text.empty() && parent->GetNumChildren() == 1) {
-        if (auto* element = dynamic_cast<Rml::ElementText*>(parent->GetFirstChild())) {
-            // RmlUi only dirties layout when the node's text changes.
-            element->SetText(text);
-            return;
-        }
-    }
-    clear_children(parent);
-    if (!text.empty()) {
-        append_text(parent, text);
-    }
-}
-
-void set_display(Rml::Element* element, Rml::Style::Display display) noexcept {
-    const Rml::Property value{display};
-    const auto* current = element->GetLocalProperty(Rml::PropertyId::Display);
-    if (current == nullptr || *current != value) {
-        element->SetProperty(Rml::PropertyId::Display, value);
-    }
-}
-
-NavCommand map_nav_event(const Rml::Event& event) noexcept {
-    const auto key = static_cast<Rml::Input::KeyIdentifier>(
-        event.GetParameter<int>("key_identifier", Rml::Input::KI_UNKNOWN));
-    switch (key) {
-    case Rml::Input::KeyIdentifier::KI_UP:
-        return NavCommand::Up;
-    case Rml::Input::KeyIdentifier::KI_DOWN:
-        return NavCommand::Down;
-    case Rml::Input::KeyIdentifier::KI_LEFT:
-        return NavCommand::Left;
-    case Rml::Input::KeyIdentifier::KI_RIGHT:
-        return NavCommand::Right;
-    case Rml::Input::KeyIdentifier::KI_ESCAPE:
-        return NavCommand::Cancel;
-    case Rml::Input::KeyIdentifier::KI_RETURN:
-    case Rml::Input::KeyIdentifier::KI_NUMPADENTER:
-        return NavCommand::Confirm;
-    case Rml::Input::KeyIdentifier::KI_F1:
-        return event.GetParameter<int>("shift_key", 0) ? NavCommand::None : NavCommand::Menu;
-    case Rml::Input::KeyIdentifier::KI_NEXT:
-        return NavCommand::Next;
-    case Rml::Input::KeyIdentifier::KI_PRIOR:
-        return NavCommand::Previous;
-    default:
-        return NavCommand::None;
-    }
-}
-
-Insets safe_area_insets(Rml::Context* context) noexcept {
-    if (context == nullptr) {
-        return {};
-    }
-
-    auto* window = aurora::window::get_sdl_window();
-    if (window == nullptr) {
-        return {};
-    }
-
-    const AuroraWindowSize windowSize = aurora::window::get_window_size();
-    if (windowSize.width == 0 || windowSize.height == 0) {
-        return {};
-    }
-
-    SDL_Rect safeRect{};
-    if (!SDL_GetWindowSafeArea(window, &safeRect)) {
-        return {};
-    }
-
-    const Rml::Vector2i contextSize = context->GetDimensions();
-    const float scaleX = static_cast<float>(contextSize.x) / static_cast<float>(windowSize.width);
-    const float scaleY = static_cast<float>(contextSize.y) / static_cast<float>(windowSize.height);
-
-    const float safeRight = static_cast<float>(safeRect.x + safeRect.w);
-    const float safeBottom = static_cast<float>(safeRect.y + safeRect.h);
-    return {
-        .top = std::max(0.0f, static_cast<float>(safeRect.y)) * scaleY,
-        .right = std::max(0.0f, static_cast<float>(windowSize.width) - safeRight) * scaleX,
-        .bottom = std::max(0.0f, static_cast<float>(windowSize.height) - safeBottom) * scaleY,
-        .left = std::max(0.0f, static_cast<float>(safeRect.x)) * scaleX,
-    };
+    borealis::ui::update();
 }
 
 void push_toast(Toast toast) noexcept {
@@ -707,14 +368,7 @@ bool consume_menu_notification_request() noexcept {
 }
 
 void apply_scale() noexcept {
-    const auto userScale = getSettings().video.uiScale.getValue();
-    auto scale = 0.0f;
-    if (userScale != 0) {
-        const auto displayScale = aurora::window::get_window_size().scale;
-        scale =
-            static_cast<float>(userScale) / 100.0f * (displayScale > 0.0f ? displayScale : 1.0f);
-    }
-    aurora::rmlui::set_ui_scale(scale);
+    set_user_scale(getSettings().video.uiScale.getValue());
 }
 
 }  // namespace dusk::ui

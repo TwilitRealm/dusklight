@@ -1,11 +1,15 @@
 #pragma once
 
-#include "popover.hpp"
-#include "select_button.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/popover.hpp>
+#include <borealis/ui/select_button.hpp>
+
+namespace borealis::ui {
+class NavGroup;
+}  // namespace borealis::ui
 
 namespace dusk::ui {
-
-class NavGroup;
 
 class ColorInput : public BaseControlledSelectButton {
 public:

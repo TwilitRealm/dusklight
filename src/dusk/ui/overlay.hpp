@@ -1,6 +1,8 @@
 #pragma once
 
-#include "document.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/document.hpp>
 
 #include <chrono>
 

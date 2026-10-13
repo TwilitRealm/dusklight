@@ -354,7 +354,11 @@ void dKyr_sun_move() {
                         numCenterPointsVisible++;
                     }
                 }
+#if TARGET_PC
+                dComIfGd_peekZ(chkpnt.x, chkpnt.y, sun_packet->field_0x44 + i, dDlst_peekZ_c::SUN_KEY + i);
+#else
                 dComIfGd_peekZ(chkpnt.x, chkpnt.y, sun_packet->field_0x44 + i);
+#endif
             } else {
                 sun_packet->field_0x44[i] = 0;
                 numPointsCulled++;

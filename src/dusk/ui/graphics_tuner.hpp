@@ -1,8 +1,9 @@
 #pragma once
 
-#include "component.hpp"
-#include "document.hpp"
 #include "ui.hpp"
+
+#include <borealis/ui/component.hpp>
+#include <borealis/ui/document.hpp>
 
 #include <algorithm>
 #include <functional>

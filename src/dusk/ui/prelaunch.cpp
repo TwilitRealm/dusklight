@@ -12,10 +12,10 @@
 #include "dusk/ui/format.hpp"
 #include "dusk/ui/menu_bar.hpp"
 #include "mod_updates.hpp"
-#include "modal.hpp"
 #include "mods_window.hpp"
 #include "preset.hpp"
 #include "settings.hpp"
+#include "ui.hpp"
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_misc.h>
@@ -23,6 +23,7 @@
 #include <borealis/file_select.hpp>
 #include <borealis/io.hpp>
 #include <borealis/log.hpp>
+#include <borealis/ui/modal.hpp>
 #include <borealis/update.hpp>
 #include <borealis/version.h>
 #include <fmt/format.h>
@@ -529,8 +530,8 @@ public:
             cycle(1);
             event.StopPropagation();
         });
-        Component::listen(root(), Rml::EventId::Keydown, [this](Rml::Event& event) {
-            const auto command = map_nav_event(event);
+        Component::listen(root(), kNavCommandEvent, [this](Rml::Event& event) {
+            const auto command = nav_command(event);
             if (command == NavCommand::Left || command == NavCommand::Right) {
                 cycle(command == NavCommand::Left ? -1 : 1);
                 event.StopPropagation();
@@ -567,7 +568,7 @@ private:
         const int nextIndex = ((currentIndex + direction) % count + count) % count;
         const auto nextId = modes[nextIndex]->getId();
         if (gamemode::getGameModeManager().setCurrentGameMode(nextId)) {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
         }
         refresh(direction);
     }
@@ -838,7 +839,7 @@ void try_apply_mirrored_layout(Rml::Element* body) {
 }
 
 void Prelaunch::refresh_menu_buttons() {
-    auto* prelaunch = static_cast<Prelaunch*>(find_document(DocumentScope::Prelaunch));
+    auto* prelaunch = static_cast<Prelaunch*>(find_document(kScopePrelaunch));
     if (prelaunch == nullptr) {
         return;
     }
@@ -850,7 +851,7 @@ void Prelaunch::refresh_menu_buttons() {
     prelaunch->build_menu_buttons();
 }
 
-Prelaunch::Prelaunch() : Document(kDocumentSource, false, DocumentScope::Prelaunch) {
+Prelaunch::Prelaunch() : Document(kDocumentSource, false, kScopePrelaunch) {
     mRoot = mDocument->GetElementById("root");
     ensure_initialized();
     begin_update_check();
@@ -870,8 +871,8 @@ Prelaunch::Prelaunch() : Document(kDocumentSource, false, DocumentScope::Prelaun
             open_update_release();
             event.StopPropagation();
         });
-        listen(mUpdateDownload, Rml::EventId::Keydown, [](Rml::Event& event) {
-            if (map_nav_event(event) == NavCommand::Confirm) {
+        listen(mUpdateDownload, kNavCommandEvent, [](Rml::Event& event) {
+            if (nav_command(event) == NavCommand::Confirm) {
                 open_update_release();
                 event.StopPropagation();
             }
@@ -912,7 +913,7 @@ void Prelaunch::build_menu_buttons() {
                 return;
             }
 
-            mDoAud_seStartMenu(kSoundPlay);
+            play_nav_sound(NavSound::Play);
             show_menu_notification();
 
             if (getSettings().audio.menuSounds) {
@@ -1192,7 +1193,7 @@ bool Prelaunch::handle_nav_command(Rml::Event& event, NavCommand cmd) {
     int i = ((focusedButton + direction) % n + n) % n;
     while (i >= 0 && i < mMenuButtons.size()) {
         if (mMenuButtons[i]->focus()) {
-            mDoAud_seStartMenu(kSoundItemFocus);
+            play_nav_sound(NavSound::ItemFocus);
             event.StopPropagation();
             return true;
         }

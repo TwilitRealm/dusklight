@@ -2,10 +2,10 @@
 
 #include "reporting.hpp"
 
-#include "button.hpp"
 #include "ui.hpp"
 
 #include <borealis/sentry.hpp>
+#include <borealis/ui/button.hpp>
 #include <dolphin/gx/GXAurora.h>
 
 namespace dusk::ui {
@@ -66,7 +66,7 @@ CrashReportWindow::CrashReportWindow() : WindowSmall("modal") {
             if (cmd == NavCommand::Confirm) {
                 apply();
                 hide(true);
-                mDoAud_seStartMenu(kSoundClick);
+                play_nav_sound(NavSound::Click);
                 return true;
             }
             return false;
@@ -103,7 +103,7 @@ bool CrashReportWindow::handle_nav_command(Rml::Event& event, NavCommand cmd) {
             const int next = i + direction;
             if (next >= 0 && next < static_cast<int>(mButtons.size())) {
                 if (mButtons[next]->focus()) {
-                    mDoAud_seStartMenu(kSoundItemFocus);
+                    play_nav_sound(NavSound::ItemFocus);
                     return true;
                 }
             }

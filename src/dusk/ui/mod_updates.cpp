@@ -1,16 +1,17 @@
 #include "mod_updates.hpp"
 
-#include "button.hpp"
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/updates.hpp"
 #include "format.hpp"
-#include "icon_button.hpp"
 #include "mod_texture_provider.hpp"
-#include "nav_group.hpp"
 #include "package_row.hpp"
-#include "pane.hpp"
+#include "ui.hpp"
 
 #include <algorithm>
+#include <borealis/ui/button.hpp>
+#include <borealis/ui/icon_button.hpp>
+#include <borealis/ui/nav_group.hpp>
+#include <borealis/ui/pane.hpp>
 #include <borealis/update.hpp>
 #include <fmt/format.h>
 

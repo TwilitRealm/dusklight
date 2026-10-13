@@ -113,6 +113,12 @@ u32 JUTGamePad::read() {
             stick_status = mPadMStick[i].update(pad_status->stickX, pad_status->stickY, sStickMode, EMainStick, mPadButton[i].mButton) << 0x18;
             stick_status |= (mPadSStick[i].update(pad_status->substickX, pad_status->substickY, sStickMode, ESubStick, mPadButton[i].mButton) << 0x10);
             
+#if TARGET_PC
+            // Don't treat cancelled input as a release
+            if (PADConsumeCancellation(i)) {
+                mPadButton[i].mButton &= pad_status->button | stick_status;
+            }
+#endif
             mPadButton[i].update(pad_status, stick_status);
         } else if (mPadStatus[i].err == -1) {
             mPadMStick[i].update(0, 0, sStickMode, EMainStick, 0);

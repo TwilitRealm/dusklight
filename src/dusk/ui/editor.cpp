@@ -1,18 +1,19 @@
 #include "editor.hpp"
 
 #include <RmlUi/Core.h>
+#include <borealis/ui/bool_button.hpp>
+#include <borealis/ui/button.hpp>
+#include <borealis/ui/number_button.hpp>
+#include <borealis/ui/pane.hpp>
+#include <borealis/ui/select_button.hpp>
+#include <borealis/ui/string_button.hpp>
 #include <fmt/format.h>
 
-#include "bool_button.hpp"
-#include "button.hpp"
 #include "d/actor/d_a_player.h"
 #include "d/d_kankyo.h"
 #include "d/d_meter2_info.h"
 #include "dusk/map_loader_definitions.h"
-#include "number_button.hpp"
-#include "pane.hpp"
-#include "select_button.hpp"
-#include "string_button.hpp"
+#include "ui.hpp"
 
 #include <algorithm>
 #include <array>
@@ -56,7 +57,7 @@ void populate_stage_picker(Pane& pane, std::function<Rml::String()> getStageFile
                                     },
                             })
                 .on_pressed([setStageFile, stageFile = map.mapFile] {
-                    mDoAud_seStartMenu(kSoundItemChange);
+                    play_nav_sound(NavSound::ItemChange);
                     setStageFile(stageFile);
                 });
         }
@@ -743,13 +744,13 @@ void populate_toggle_group(Pane& pane, const std::vector<ToggleEntry>& entries) 
     pane.clear();
     pane.add_section("Actions");
     pane.add_button("Select All").on_pressed([entries] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         for (const auto& entry : entries) {
             entry.setSelected(true);
         }
     });
     pane.add_button("Select None").on_pressed([entries] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         for (const auto& entry : entries) {
             entry.setSelected(false);
         }
@@ -762,7 +763,7 @@ void populate_toggle_group(Pane& pane, const std::vector<ToggleEntry>& entries) 
                             .isSelected = entry.isSelected,
                         })
             .on_pressed([isSelected = entry.isSelected, setSelected = entry.setSelected] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 setSelected(!isSelected());
             });
     }
@@ -884,7 +885,7 @@ void populate_item_slot_picker(Pane& pane, int slot) {
     pane.add_section("Actions");
     pane.add_button(fmt::format("Default ({})", get_item_name(get_slot_default(slot))))
         .on_pressed([slot] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             dComIfGs_setItem(slot, get_slot_default(slot));
         });
 
@@ -895,7 +896,7 @@ void populate_item_slot_picker(Pane& pane, int slot) {
                 .isSelected = [slot] { return get_player_item()->mItems[slot] == dItemNo_NONE_e; },
             })
         .on_pressed([slot] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             dComIfGs_setItem(slot, dItemNo_NONE_e);
         });
     for (const auto& [itemId, item] : itemMap) {
@@ -908,7 +909,7 @@ void populate_item_slot_picker(Pane& pane, int slot) {
                 .isSelected = [slot, itemId] { return get_player_item()->mItems[slot] == itemId; },
             })
             .on_pressed([slot, itemId] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 dComIfGs_setItem(slot, static_cast<u8>(itemId));
             });
     }
@@ -918,11 +919,11 @@ void populate_item_flag_picker(Pane& pane) {
     pane.clear();
     pane.add_section("Actions");
     pane.add_button("Select All").on_pressed([] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         set_all_item_first_bits(true);
     });
     pane.add_button("Clear None").on_pressed([] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         set_all_item_first_bits(false);
     });
 
@@ -937,7 +938,7 @@ void populate_item_flag_picker(Pane& pane) {
                 .isSelected = [itemId] { return dComIfGs_isItemFirstBit(static_cast<u8>(itemId)); },
             })
             .on_pressed([itemId] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 toggle_item_first_bit(static_cast<u8>(itemId));
             });
     }
@@ -951,7 +952,7 @@ void populate_select_item_picker(Pane& pane, u8& selectItemData) {
                 .isSelected = [&selectItemData] { return selectItemData == dItemNo_NONE_e; },
             })
         .on_pressed([&selectItemData] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             selectItemData = dItemNo_NONE_e;
         });
     for (int i = 0; i < 24; i++) {
@@ -960,7 +961,7 @@ void populate_select_item_picker(Pane& pane, u8& selectItemData) {
                             .isSelected = [i, &selectItemData] { return selectItemData == i; },
                         })
             .on_pressed([i, &selectItemData] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 selectItemData = i;
             });
     }
@@ -975,7 +976,7 @@ void populate_select_clothes_picker(Pane& pane) {
                     .isSelected = [id] { return get_player_status()->mSelectEquip[0] == id; },
                 })
             .on_pressed([id] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 dMeter2Info_setCloth(id, false);
                 daPy_getPlayerActorClass()->setClothesChange(0);
             });
@@ -995,7 +996,7 @@ void populate_select_equip_picker(Pane& pane, u8& equip, const std::array<u8, Si
                             .isSelected = [id, &equip] { return equip == id; },
                         })
             .on_pressed([id, &equip] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 equip = id;
             });
     };
@@ -1019,7 +1020,7 @@ void populate_wallet_picker(Pane& pane) {
                             .isSelected = [i] { return get_player_status()->getWalletSize() == i; },
                         })
             .on_pressed([i] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 get_player_status()->setWalletSize(i);
             });
     }
@@ -1039,7 +1040,7 @@ void populate_form_picker(Pane& pane) {
                     .isSelected = [i] { return get_player_status()->getTransformStatus() == i; },
                 })
             .on_pressed([i] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 get_player_status()->setTransformStatus(i);
             });
     }
@@ -1053,7 +1054,7 @@ void add_toggle_button(Pane& pane, ToggleEntry entry) {
                         .isSelected = isSelected,
                     })
         .on_pressed([isSelected, setSelected] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             setSelected(!isSelected());
         });
 }
@@ -1169,11 +1170,11 @@ void populate_poe_souls_picker(Pane& pane) {
     pane.clear();
     pane.add_section("Actions");
     pane.add_button("All 60").on_pressed([] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         dComIfGs_setPohSpiritNum(60);
     });
     pane.add_button("Clear").on_pressed([] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         dComIfGs_setPohSpiritNum(0);
     });
 
@@ -1191,12 +1192,12 @@ void populate_max_life_picker(Pane& pane) {
     pane.clear();
     pane.add_section("Actions");
     pane.add_button("3 Hearts").on_pressed([] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         dComIfGs_setMaxLife(15);
         dComIfGs_setLife(12);
     });
     pane.add_button("20 Hearts").on_pressed([] {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         dComIfGs_setMaxLife(100);
         dComIfGs_setLife(80);
     });
@@ -1308,7 +1309,7 @@ void populate_target_type_picker(Pane& pane) {
                 .isSelected = [type] { return get_player_config()->getAttentionType() == type; },
             })
             .on_pressed([type] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 get_player_config()->setAttentionType(type);
             });
     }
@@ -1323,7 +1324,7 @@ void populate_sound_mode_picker(Pane& pane) {
                     .isSelected = [mode] { return get_player_config()->getSound() == mode; },
                 })
             .on_pressed([mode] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 get_player_config()->setSound(mode);
             });
     }
@@ -1650,7 +1651,7 @@ EditorWindow::EditorWindow() {
 
         leftPane.add_section("Item Wheel");
         leftPane.register_control(leftPane.add_button("Default All").on_pressed([&rightPane] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             for (int slot = 0; slot < 24; ++slot) {
                 dComIfGs_setItem(slot, get_slot_default(slot));
             }
@@ -1658,7 +1659,7 @@ EditorWindow::EditorWindow() {
         }),
             rightPane, {});
         leftPane.register_control(leftPane.add_button("Clear All").on_pressed([&rightPane] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             for (int slot = 0; slot < 24; ++slot) {
                 dComIfGs_setItem(slot, dItemNo_NONE_e);
             }

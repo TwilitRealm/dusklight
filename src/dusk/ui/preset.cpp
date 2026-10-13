@@ -1,10 +1,10 @@
 #include "preset.hpp"
 
-#include "button.hpp"
 #include "dusk/config.hpp"
 #include "dusk/settings.h"
 #include "ui.hpp"
 
+#include <borealis/ui/button.hpp>
 #include <dolphin/gx/GXAurora.h>
 
 namespace dusk::ui {
@@ -105,7 +105,7 @@ PresetWindow::PresetWindow() : WindowSmall("modal") {
                 getSettings().backend.wasPresetChosen.setValue(true);
                 config::save();
                 hide(true);
-                mDoAud_seStartMenu(kSoundClick);
+                play_nav_sound(NavSound::Click);
                 return true;
             }
             return false;
@@ -142,7 +142,7 @@ bool PresetWindow::handle_nav_command(Rml::Event& event, NavCommand cmd) {
             const int next = i + direction;
             if (next >= 0 && next < static_cast<int>(mButtons.size())) {
                 if (mButtons[next]->focus()) {
-                    mDoAud_seStartMenu(kSoundItemFocus);
+                    play_nav_sound(NavSound::ItemFocus);
                     return true;
                 }
             }

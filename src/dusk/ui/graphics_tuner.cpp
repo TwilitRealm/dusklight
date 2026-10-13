@@ -1,12 +1,12 @@
 #include "graphics_tuner.hpp"
 
-#include "button.hpp"
+#include "ui.hpp"
 
 #include "dusk/config.hpp"
 #include "dusk/logging.h"
 #include "dusk/settings.h"
-#include "m_Do/m_Do_audio.h"
 
+#include <borealis/ui/button.hpp>
 #include <dolphin/gx/GXAurora.h>
 #include <fmt/format.h>
 
@@ -179,8 +179,8 @@ SteppedCarousel::SteppedCarousel(Rml::Element* parent, Props props)
         [this](Rml::Event&) { handle_nav_command(NavCommand::Left); });
     listen(mNextElem, Rml::EventId::Click,
         [this](Rml::Event&) { handle_nav_command(NavCommand::Right); });
-    listen(mRoot, Rml::EventId::Keydown, [this](Rml::Event& event) {
-        const auto cmd = map_nav_event(event);
+    listen(mRoot, kNavCommandEvent, [this](Rml::Event& event) {
+        const auto cmd = nav_command(event);
         if (cmd != NavCommand::None && handle_nav_command(cmd)) {
             event.StopPropagation();
         }
@@ -229,14 +229,14 @@ void SteppedCarousel::apply(int value) {
     if (nextValue == currentValue) {
         return;
     }
-    mDoAud_seStartMenu(kSoundItemChange);
+    play_nav_sound(NavSound::ItemChange);
     if (mProps.onChange) {
         mProps.onChange(nextValue);
     }
 }
 
 GraphicsTuner::GraphicsTuner(GraphicsTunerProps props)
-    : Document(kDocumentSource, false, DocumentScope::GraphicsTuner),
+    : Document(kDocumentSource, false, kScopeGraphicsTuner),
       mSetting(GraphicsSetting::of(props.option)) {
     if (mDocument == nullptr) {
         return;
@@ -266,7 +266,7 @@ GraphicsTuner::GraphicsTuner(GraphicsTunerProps props)
         returnButton.root()->SetClass("return", true);
         auto& resetButton =
             add_component<Button>(footer, "Reset to default", "footer-button").on_pressed([this] {
-                mDoAud_seStartMenu(kSoundItemChange);
+                play_nav_sound(NavSound::ItemChange);
                 reset_default();
             });
         resetButton.root()->SetClass("reset", true);
@@ -303,7 +303,7 @@ GraphicsTuner::~GraphicsTuner() {
 void GraphicsTuner::show() {
     Document::show();
     mRoot->SetAttribute("open", "");
-    mDoAud_seStartMenu(kSoundWindowOpen);
+    play_nav_sound(NavSound::WindowOpen);
 }
 
 void GraphicsTuner::hide(bool close) {
@@ -311,7 +311,7 @@ void GraphicsTuner::hide(bool close) {
     mRoot->RemoveAttribute("open");
     if (close) {
         mPendingClose = true;
-        mDoAud_seStartMenu(kSoundWindowClose);
+        play_nav_sound(NavSound::WindowClose);
     }
 }
 
