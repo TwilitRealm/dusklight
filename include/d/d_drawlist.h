@@ -190,11 +190,22 @@ public:
         /* 0x0 */ s16 x;
         /* 0x2 */ s16 y;
         /* 0x4 */ u32* dst;
+#if TARGET_PC
+        u64 key;
+#endif
     };
 
     dDlst_peekZ_c() { mCount = 0; }
+#if TARGET_PC
+    int newData(s16, s16, u32*, u64);
+#else
     int newData(s16, s16, u32*);
+#endif
     void peekData();
+#if TARGET_PC
+    static void capture();
+    static constexpr u64 SUN_KEY = 1ull << 32;
+#endif
 
     /* 0x0 */ u8 mCount;
     /* 0x4 */ dDlst_peekZ_entry mEntries[0x40];
@@ -469,9 +480,15 @@ public:
         return mShadowControl.addReal(key, model);
     }
 
+#if TARGET_PC
+    void newPeekZdata(s16 param_0, s16 param_1, u32* param_2, u64 key) {
+        mPeekZ.newData(param_0, param_1, param_2, key);
+    }
+#else
     void newPeekZdata(s16 param_0, s16 param_1, u32* param_2) {
         mPeekZ.newData(param_0, param_1, param_2);
     }
+#endif
 
     view_port_class* getViewport() { return mViewport; }
 

@@ -515,7 +515,11 @@ void daObjTOMBO_c::Z_BufferChk() {
     if (local_5c.x > 0.0f && local_5c.x < FB_WIDTH && local_5c.y > trimHeight &&
         local_5c.y < FB_HEIGHT - trimHeight)
     {
+#if TARGET_PC
+        dComIfGd_peekZ(local_5c.x, local_5c.y, &field_0x754, fopAcM_GetID(this));
+#else
         dComIfGd_peekZ(local_5c.x, local_5c.y, &field_0x754);
+#endif
     }
     f32 near_ = dComIfGd_getView()->near_;
     f32 far_ = dComIfGd_getView()->far_;

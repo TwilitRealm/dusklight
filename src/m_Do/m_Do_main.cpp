@@ -306,6 +306,7 @@ void main01(void) {
             dusk::interp::begin_presentation(step);
             fpcM_DrawIterater((fpcM_DrawIteraterFunc)fpcM_Draw);
             cAPIGph_Painter();
+            dDlst_peekZ_c::capture();
             dusk::interp::end_presentation();
         } else {
             dusk::interp::begin_frame(0.0f);
@@ -320,6 +321,7 @@ void main01(void) {
             // EXECUTE GAME LOGIC & RENDER
             // This calls mDoGph_Painter -> JFWDisplay -> GX Functions
             fapGm_Execute();
+            dDlst_peekZ_c::capture();
             dusk::processCameraCommands();
 
             mDoAud_Execute();

@@ -276,7 +276,11 @@ void daObjDAN_c::Z_BufferChk() {
         trim_height = 0.0f;
     }
     if (vec2.x > 0.0f && vec2.x < FB_WIDTH && vec2.y > trim_height && vec2.y < FB_HEIGHT - trim_height) {
+#if TARGET_PC
+        dComIfGd_peekZ(vec2.x, vec2.y, &mBufferZ, fopAcM_GetID(this));
+#else
         dComIfGd_peekZ(vec2.x, vec2.y, &mBufferZ);
+#endif
     }
 
     f32 near_ = dComIfGd_getView()->near_;
