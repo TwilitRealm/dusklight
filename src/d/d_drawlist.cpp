@@ -1497,17 +1497,25 @@ void dDlst_shadowControl_c::init() {
 #if TARGET_PC
     mTexResScale = dusk::getSettings().game.shadowResolutionMultiplier;
     // Increase shadow map resolution
-    u16 l_realImageSize[2] =
+    u16 l_realImageSize[REAL_SHADOW_TEX_NUM] =
     {
-        static_cast<u16>(192 * mTexResScale),
-        static_cast<u16>(64 * mTexResScale)
+        static_cast<u16>(192 * mTexResScale),  
+        static_cast<u16>(192 * mTexResScale),  
+        static_cast<u16>(64 * mTexResScale),  
+        static_cast<u16>(64 * mTexResScale), 
     };
 #else
     static u16 l_realImageSize[2] = {192, 64};
 #endif
 
+#ifdef TARGET_PC
+    for (int i = 0; i < REAL_SHADOW_TEX_NUM; i++) {
+#else
     for (int i = 0; i < 2; i++) {
+
+#endif
         u16 size = l_realImageSize[i];
+
 
 #ifdef TARGET_PC
         u32 buffer_size = 0x20; // No need to allocate memory for texture
@@ -1528,8 +1536,11 @@ void dDlst_shadowControl_c::init() {
 
 void dDlst_shadowControl_c::reset() {
     dDlst_shadowReal_c* shadowReal = mReal;
-
+#ifdef TARGET_PC
+    for (int i = 0; i < REAL_SHADOW_MAX; i++) {
+#else
     for (int i = 0; i < 8; i++) {
+#endif
         shadowReal->reset();
         shadowReal++;
     }
@@ -1746,7 +1757,11 @@ int dDlst_shadowControl_c::setReal(u32 param_1, s8 param_2, J3DModel* param_3, c
         }
     }
     dDlst_shadowReal_c* pdVar12;
+#if TARGET_PC
+    if (mRealNum >= REAL_SHADOW_MAX) {
+#else
     if (mRealNum >= 8) {
+#endif
         if (pdVar10 == NULL) {
             return 0;
         }
@@ -1761,7 +1776,11 @@ int dDlst_shadowControl_c::setReal(u32 param_1, s8 param_2, J3DModel* param_3, c
         mRealNum--;
     } else {
         pdVar12 = mReal;
+#ifdef TARGET_PC
+        for (int i = 0; i <  REAL_SHADOW_MAX; i++, pdVar12++) {
+#else
         for (int i = 0; i < 8; i++, pdVar12++) {
+#endif
             if (pdVar12->isNoUse()) {
                 break;
             }
