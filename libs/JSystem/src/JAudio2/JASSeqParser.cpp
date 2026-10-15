@@ -8,6 +8,24 @@
 #include "JSystem/JSupport/JSupport.h"
 #include "JSystem/JUtility/JUTAssert.h"
 
+#if TARGET_PC
+#include "JSystem/JAudio2/JAISeq.h"
+#include "Z2AudioLib/Z2SeqMgr.h"
+#include "dusk/settings.h"
+#endif
+
+
+#if TARGET_PC
+static bool isGameOverMusicTrack(JASTrack* track) {
+    JAISoundHandle* handle = Z2GetSeqMgr()->getMainBgmHandle();
+    if (!*handle || handle->getSound()->getID() != Z2BGM_GAME_OVER) {
+        return false;
+    }
+
+    JAISeq* seq = handle->getSound()->asSeq();
+    return seq != nullptr && track->getRootTrack() == seq->getTrack();
+}
+#endif
 
 DUSK_GAME_DATA JASSeqParser::CmdInfo JASSeqParser::sCmdInfo[96] = {
     NULL, 0x0000, 0x0000,
@@ -514,6 +532,47 @@ s32 JASSeqParser::cmdCheckPortExport(JASTrack* param_0, u32* param_1) {
 s32 JASSeqParser::cmdWait(JASTrack* param_0, u32* param_1) {
     JASSeqCtrl* seqCtrl = param_0->getSeqCtrl();
     int midiValue = seqCtrl->readMidiValue();
+
+#if TARGET_PC
+    if (dusk::getSettings().game.fasterDeathSeq && isGameOverMusicTrack(param_0)) { // ok making the game over music start earlier so its not skiped with the faster
+                                                                                    // death sequence might be unnessesary but the alternative is never hearing it
+                                                                                    // ever again :(
+        const u32 offset = seqCtrl->mReader.mCurPos - seqCtrl->mReader.mBase;
+
+        // The Game Over music's opening is advanced by about 480 sequence ticks.
+        // All other waits are preserved by matching both the offset and original duration.
+        switch (offset) {
+        case 18:
+            if (midiValue == 480) midiValue = 1;
+            break;
+        case 86:
+            if (midiValue == 1920) midiValue = 1440;
+            break;
+        case 108:
+            if (midiValue == 540) midiValue = 60;
+            break;
+        case 233:
+            if (midiValue == 720) midiValue = 240;
+            break;
+        case 350:
+            if (midiValue == 480) midiValue = 1;
+            break;
+        case 506:
+            if (midiValue == 600) midiValue = 120;
+            break;
+        case 661:
+            if (midiValue == 963) midiValue = 483;
+            break;
+        case 803:
+            if (midiValue == 1200) midiValue = 720;
+            break;
+        case 891:
+            if (midiValue == 1199) midiValue = 719;
+            break;
+        }
+    }
+#endif
+
     seqCtrl->wait(midiValue);
     return 0;
 }

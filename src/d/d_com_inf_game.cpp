@@ -1470,7 +1470,7 @@ void dComIfGp_setNextStage(char const* i_stage, s16 i_point, s8 i_roomNo, s8 i_l
     u8 wipe_speed;
     switch (i_wipeSpeedT) {
     case 0:
-        wipe_speed = 26;
+        wipe_speed = DUSK_IF_ELSE((dusk::getSettings().game.fasterDeathSeq && dComIfGp_getGameoverStatus() == 2) ? 6 : 26, 26);
         break;
     case 1:
         wipe_speed = 13;

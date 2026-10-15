@@ -2952,6 +2952,12 @@ int daAlink_c::procCoDeadInit(int param_0) {
         return 1;
     }
 
+#if TARGET_PC
+    if (dusk::getSettings().game.fasterDeathSeq) {
+        onForceGameOver();
+    }
+#endif
+
     dComIfGp_event_compulsory(this, NULL, 0xFFFF);
     mDemo.setSpecialDemoType();
     mNormalSpeed = 0.0f;
@@ -3092,7 +3098,11 @@ int daAlink_c::procCoDead() {
         || checkNoResetFlg2(FLG2_FORCE_GAMEOVER)))
     {
         cLib_chaseF(&field_0x3478, 0.0f, 0.01f);
+#if TARGET_PC
+        if (field_0x3478 < 0.38f || dusk::getSettings().game.fasterDeathSeq) {
+#else
         if (field_0x3478 < 0.38f) {
+#endif
             d_GameOver_animeStart(mMsgClassID);
         }
 

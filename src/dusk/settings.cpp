@@ -62,6 +62,7 @@ UserSettings g_userSettings = {
         .enhancedMapMenus {"game.enhancedMapMenus", false},
         .aimingReticle {"game.aimingReticle", false},
         .noHitStun {"game.noHitStun", false},
+        .fasterDeathSeq{"game.fasterDeathSeq", false},
 
         // Preferences
         .enableMirrorMode {"game.enableMirrorMode", false},
@@ -297,6 +298,7 @@ void registerSettings() {
     Register(g_userSettings.game.enhancedMapMenus);
     Register(g_userSettings.game.aimingReticle);
     Register(g_userSettings.game.noHitStun);
+    Register(g_userSettings.game.fasterDeathSeq);
     Register(g_userSettings.game.enableMirrorMode);
     Register(g_userSettings.game.invertCameraXAxis);
     Register(g_userSettings.game.invertCameraYAxis);
