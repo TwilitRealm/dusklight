@@ -321,9 +321,10 @@ Dusklight loads the provider before the add-on:
 }
 ```
 
-Register each item during `mod_initialize` and unregister its handle during `mod_shutdown`. Icons are copied during
-registration and must be exactly 64×64 pixels in RGBA8 format (16,384 bytes); callbacks execute on the game thread
-when the player activates the selected slot:
+Register each item during `mod_initialize` and unregister its handle during `mod_shutdown`. The wheel also watches
+mod lifecycles and drops any remaining registrations when an add-on detaches. Icons are copied during registration
+and must be exactly 64×64 pixels in RGBA8 format (16,384 bytes); callbacks execute on the game thread when the player
+activates the selected slot:
 
 ```cpp
 #include "mods/service.hpp"

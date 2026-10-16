@@ -33,7 +33,10 @@ typedef struct BonusWheelItemDesc {
 typedef struct BonusWheelService {
     ServiceHeader header;
 
-    /* IDs must be unique per registering mod; the icon is copied before this returns. */
+    /*
+     * IDs must be unique per registering mod; the icon is copied before this returns. Items are
+     * removed automatically when their registering mod detaches.
+     */
     ModResult (*register_item)(ModContext* ctx, const BonusWheelItemDesc* desc,
         BonusWheelItemHandle* out_handle);
 
