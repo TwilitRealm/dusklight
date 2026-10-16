@@ -301,6 +301,65 @@ wants to remain compatible with older Dusklight versions, it may use `IMPORT_SER
 `IMPORT_OPTIONAL_SERVICE_VERSION` to require an older minor version. It can then check `SERVICE_HAS` at runtime to see
 if a newer function is present (i.e. running on a new enough Dusklight version).
 
+### Bonus Inventory Wheel service
+
+The Bonus Inventory Wheel mod exports `dev.twilitrealm.dusklight.bonus_inventory_wheel` version 1.0. Native mods can use
+[`mods/svc/bonus_inventory_wheel.h`](../sdk/include/mods/svc/bonus_inventory_wheel.h) from the SDK to register items
+in its 16-slot wheel. The provider mod must be installed and enabled; declare the service as a required import so
+Dusklight loads the provider before the add-on:
+
+```json
+{
+  "imports": [
+    {
+      "service_id": "dev.twilitrealm.dusklight.bonus_inventory_wheel",
+      "major": 1,
+      "min_minor": 0,
+      "optional": false
+    }
+  ]
+}
+```
+
+Register each item during `mod_initialize` and unregister its handle during `mod_shutdown`. Icons are copied during
+registration and must be exactly 64×64 pixels in RGBA8 format (16,384 bytes); callbacks execute on the game thread
+when the player activates the selected slot:
+
+```cpp
+#include "mods/service.hpp"
+#include "mods/svc/bonus_inventory_wheel.h"
+#include "mods/svc/resource.h"
+
+IMPORT_SERVICE(BonusWheelService, svc_bonus_wheel);
+IMPORT_SERVICE(ResourceService, svc_resource);
+
+static BonusWheelItemHandle g_itemHandle = 0;
+
+static void use_custom_item(ModContext*, void*) {
+    // Perform the add-on's item action.
+}
+
+// In mod_initialize:
+ResourceBuffer icon = RESOURCE_BUFFER_INIT;
+ModResult result = svc_resource->load(mod_ctx, "custom-item.rgba", &icon);
+if (result != MOD_OK) return result;
+
+BonusWheelItemDesc item = BONUS_WHEEL_ITEM_DESC_INIT;
+item.id = "my_mod.custom_item";
+item.icon_rgba = static_cast<const uint8_t*>(icon.data);
+item.icon_size = icon.size;
+item.on_use = use_custom_item;
+result = svc_bonus_wheel->register_item(mod_ctx, &item, &g_itemHandle);
+svc_resource->free(mod_ctx, &icon);
+if (result != MOD_OK) return result;
+
+// In mod_shutdown:
+if (g_itemHandle != 0) {
+    svc_bonus_wheel->unregister_item(mod_ctx, g_itemHandle);
+    g_itemHandle = 0;
+}
+```
+
 ---
 
 ## Built-in Services
