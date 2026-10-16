@@ -84,7 +84,7 @@ jobs:
 
   build-apple:
     name: Build Apple (${{matrix.name}})
-    runs-on: macos-latest
+    runs-on: macos-15 # https://github.com/TwilitRealm/dusklight/issues/2752
     strategy:
       fail-fast: false
       matrix:
