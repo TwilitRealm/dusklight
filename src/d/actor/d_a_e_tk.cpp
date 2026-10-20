@@ -4,6 +4,12 @@
  */
 
 #include "d/dolzel_rel.h"  // IWYU pragma: keep
+#if TARGET_PC  // additional actor attribute integration
+
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+#endif
 
 #include "d/actor/d_a_e_tk.h"
 #include "d/actor/d_a_e_tk_ball.h"
@@ -75,10 +81,25 @@ void daE_TK_HIO_c::genMessage(JORMContext* ctext) {
 #endif
 
 static void anm_init(e_tk_class* i_this, int i_index, f32 i_morf, u8 i_attr, f32 i_rate) {
+#if TARGET_PC  // enemy attribute integration
+
+    const actor_attr::ActionAnimationParams params = actor_attr::enemy_animation_params(i_this, i_morf, i_rate);
+    i_this->mpMorf->setAnm((J3DAnmTransform*)dComIfG_getObjectRes("E_tk", i_index), i_attr, params.morph,
+                           params.playbackSpeed, 0.0f, -1.0f);
+#else
     i_this->mpMorf->setAnm((J3DAnmTransform*)dComIfG_getObjectRes("E_tk", i_index), i_attr, i_morf,
                            i_rate, 0.0f, -1.0f);
+#endif
     i_this->mAnim = i_index;
 }
+#if TARGET_PC  // enemy attribute integration
+static void stun_anm_init(e_tk_class* i_this, int i_index, f32 i_morf, u8 i_attr, f32 i_rate) {
+
+    const actor_attr::ActionAnimationParams params = actor_attr::enemy_stun_animation_params(i_this, i_morf, i_rate);
+    i_this->mpMorf->setAnm((J3DAnmTransform*)dComIfG_getObjectRes("E_tk", i_index), i_attr, params.morph, params.playbackSpeed, 0.0f, -1.0f);
+    i_this->mAnim = i_index;
+}
+#endif
 
 static int daE_TK_Draw(e_tk_class* i_this) {
     fopAc_ac_c* actor = i_this;
@@ -129,7 +150,7 @@ static int pl_check(e_tk_class* i_this, f32 i_limit, s16 i_max_diff) {
     fopAc_ac_c* actor = i_this;
     fopAc_ac_c* player = dComIfGp_getPlayer(0);
 
-    if (i_this->mPlayerDistanceLimit < i_limit) {
+    if (i_this->mPlayerDistanceLimit < DUSK_IF_ELSE(actor_attr::enemy_notice_distance(i_this, i_limit), i_limit)) {
         s16 diff = actor->shape_angle.y - i_this->mPlayerAngleY;
         if (diff < i_max_diff && diff > (s16)-i_max_diff && !other_bg_check(i_this, player)) {
             return 1;
@@ -151,15 +172,15 @@ static void damage_check(e_tk_class* i_this) {
             at_power_check(&i_this->mAtInfo);
 
             if (i_this->mAtInfo.mpCollider->ChkAtType(AT_TYPE_UNK)) {
-                i_this->mInvincibilityTimer = 20;
+                i_this->mInvincibilityTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 20), 20);
             } else {
-                i_this->mInvincibilityTimer = 10;
+                i_this->mInvincibilityTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 10), 10);
             }
 
             if (i_this->mAtInfo.mpCollider->ChkAtType(AT_TYPE_HOOKSHOT)) {
                 i_this->mAction = ACT_TK_FIND;
                 i_this->mMode = MODE_TK_KYORO2;
-                i_this->mActionTimer[0] = 50;
+                i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 50), 50);
             } else {
                 cc_at_check(actor, &i_this->mAtInfo);
                 if (i_this->mAtInfo.mHitType == HIT_TYPE_STUN) {
@@ -224,14 +245,14 @@ static void e_tk_wait_0(e_tk_class* i_this) {
         if (i_this->mActionTimer[0] == 0) {
             src_pos = actor->home.pos - actor->current.pos;
             i_this->mSomeAngle = cM_atan2s(src_pos.x, src_pos.z) + (s16)cM_rndFX(8000.0f);
-            i_this->mActionTimer[0] = cM_rndF(30.0f) + 30.0f;
+            i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(30.0f) + 30.0f), cM_rndF(30.0f) + 30.0f);
         }
 
         if (i_this->mActionTimer[2] == 0 && way_bg_check(i_this, 200.0f)) {
-            i_this->mActionTimer[2] = 40;
+            i_this->mActionTimer[2] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 40), 40);
             src_pos = actor->home.pos - actor->current.pos;
             i_this->mSomeAngle = cM_atan2s(src_pos.x, src_pos.z) + (s16)cM_rndFX(2000.0f);
-            i_this->mActionTimer[0] = cM_rndF(30.0f) + 30.0f;
+            i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(30.0f) + 30.0f), cM_rndF(30.0f) + 30.0f);
         }
 
         if (i_this->mActionTimer[1] == 0 && pl_y_check(i_this) &&
@@ -247,14 +268,20 @@ static void e_tk_wait_0(e_tk_class* i_this) {
         break;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(i_this, &actor->shape_angle.y, i_this->mSomeAngle, 0x10, 0x400);
+    actor_attr::enemy_add_action_angle(i_this, &actor->shape_angle.x, 0, 0x10, 0x400);
+    actor_attr::enemy_add_action_calc2(i_this, &actor->speedF, l_HIO.mSwimSpeedModifier * speed_mul, 1.0f, speed_step);
+#else
     cLib_addCalcAngleS2(&actor->shape_angle.y, i_this->mSomeAngle, 0x10, 0x400);
     cLib_addCalcAngleS2(&actor->shape_angle.x, 0, 0x10, 0x400);
     cLib_addCalc2(&actor->speedF, l_HIO.mSwimSpeedModifier * speed_mul, 1.0f, speed_step);
+#endif
     cMtx_YrotS(*calc_mtx, actor->shape_angle.y);
 
     src_pos.x = 0.0f;
     src_pos.y = 0.0f;
-    src_pos.z = actor->speedF;
+    src_pos.z = DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, actor->speedF), actor->speedF);
     MtxPosition(&src_pos, &actor->speed);
     actor->current.pos += actor->speed;
 }
@@ -276,7 +303,7 @@ static void e_tk_find(e_tk_class* i_this) {
         if (i_this->mpMorf->isStop()) {
             anm_init(i_this, ANM_TK_WAIT01, 3.0f, 0x2, 1.0f);
             i_this->mMode = MODE_TK_ATTACK;
-            i_this->mActionTimer[0] = cM_rndF(10.0f) + 10.0f;
+            i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(10.0f) + 10.0f), cM_rndF(10.0f) + 10.0f);
         }
         break;
 
@@ -306,7 +333,7 @@ static void e_tk_find(e_tk_class* i_this) {
                 i_this->mAction = ACT_TK_WAIT;
                 i_this->mMode = MODE_TK_NONE;
                 i_this->mActionTimer[0] = 0;
-                i_this->mActionTimer[1] = cM_rndF(30.0f) + 30.0f;
+                i_this->mActionTimer[1] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(30.0f) + 30.0f), cM_rndF(30.0f) + 30.0f);
             }
         }
         break;
@@ -328,17 +355,22 @@ static void e_tk_find(e_tk_class* i_this) {
 
     case MODE_TK_WAIT01:
         i_this->mAttentionOFF = true;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc2(i_this, &i_this->mAnimSpeed, 2.0f, 1.0f, 0.15f);
+        i_this->mpMorf->setPlaySpeed(i_this->mAnimSpeed * actor_attr::enemy_action_time_speed(i_this));
+#else
         cLib_addCalc2(&i_this->mAnimSpeed, 2.0f, 1.0f, 0.15f);
         i_this->mpMorf->setPlaySpeed(i_this->mAnimSpeed);
+#endif
         speed_target = 1.0f + YREG_F(17);
         speed_step = 10.0f + YREG_F(18);
         if (i_this->mActionTimer[0] == 0 &&
-            i_this->mPlayerDistanceLimit > l_HIO.mPlayerDetectionDistanceNear * 1.2f)
+            i_this->mPlayerDistanceLimit > DUSK_IF_ELSE(actor_attr::enemy_notice_distance(i_this, l_HIO.mPlayerDetectionDistanceNear * 1.2f), l_HIO.mPlayerDetectionDistanceNear * 1.2f))
         {
             i_this->mMode = MODE_TK_NONE;
         } else {
             if (i_this->mActionTimer[1] == 0 && i_this->mAcch.ChkWallHit()) {
-                i_this->mActionTimer[1] = cM_rndF(10.0f) + 20.0f;
+                i_this->mActionTimer[1] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(10.0f) + 20.0f), cM_rndF(10.0f) + 20.0f);
                 i_this->mSomeAngle = i_this->mPlayerAngleY + (s16)cM_rndFX(8000.0f);
             }
         }
@@ -350,16 +382,21 @@ static void e_tk_find(e_tk_class* i_this) {
         break;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(i_this, &actor->shape_angle.y, i_this->mPlayerAngleY, 4, 0x800);
+    actor_attr::enemy_add_action_calc2(i_this, &actor->speedF, l_HIO.mFleeSpeedModifier * speed_target, 1.0f, speed_step);
+#else
     cLib_addCalcAngleS2(&actor->shape_angle.y, i_this->mPlayerAngleY, 4, 0x800);
     cLib_addCalc2(&actor->speedF, l_HIO.mFleeSpeedModifier * speed_target, 1.0f, speed_step);
+#endif
     cMtx_YrotS(*calc_mtx, actor->shape_angle.y);
 
     local_58.x = 0.0f;
     local_58.y = 0.0f;
-    local_58.z = actor->speedF;
+    local_58.z = DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, actor->speedF), actor->speedF);
     MtxPosition(&local_58, &actor->speed);
     actor->current.pos += actor->speed;
-    cLib_addCalcAngleS2(&actor->shape_angle.x, 0, 4, 0x400);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &actor->shape_angle.x, 0, 4, 0x400), cLib_addCalcAngleS2(&actor->shape_angle.x, 0, 4, 0x400));
 }
 
 static void e_tk_attack(e_tk_class* i_this) {
@@ -373,18 +410,18 @@ static void e_tk_attack(e_tk_class* i_this) {
 
     case MODE_TK_APPEAR:
         if (pl_y_check(i_this)) {
-            if ((int)i_this->mpMorf->getFrame() == 24) {
+            if (DUSK_IF_ELSE(i_this->mpMorf->checkFrame(24.0f), (int)i_this->mpMorf->getFrame() == 24)) {
                 i_this->mBallID =
                     fopAcM_createChild(fpcNm_E_TK_BALL_e, fopAcM_GetID(actor), 0, &actor->eyePos,
                                        fopAcM_GetRoomNo(actor), &actor->shape_angle, 0, -1, 0);
             }
-            if ((int)i_this->mpMorf->getFrame() == 28) {
+            if (DUSK_IF_ELSE(i_this->mpMorf->checkFrame(28.0f), (int)i_this->mpMorf->getFrame() == 28)) {
                 i_this->mTKBallSpawned = true;
             }
         }
         if (i_this->mpMorf->isStop()) {
             anm_init(i_this, ANM_TK_WAIT01, 1.0f, 0x2, 1.0f);
-            i_this->mActionTimer[0] = cM_rndF(30.0f) + 60.0f;
+            i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(30.0f) + 60.0f), cM_rndF(30.0f) + 60.0f);
             i_this->mMode = MODE_TK_ATTACK;
         }
         break;
@@ -401,7 +438,7 @@ static void e_tk_attack(e_tk_class* i_this) {
         break;
     }
 
-    cLib_addCalcAngleS2(&actor->shape_angle.y, i_this->mPlayerAngleY, 4, 0x800);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &actor->shape_angle.y, i_this->mPlayerAngleY, 4, 0x800), cLib_addCalcAngleS2(&actor->shape_angle.y, i_this->mPlayerAngleY, 4, 0x800));
 }
 
 static void e_tk_pathswim(e_tk_class* i_this) {
@@ -446,8 +483,13 @@ static void e_tk_pathswim(e_tk_class* i_this) {
             dPnt* point = &i_this->mpPath->m_points[i_this->mPathID];
             if (point->mArg0 != 0x2) {
                 anm_init(i_this, ANM_TK_KYORO2, 5.0, 0x2, 1.0);
+#if TARGET_PC  // enemy attribute integration
+                i_this->mActionTimer[0] = actor_attr::enemy_sync_timer(i_this, cM_rndF(60.0f) + 50.0f);
+                i_this->mActionTimer[1] = actor_attr::enemy_sync_timer(i_this, 20);
+#else
                 i_this->mActionTimer[0] = cM_rndF(60.0f) + 50.0f;
                 i_this->mActionTimer[1] = 20;
+#endif
                 i_this->mMode = MODE_TK_DAMAGE;
             } else {
                 i_this->mMode = MODE_TK_APPEAR;
@@ -466,7 +508,7 @@ static void e_tk_pathswim(e_tk_class* i_this) {
             i_this->mAction = ACT_TK_FIND;
             anm_init(i_this, ANM_TK_WAIT01, 5.0f, 0x2, 1.0f);
             i_this->mMode = MODE_TK_ATTACK;
-            i_this->mActionTimer[0] = cM_rndF(20.0f) + 20.0f;
+            i_this->mActionTimer[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(20.0f) + 20.0f), cM_rndF(20.0f) + 20.0f);
         }
         if (i_this->mActionTimer[0] == 0) {
             i_this->mMode = MODE_TK_NONE;
@@ -474,13 +516,18 @@ static void e_tk_pathswim(e_tk_class* i_this) {
         break;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(i_this, &actor->shape_angle.y, i_this->mSomeAngle, 8, 0x400);
+    actor_attr::enemy_add_action_calc2(i_this, &actor->speedF, l_HIO.mSwimSpeedModifier * speed_target, 1.0f, speed_step);
+#else
     cLib_addCalcAngleS2(&actor->shape_angle.y, i_this->mSomeAngle, 8, 0x400);
     cLib_addCalc2(&actor->speedF, l_HIO.mSwimSpeedModifier * speed_target, 1.0f, speed_step);
+#endif
     cMtx_YrotS(*calc_mtx, actor->shape_angle.y);
 
     local_50.x = 0.0f;
     local_50.y = 0.0f;
-    local_50.z = actor->speedF;
+    local_50.z = DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, actor->speedF), actor->speedF);
     MtxPosition(&local_50, &actor->speed);
     actor->current.pos += actor->speed;
 }
@@ -490,7 +537,7 @@ static void e_tk_s_damage(e_tk_class* i_this) {
 
     switch (i_this->mMode) {
     case MODE_TK_NONE:
-        anm_init(i_this, ANM_TK_DAMAGE, 2.0f, 0x0, 1.0f);
+        DUSK_IF_ELSE(stun_anm_init(i_this, ANM_TK_DAMAGE, 2.0f, 0x0, 1.0f), anm_init(i_this, ANM_TK_DAMAGE, 2.0f, 0x0, 1.0f));
         i_this->mMode = MODE_TK_APPEAR;
         break;
 
@@ -506,7 +553,7 @@ static void e_tk_s_damage(e_tk_class* i_this) {
 static void e_tk_damage(e_tk_class* i_this) {
     fopAc_ac_c* actor = i_this;
 
-    i_this->mInvincibilityTimer = 6;
+    i_this->mInvincibilityTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 6), 6);
     i_this->mAttentionOFF = true;
 
     switch (i_this->mMode) {
@@ -517,7 +564,7 @@ static void e_tk_damage(e_tk_class* i_this) {
 
     case MODE_TK_APPEAR:
         if (i_this->mpMorf->isStop()) {
-            fopAcM_createDisappear(actor, &actor->eyePos, 10, 0, 0x11);
+            fopAcM_createDisappear(actor, &actor->eyePos, DUSK_IF_ELSE(static_cast<u8>(10.0f * actor_attr::enemy_size_multiplier(i_this)), 10), 0, 0x11);
             fopAcM_delete(actor);
         }
         break;
@@ -567,7 +614,7 @@ static void action(e_tk_class* i_this) {
     if (actor->speedF < 2.0f) {
         cXyz this_pos = actor->current.pos;
         f32 emit_rate = 0.05f + KREG_F(3);
-        fopAcM_effHamonSet(&i_this->mHamonSet, &this_pos, 2.3f + KREG_F(2), emit_rate);
+        fopAcM_effHamonSet(&i_this->mHamonSet, &this_pos, DUSK_IF_ELSE((2.3f + KREG_F(2)) * actor_attr::enemy_size_multiplier(i_this), 2.3f + KREG_F(2)), emit_rate);
     }
 }
 
@@ -604,7 +651,13 @@ static int daE_TK_Execute(e_tk_class* i_this) {
     mDoMtx_stack_c::transS(actor->current.pos.x, actor->current.pos.y, actor->current.pos.z);
     mDoMtx_stack_c::YrotM(actor->shape_angle.y);
     mDoMtx_stack_c::XrotM(actor->shape_angle.x);
+#if TARGET_PC  // enemy attribute integration
+    const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(i_this);
+    const f32 modelScale = l_HIO.mBaseSize * sizeMultiplier;
+    mDoMtx_stack_c::scaleM(modelScale, modelScale, modelScale);
+#else
     mDoMtx_stack_c::scaleM(l_HIO.mBaseSize, l_HIO.mBaseSize, l_HIO.mBaseSize);
+#endif
 
     J3DModel* model = i_this->mpMorf->getModel();
     model->setBaseTRMtx(mDoMtx_stack_c::get());
@@ -614,7 +667,7 @@ static int daE_TK_Execute(e_tk_class* i_this) {
     if (i_this->mpMorf->checkFrame(6.0f) &&
         (i_this->mAnim == ANM_TK_APPEAR || i_this->mAnim == ANM_TK_HIDE))
     {
-        fopKyM_createWpillar(&actor->current.pos, 2.3f + KREG_F(6), 0);
+        fopKyM_createWpillar(&actor->current.pos, DUSK_IF_ELSE((2.3f + KREG_F(6)) * actor_attr::enemy_size_multiplier(i_this), 2.3f + KREG_F(6)), 0);
     }
 
     if (i_this->mAnim == ANM_TK_SWIM) {
@@ -661,7 +714,11 @@ static int daE_TK_Execute(e_tk_class* i_this) {
     MtxPosition(&cStack_94, &actor->eyePos);
 
     actor->attention_info.position = actor->eyePos;
+#if TARGET_PC  // enemy attribute integration
+    actor->attention_info.position.y += l_HIO.mBaseSize * 35.0f * sizeMultiplier;
+#else
     actor->attention_info.position.y = actor->attention_info.position.y + l_HIO.mBaseSize * 35.0f;
+#endif
 
     if (i_this->mTKBallSpawned) {
         e_tk_ball_class* ball_actor =
@@ -671,7 +728,11 @@ static int daE_TK_Execute(e_tk_class* i_this) {
             ball_actor->mSuspended = false;
         }
 
+#if TARGET_PC  // enemy attribute integration
+        cXyz scale = actor_attr::enemy_size_multiplier(i_this, 2.0f + TREG_F(8));
+#else
         cXyz scale(2.0f + TREG_F(8), 2.0f + TREG_F(8), 2.0f + TREG_F(8));
+#endif
         dComIfGp_particle_set(0x819B, &actor->eyePos, &actor->shape_angle, &scale);
         dComIfGp_particle_set(0x819C, &actor->eyePos, &actor->shape_angle, &scale);
         i_this->mTKBallSpawned = false;
@@ -690,7 +751,7 @@ static int daE_TK_Execute(e_tk_class* i_this) {
 
     MtxPosition(&cStack_94, &cStack_a0);
     i_this->mSph.SetC(cStack_a0);
-    i_this->mSph.SetR((50.0f + JREG_F(3)) * l_HIO.mBaseSize);
+    i_this->mSph.SetR(DUSK_IF_ELSE((50.0f + JREG_F(3)) * l_HIO.mBaseSize * sizeMultiplier, (50.0f + JREG_F(3)) * l_HIO.mBaseSize));
 
     dComIfG_Ccsp()->Set(&i_this->mSph);
 
@@ -771,11 +832,22 @@ static int daE_TK_Create(fopAc_ac_c* actor) {
         actor->attention_info.flags = fopAc_AttnFlag_BATTLE_e;
 
         fopAcM_SetMtx(actor, i_this->mpMorf->getModel()->getBaseTRMtx());
+#if TARGET_PC  // enemy attribute integration
+        const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(i_this);
+        fopAcM_SetMin(actor, -100.0f * sizeMultiplier, -100.0f * sizeMultiplier, -100.0f * sizeMultiplier);
+        fopAcM_SetMax(actor, 100.0f * sizeMultiplier, 100.0f * sizeMultiplier, 100.0f * sizeMultiplier);
+#else
         fopAcM_SetMin(actor, -100.0f, -100.0f, -100.0f);
         fopAcM_SetMax(actor, 100.0f, 100.0f, 100.0f);
+#endif
 
         actor->attention_info.distances[fopAc_attn_BATTLE_e] = 0x04;
+#if TARGET_PC  // enemy attribute integration
+        actor->health = actor_attr::enemy_health_value(i_this, 10.0f);
+        actor->field_0x560 = actor->health;
+#else
         actor->field_0x560 = actor->health = 10;
+#endif
 
         static dCcD_SrcSph cc_sph_src = {
             {
@@ -796,7 +868,11 @@ static int daE_TK_Create(fopAc_ac_c* actor) {
         i_this->mAcch.Set(fopAcM_GetPosition_p(actor), fopAcM_GetOldPosition_p(actor), actor, 1,
                           &i_this->mAcchCir, fopAcM_GetSpeed_p(actor), NULL, NULL);
 
+#if TARGET_PC  // enemy attribute integration
+        i_this->mAcchCir.SetWall(-50.0f * sizeMultiplier, 60.0f * sizeMultiplier);
+#else
         i_this->mAcchCir.SetWall(-50.0f, 60.0f);
+#endif
         i_this->mSound.init(&actor->current.pos, &actor->eyePos, 0x3, 0x1);
         i_this->mSound.setEnemyName("E_tk");
         i_this->mAtInfo.mpSound = &i_this->mSound;
