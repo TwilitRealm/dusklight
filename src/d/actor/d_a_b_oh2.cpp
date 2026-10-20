@@ -6,12 +6,31 @@
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
 #include "d/actor/d_a_b_oh2.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 #include "d/actor/d_a_b_ob.h"
 #include "SSystem/SComponent/c_math.h"
 #include "c/c_damagereaction.h"
 #include "d/d_com_inf_game.h"
 #include "f_pc/f_pc_name.h"
 #include "f_op/f_op_actor_mng.h"
+#if TARGET_PC  // additional actor attribute integration
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace dusk::mods::svc::actor_attr {
+template <> struct EnemyAttributeOwner<b_oh2_class> {
+    static fopAc_ac_c* get(b_oh2_class* i_this) {
+
+        fopAc_ac_c* parent = fopAcM_SearchByID(i_this->parentActorID);
+        return parent != NULL && fopAcM_GetName(parent) == fpcNm_B_OB_e ? parent : i_this;
+
+}
+};
+
+}
+#endif
 
 static int nodeCallBack(J3DJoint* i_joint, int param_1) {
     if (param_1 == 0) {
@@ -26,7 +45,12 @@ static int nodeCallBack(J3DJoint* i_joint, int param_1) {
             mDoMtx_XrotM((MtxP)calc_mtx, area->field_0x7d4[jntNo].x);
             mDoMtx_YrotM((MtxP)calc_mtx, -0x4000);
 
+#if TARGET_PC  // enemy attribute integration
+            const f32 size = actor_attr::enemy_size_multiplier(area);
+            MtxScale(size, size * area->field_0x5e8[jntNo], size * area->field_0x5e8[jntNo], 1);
+#else
             MtxScale(1.0f, area->field_0x5e8[jntNo], area->field_0x5e8[jntNo], 1);
+#endif
             model->setAnmMtx(jntNo, (MtxP)calc_mtx);
         }
     }
@@ -73,9 +97,11 @@ static void dmcalc(b_oh2_class* i_this) {
     }
 
     MtxPosition(&sp20, &sp8);
+    IF_DUSK(sp8 = actor_attr::enemy_move_step(i_this, sp8);)
     sp20.x = 0.0f;
     sp20.y = 0.0f;
-    sp20.z = i_this->field_0x5e4;
+    // Segment length is geometry; the preceding drift is a time-based step.
+    sp20.z = DUSK_IF_ELSE(i_this->field_0x5e4 * actor_attr::enemy_size_multiplier(i_this), i_this->field_0x5e4);
 
     f32 var_f31 = 1.0f;
     f32 var_f30 = 0.0f;
@@ -83,7 +109,7 @@ static void dmcalc(b_oh2_class* i_this) {
 
     if (boss->speedF < var_f31) {
         var_f29 = boss->field_0x47a0 + 100.0f;
-        var_f30 = -20.0f;
+        var_f30 = DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, -20.0f), -20.0f);
     }
 
     for (int i = 1; i < 31; i++) {
@@ -116,7 +142,11 @@ static void dmcalc(b_oh2_class* i_this) {
     }
 
     i_this->field_0x5e0 = 0.2f;
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_angle_add(i_this, i_this->field_0x5dc , 2000);
+#else
     i_this->field_0x5dc += 2000;
+#endif
 
     int temp_r6 = 0;
     for (int i = 0; i < 30; i++, temp_r6 += -10000) {
@@ -176,13 +206,20 @@ static int daB_OH2_Execute(b_oh2_class* i_this) {
         return 1;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    // Resolve this tentacle's own boss; a process-global first child can belong
+    // to a different Morpheel when more than one encounter actor exists.
+    fopAc_ac_c* parent = fopAcM_SearchByID(i_this->parentActorID);
+#else
     if (i_this->field_0x5c8 == 0) {
         boss = (b_ob_class*)fopAcM_SearchByID(i_this->parentActorID);
     }
+#endif
 
-    if (boss == NULL) {
+    if (DUSK_IF_ELSE(parent == NULL || fopAcM_GetName(parent) != fpcNm_B_OB_e, boss == NULL)) {
         return 1;
     }
+    IF_DUSK(boss = static_cast<b_ob_class*>(parent);)
 
     i_this->field_0x5cc++;
 
@@ -241,12 +278,12 @@ static int useHeapInit(fopAc_ac_c* i_this) {
     }
 
     J3DAnmTextureSRTKey* btk = (J3DAnmTextureSRTKey*)dComIfG_getObjectRes("B_oh", 0x36);
-    if (!_this->mpBtk->init(_this->mpMorf->getModel()->getModelData(), btk, TRUE, 2, 1.0f, 0, -1)) {
+    if (!_this->mpBtk->init(_this->mpMorf->getModel()->getModelData(), btk, TRUE, 2, DUSK_IF_ELSE(actor_attr::enemy_action_step(_this, 1.0f), 1.0f), 0, -1)) {
         return 0;
     }
 
     _this->mpBtk->setFrame(cM_rndF(39.0f));
-    _this->mpBtk->setPlaySpeed(cM_rndFX(0.1f) + 1.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(_this, _this->mpBtk, cM_rndFX(0.1f) + 1.0f), _this->mpBtk->setPlaySpeed(cM_rndFX(0.1f) + 1.0f));
 
     _this->mpBrk = JKR_NEW mDoExt_brkAnm();
     if (_this->mpBrk == NULL) {
@@ -254,12 +291,12 @@ static int useHeapInit(fopAc_ac_c* i_this) {
     }
 
     J3DAnmTevRegKey* brk = (J3DAnmTevRegKey*)dComIfG_getObjectRes("B_oh", 0x2F);
-    if (!_this->mpBrk->init(_this->mpMorf->getModel()->getModelData(), brk, TRUE, 2, 1.0f, 0, -1)) {
+    if (!_this->mpBrk->init(_this->mpMorf->getModel()->getModelData(), brk, TRUE, 2, DUSK_IF_ELSE(actor_attr::enemy_action_step(_this, 1.0f), 1.0f), 0, -1)) {
         return 0;
     }
 
     _this->mpBrk->setFrame(cM_rndF(39.0f));
-    _this->mpBrk->setPlaySpeed(cM_rndFX(0.1f) + 1.0f);
+    DUSK_IF_ELSE(actor_attr::enemy_set_animation_play_speed(_this, _this->mpBrk, cM_rndFX(0.1f) + 1.0f), _this->mpBrk->setPlaySpeed(cM_rndFX(0.1f) + 1.0f));
 
     return 1;
 }
@@ -284,7 +321,7 @@ static int daB_OH2_Create(fopAc_ac_c* i_this) {
             _this->field_0x660[i].y = -50000.0f;
         }
 
-        _this->field_0x5d2[3] = 10;
+        _this->field_0x5d2[3] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(_this, 10), 10);
         _this->field_0x5e4 = cM_rndFX(5.0f) + 50.0f;
 
         daB_OH2_Execute(_this);
