@@ -4,6 +4,8 @@
 #include "dusk/settings.h"
 #include "m_Do/m_Do_graphic.h"
 
+#include <aurora/aurora.h>
+#include <aurora/input.hpp>
 #include <aurora/rmlui.hpp>
 #include <dolphin/pad.h>
 
@@ -42,8 +44,9 @@ bool s_currentDialogClicked = false;
 bool s_mouseActive = false;
 bool s_mouseButtonCaptured = false;
 s32 s_mouseButton = -1;
-u32 s_suppressedPadHoldMask = 0;
-u32 s_suppressedPadNextReadMask = 0;
+aurora::input::PointerId s_touchPointer = 0;
+bool s_touchActive = false;
+aurora::input::LayerId s_layer = aurora::input::kInvalidLayerId;
 Context s_deferredActivationContext = Context::None;
 TargetId s_deferredActivationTarget = InvalidTarget;
 Gesture s_gesture;
@@ -110,25 +113,6 @@ bool mouse_button_is_menu_confirm(s32 button) noexcept {
     return scancode != PAD_KEY_INVALID && scancode == menu_confirm_mouse_scancode();
 }
 
-void suppress_pad_for_mouse_button(s32 button, bool held) noexcept {
-    const s32 scancode = scancode_from_rml_button(button);
-    if (scancode == PAD_KEY_INVALID) {
-        return;
-    }
-
-    const PADButton padButton = pad_button_for_scancode(PAD_CHAN0, scancode);
-    if (padButton == 0) {
-        return;
-    }
-
-    s_suppressedPadNextReadMask |= padButton;
-    if (held) {
-        s_suppressedPadHoldMask |= padButton;
-    } else {
-        s_suppressedPadHoldMask &= ~padButton;
-    }
-}
-
 f32 tap_move_threshold() noexcept {
     auto* context = aurora::rmlui::get_context();
     if (context == nullptr) {
@@ -187,8 +171,7 @@ void clear_input_state() noexcept {
     s_mouseActive = false;
     s_mouseButtonCaptured = false;
     s_mouseButton = -1;
-    s_suppressedPadHoldMask = 0;
-    s_suppressedPadNextReadMask = 0;
+    s_touchActive = false;
     s_deferredActivationContext = Context::None;
     s_deferredActivationTarget = InvalidTarget;
     s_gesture = {};
@@ -196,9 +179,8 @@ void clear_input_state() noexcept {
     s_hoverTarget = InvalidTarget;
 }
 
-}  // namespace
-
-bool handle_fallthrough_pointer(f32 x, f32 y, Phase phase, bool touch, s32 mouseButton) noexcept {
+bool handle_fallthrough_pointer(
+    f32 x, f32 y, Phase phase, bool touch, s32 mouseButton = -1) noexcept {
     if (!enabled()) {
         return false;
     }
@@ -210,17 +192,14 @@ bool handle_fallthrough_pointer(f32 x, f32 y, Phase phase, bool touch, s32 mouse
             }
             s_mouseButtonCaptured = true;
             s_mouseButton = mouseButton;
-            suppress_pad_for_mouse_button(mouseButton, true);
         } else if (phase == Phase::Release) {
             if (!s_mouseButtonCaptured || s_mouseButton != mouseButton) {
                 return false;
             }
-            suppress_pad_for_mouse_button(mouseButton, false);
             s_mouseButtonCaptured = false;
             s_mouseButton = -1;
         } else if (phase == Phase::Cancel) {
             if (s_mouseButtonCaptured) {
-                suppress_pad_for_mouse_button(s_mouseButton, false);
                 s_mouseButtonCaptured = false;
                 s_mouseButton = -1;
             } else if (!s_mouseActive) {
@@ -276,7 +255,138 @@ bool handle_fallthrough_pointer(f32 x, f32 y, Phase phase, bool touch, s32 mouse
     return true;
 }
 
+SDL_FPoint to_context(SDL_FPoint position) noexcept {
+    auto* context = aurora::rmlui::get_context();
+    const AuroraWindowSize size = aurora_get_window_size();
+    if (context == nullptr || size.width == 0 || size.height == 0) {
+        return position;
+    }
+    const auto dimensions = context->GetDimensions();
+    return {
+        position.x * static_cast<f32>(dimensions.x) / static_cast<f32>(size.width),
+        position.y * static_cast<f32>(dimensions.y) / static_cast<f32>(size.height),
+    };
+}
+
+s32 rml_mouse_button(u8 button) noexcept {
+    switch (button) {
+    case SDL_BUTTON_LEFT:
+        return 0;
+    case SDL_BUTTON_RIGHT:
+        return 1;
+    case SDL_BUTTON_MIDDLE:
+        return 2;
+    default:
+        return -1;
+    }
+}
+
+aurora::input::EventResult handle_mouse(
+    const aurora::input::InputEvent::PointerChanged& pointer) noexcept {
+    using aurora::input::EventResult;
+    using PointerPhase = aurora::input::InputEvent::PointerChanged::Phase;
+    const auto position = to_context(pointer.position);
+    switch (pointer.phase) {
+    case PointerPhase::Move:
+        if (enabled() && active()) {
+            handle_fallthrough_pointer(position.x, position.y, Phase::Move, false);
+        }
+        return EventResult::Pass;
+    case PointerPhase::Down:
+        if (!enabled() || !active()) {
+            return EventResult::Pass;
+        }
+        return handle_fallthrough_pointer(
+                   position.x, position.y, Phase::Press, false, rml_mouse_button(pointer.button)) ?
+                   EventResult::Consume :
+                   EventResult::Pass;
+    case PointerPhase::Up:
+        if (!enabled() || (!active() && !mouse_capture_active())) {
+            return EventResult::Pass;
+        }
+        return handle_fallthrough_pointer(position.x, position.y, Phase::Release, false,
+                   rml_mouse_button(pointer.button)) ?
+                   EventResult::Consume :
+                   EventResult::Pass;
+    case PointerPhase::Cancel:
+        handle_fallthrough_pointer(position.x, position.y, Phase::Cancel, false);
+        return EventResult::Pass;
+    }
+    return EventResult::Pass;
+}
+
+aurora::input::EventResult handle_touch(
+    const aurora::input::InputEvent::PointerChanged& pointer) noexcept {
+    using aurora::input::EventResult;
+    using PointerPhase = aurora::input::InputEvent::PointerChanged::Phase;
+    const auto position = to_context(pointer.position);
+    if (pointer.phase == PointerPhase::Down) {
+        if (!enabled() || !active()) {
+            return EventResult::Pass;
+        }
+        if (!s_touchActive) {
+            s_touchPointer = pointer.pointer;
+            s_touchActive = true;
+            handle_fallthrough_pointer(position.x, position.y, Phase::Press, true);
+        }
+        return EventResult::Consume;
+    }
+    if (!s_touchActive || pointer.pointer != s_touchPointer) {
+        return EventResult::Pass;
+    }
+    switch (pointer.phase) {
+    case PointerPhase::Move:
+        handle_fallthrough_pointer(position.x, position.y, Phase::Move, true);
+        break;
+    case PointerPhase::Up:
+        s_touchActive = false;
+        handle_fallthrough_pointer(position.x, position.y, Phase::Release, true);
+        break;
+    case PointerPhase::Cancel:
+    default:
+        s_touchActive = false;
+        handle_fallthrough_pointer(position.x, position.y, Phase::Cancel, true);
+        break;
+    }
+    return EventResult::Consume;
+}
+
+aurora::input::EventResult layer_event(const aurora::input::InputEvent& event, void*) {
+    using aurora::input::InputEvent;
+    using Kind = aurora::input::InputSource::Kind;
+    const Kind kind = event.source.kind;
+    if (event.payload.is<InputEvent::Cancelled>()) {
+        if (kind == Kind::Touch && s_touchActive) {
+            s_touchActive = false;
+            handle_fallthrough_pointer(0.0f, 0.0f, Phase::Cancel, true);
+        } else if (kind == Kind::Mouse) {
+            handle_fallthrough_pointer(0.0f, 0.0f, Phase::Cancel, false);
+        }
+        return aurora::input::EventResult::Pass;
+    }
+    const auto* pointer = event.payload.get_if<InputEvent::PointerChanged>();
+    if (pointer == nullptr) {
+        return aurora::input::EventResult::Pass;
+    }
+    if (kind == Kind::Touch) {
+        return handle_touch(*pointer);
+    }
+    if (kind == Kind::Mouse) {
+        return handle_mouse(*pointer);
+    }
+    return aurora::input::EventResult::Pass;
+}
+
+}  // namespace
+
 void begin_game_frame() noexcept {
+    if (s_layer == aurora::input::kInvalidLayerId) {
+        s_layer = aurora::input::register_layer({
+            .label = "dusklight.menu_pointer",
+            .priority = kLayerPriority,
+            .onEvent = layer_event,
+        });
+    }
     s_currentContext = Context::None;
     s_currentDialogChoice = 0xFF;
     s_currentDialogChoiceValid = false;
@@ -323,8 +433,7 @@ void begin_context(Context context) noexcept {
         s_mouseActive = false;
         s_mouseButtonCaptured = false;
         s_mouseButton = -1;
-        s_suppressedPadHoldMask = 0;
-        s_suppressedPadNextReadMask = 0;
+        s_touchActive = false;
         s_deferredActivationContext = Context::None;
         s_deferredActivationTarget = InvalidTarget;
         s_gesture = {};
@@ -450,22 +559,6 @@ void clear_deferred_activation(Context context) noexcept {
 
     s_deferredActivationContext = Context::None;
     s_deferredActivationTarget = InvalidTarget;
-}
-
-u32 suppressed_pad_buttons(u32 port) noexcept {
-    if (port != PAD_CHAN0) {
-        return 0;
-    }
-
-    return s_suppressedPadHoldMask | s_suppressedPadNextReadMask;
-}
-
-void finish_pad_suppression_read(u32 port) noexcept {
-    if (port != PAD_CHAN0) {
-        return;
-    }
-
-    s_suppressedPadNextReadMask = 0;
 }
 
 bool hit_rect(f32 left, f32 top, f32 right, f32 bottom, f32 padding) noexcept {

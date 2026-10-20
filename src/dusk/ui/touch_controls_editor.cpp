@@ -1,13 +1,12 @@
 #include "touch_controls_editor.hpp"
 
-#include "modal.hpp"
+#include "ui.hpp"
 
-#include "Z2AudioLib/Z2SeMgr.h"
 #include "dusk/config.hpp"
 #include "dusk/settings.h"
-#include "m_Do/m_Do_audio.h"
 
 #include <aurora/rmlui.hpp>
+#include <borealis/ui/modal.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -100,7 +99,7 @@ float squared_distance(Rml::Vector2f a, Rml::Vector2f b) noexcept {
 }  // namespace
 
 TouchControlsEditor::TouchControlsEditor()
-    : Document(touch_controls_editor_document_source(), false, DocumentScope::TouchControls),
+    : Document(touch_controls_editor_document_source(), false, kScopeTouchControls),
       mRoot(mDocument != nullptr ? mDocument->GetElementById("root") : nullptr),
       mSelectionFrame(
           mDocument != nullptr ? mDocument->GetElementById("editor-selection-frame") : nullptr),
@@ -268,8 +267,8 @@ void TouchControlsEditor::bind_button_command(
         (this->*callback)();
         event.StopPropagation();
     });
-    listen(element, Rml::EventId::Keydown, [this, callback](Rml::Event& event) {
-        if (map_nav_event(event) != NavCommand::Confirm) {
+    listen(element, kNavCommandEvent, [this, callback](Rml::Event& event) {
+        if (nav_command(event) != NavCommand::Confirm) {
             return;
         }
         (this->*callback)();
@@ -587,7 +586,7 @@ void TouchControlsEditor::save_layout() {
     mWorkingLayout.version = ControlLayout::Version;
     getSettings().game.touchControlsLayout.setValue(mWorkingLayout);
     config::save();
-    mDoAud_seStartMenu(kSoundItemChange);
+    play_nav_sound(NavSound::ItemChange);
     pop();
 }
 
@@ -604,7 +603,7 @@ void TouchControlsEditor::request_reset() {
                     .onPressed =
                         [this, dismiss](Modal& modal) {
                             reset_working_layout();
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             dismiss(modal);
                         },
                 },
@@ -625,7 +624,7 @@ void TouchControlsEditor::reset_working_layout() noexcept {
 }
 
 void TouchControlsEditor::cancel_edit() {
-    mDoAud_seStartMenu(kSoundWindowClose);
+    play_nav_sound(NavSound::WindowClose);
     pop();
 }
 

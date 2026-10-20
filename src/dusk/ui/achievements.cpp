@@ -1,12 +1,10 @@
 #include "achievements.hpp"
 
-#include "nav_types.hpp"
-#include "pane.hpp"
+#include "ui.hpp"
 
 #include "dusk/achievements.h"
 
-#include "m_Do/m_Do_audio.h"
-
+#include <borealis/ui/pane.hpp>
 #include <fmt/format.h>
 
 namespace dusk::ui {
@@ -58,7 +56,7 @@ public:
         btn.on_nav_command([this, key = std::string(a.key)](Rml::Event&, NavCommand cmd) {
             if (cmd == NavCommand::Confirm) {
                 if (mConfirming) {
-                    mDoAud_seStartMenu(kSoundClick);
+                    play_nav_sound(NavSound::Click);
                     AchievementSystem::get().clearOne(key.c_str());
                     resetConfirm();
                 } else {
@@ -154,7 +152,7 @@ AchievementsWindow::AchievementsWindow() {
             clearAllBtn.on_nav_command([clearAllPtr, confirmingAll](Rml::Event&, NavCommand cmd) {
                 if (cmd == NavCommand::Confirm) {
                     if (*confirmingAll) {
-                        mDoAud_seStartMenu(kSoundClick);
+                        play_nav_sound(NavSound::Click);
                         AchievementSystem::get().clearAll();
                         *confirmingAll = false;
                         clearAllPtr->set_text("Clear All Achievements");

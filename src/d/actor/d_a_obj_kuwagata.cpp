@@ -539,7 +539,11 @@ void daObjKUW_c::Z_BufferChk() {
 
     if (local_5c.x > 0.0f && local_5c.x < FB_WIDTH &&
         local_5c.y > trimHeight && local_5c.y < FB_HEIGHT - trimHeight) {
+#if TARGET_PC
+        dComIfGd_peekZ(local_5c.x, local_5c.y, &field_0x9bc, fopAcM_GetID(this));
+#else
         dComIfGd_peekZ(local_5c.x, local_5c.y, &field_0x9bc);
+#endif
     }
 
     view_class* view = dComIfGd_getView();

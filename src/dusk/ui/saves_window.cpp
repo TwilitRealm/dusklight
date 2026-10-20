@@ -1,11 +1,8 @@
 #include "saves_window.hpp"
 
 #include "aurora/lib/window.hpp"
-#include "bool_button.hpp"
 #include "borealis/file_select.hpp"
 #include "borealis/io.hpp"
-#include "button.hpp"
-#include "context_menu.hpp"
 #include "dusk/data.hpp"
 #include "dusk/game_mode.hpp"
 #include "dusk/main.h"
@@ -15,13 +12,16 @@
 #include "dusk/settings.h"
 #include "dusk/utilities.hpp"
 #include "format.hpp"
-#include "icon_button.hpp"
-#include "modal.hpp"
-#include "pane.hpp"
 #include "prelaunch.hpp"
 #include "ui.hpp"
-#include "window.hpp"
 
+#include <borealis/ui/bool_button.hpp>
+#include <borealis/ui/button.hpp>
+#include <borealis/ui/context_menu.hpp>
+#include <borealis/ui/icon_button.hpp>
+#include <borealis/ui/modal.hpp>
+#include <borealis/ui/pane.hpp>
+#include <borealis/ui/window.hpp>
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -134,7 +134,7 @@ save_manager::ValueResult<Context> context_for_save(const std::string& saveName)
 }
 
 void dismiss_modal(Modal& modal) {
-    mDoAud_seStartMenu(kSoundWindowClose);
+    play_nav_sound(NavSound::WindowClose);
     modal.pop();
 }
 
@@ -922,7 +922,7 @@ void SavesWindow::build_content(Rml::Element* content) {
             entry, detailPane, [this, saveName = option.saveName](Pane& pane) {
                 if (mSaveName != saveName) {
                     mSaveName = saveName;
-                    mDoAud_seStartMenu(kSoundItemChange);
+                    play_nav_sound(NavSound::ItemChange);
                 }
                 build_save_detail(pane, mSaveName);
             });

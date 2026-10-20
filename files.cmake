@@ -1570,43 +1570,23 @@ set(DUSK_FILES
         src/dusk/ui/achievements.hpp
         src/dusk/ui/command_console.cpp
         src/dusk/ui/command_console.hpp
-        src/dusk/ui/bool_button.cpp
-        src/dusk/ui/bool_button.hpp
-        src/dusk/ui/button.cpp
-        src/dusk/ui/button.hpp
-        src/dusk/ui/clamped_text.cpp
-        src/dusk/ui/clamped_text.hpp
         src/dusk/ui/color_input.cpp
         src/dusk/ui/color_input.hpp
-        src/dusk/ui/component.cpp
-        src/dusk/ui/component.hpp
         src/dusk/ui/controller_config.cpp
         src/dusk/ui/controller_config.hpp
         src/dusk/ui/controls.hpp
-        src/dusk/ui/document.cpp
-        src/dusk/ui/document.hpp
         src/dusk/ui/drop_install_modal.cpp
         src/dusk/ui/drop_install_modal.hpp
-        src/dusk/ui/dropdown_button.cpp
-        src/dusk/ui/dropdown_button.hpp
         src/dusk/ui/editor.cpp
         src/dusk/ui/editor.hpp
-        src/dusk/ui/event.cpp
-        src/dusk/ui/event.hpp
         src/dusk/ui/graphics_tuner.cpp
         src/dusk/ui/graphics_tuner.hpp
-        src/dusk/ui/group_button.cpp
-        src/dusk/ui/group_button.hpp
         src/dusk/ui/file_button.cpp
         src/dusk/ui/file_button.hpp
         src/dusk/ui/icon_provider.cpp
         src/dusk/ui/icon_provider.hpp
-        src/dusk/ui/input.cpp
-        src/dusk/ui/input.hpp
         src/dusk/ui/logs_window.cpp
         src/dusk/ui/logs_window.hpp
-        src/dusk/ui/list.cpp
-        src/dusk/ui/list.hpp
         src/dusk/ui/menu_bar.cpp
         src/dusk/ui/menu_bar.hpp
         src/dusk/ui/mod_browser.cpp
@@ -1623,31 +1603,12 @@ set(DUSK_FILES
         src/dusk/ui/runtime_image.hpp
         src/dusk/ui/mod_window.cpp
         src/dusk/ui/mod_window.hpp
-        src/dusk/ui/modal.cpp
-        src/dusk/ui/modal.hpp
         src/dusk/ui/mod_updates.cpp
         src/dusk/ui/mod_updates.hpp
         src/dusk/ui/mods_window.cpp
         src/dusk/ui/mods_window.hpp
-        src/dusk/ui/nav_types.hpp
-        src/dusk/ui/nav_group.cpp
-        src/dusk/ui/nav_group.hpp
-        src/dusk/ui/context_menu.cpp
-        src/dusk/ui/context_menu.hpp
-        src/dusk/ui/icon_button.cpp
-        src/dusk/ui/icon_button.hpp
-        src/dusk/ui/tooltip.cpp
-        src/dusk/ui/tooltip.hpp
-        src/dusk/ui/number_button.cpp
-        src/dusk/ui/number_button.hpp
         src/dusk/ui/overlay.cpp
         src/dusk/ui/overlay.hpp
-        src/dusk/ui/row.cpp
-        src/dusk/ui/row.hpp
-        src/dusk/ui/pane.cpp
-        src/dusk/ui/pane.hpp
-        src/dusk/ui/popover.cpp
-        src/dusk/ui/popover.hpp
         src/dusk/ui/prelaunch.cpp
         src/dusk/ui/prelaunch.hpp
         src/dusk/ui/preset.cpp
@@ -1656,14 +1617,8 @@ set(DUSK_FILES
         src/dusk/ui/reporting.hpp
         src/dusk/ui/saves_window.cpp
         src/dusk/ui/saves_window.hpp
-        src/dusk/ui/select_button.cpp
-        src/dusk/ui/select_button.hpp
         src/dusk/ui/settings.cpp
         src/dusk/ui/settings.hpp
-        src/dusk/ui/string_button.cpp
-        src/dusk/ui/string_button.hpp
-        src/dusk/ui/tab_bar.cpp
-        src/dusk/ui/tab_bar.hpp
         src/dusk/ui/touch_controls.cpp
         src/dusk/ui/touch_controls.hpp
         src/dusk/ui/touch_controls_common.cpp
@@ -1674,8 +1629,6 @@ set(DUSK_FILES
         src/dusk/ui/ui.hpp
         src/dusk/ui/warp.cpp
         src/dusk/ui/warp.hpp
-        src/dusk/ui/window.cpp
-        src/dusk/ui/window.hpp
         src/dusk/version.cpp
         src/dusk/utilities.cpp
         src/helpers/batch.cpp

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "window.hpp"
+#include "ui.hpp"
 
 #include <deque>
 #include <string>
@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "dusk/mods/log_buffer.hpp"
+
+#include <borealis/ui/window.hpp>
 
 namespace dusk::ui {
 

@@ -630,7 +630,11 @@ void daObjKAT_c::Z_BufferChk() {
     if (projected.x > 0.0f && projected.x < KAT_Z_BUFFERCHK_MAX_X && projected.y > unkFloat1 &&
         projected.y < KAT_Z_BUFFERCHK_MAX_Y - unkFloat1)
     {
+#if TARGET_PC
+        dComIfGd_peekZ(projected.x,projected.y, &field_0x804, fopAcM_GetID(this));
+#else
         dComIfGd_peekZ(projected.x,projected.y, &field_0x804);
+#endif
     }
 
     f32 near_ = dComIfGd_getView()->near_;

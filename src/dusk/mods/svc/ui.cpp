@@ -8,14 +8,8 @@
 #include "dusk/mod_loader.hpp"
 #include "dusk/mods/loader/loader.hpp"
 #include "dusk/mods/log_buffer.hpp"
-#include "dusk/ui/context_menu.hpp"
-#include "dusk/ui/dropdown_button.hpp"
-#include "dusk/ui/icon_button.hpp"
-#include "dusk/ui/list.hpp"
 #include "dusk/ui/menu_bar.hpp"
 #include "dusk/ui/mod_window.hpp"
-#include "dusk/ui/modal.hpp"
-#include "dusk/ui/row.hpp"
 #include "dusk/ui/ui.hpp"
 #include "dusk/utilities.hpp"
 #include "mods/svc/ui.h"
@@ -24,6 +18,12 @@
 #include <SDL3/SDL_clipboard.h>
 #include <aurora/rmlui.hpp>
 #include <borealis/log.hpp>
+#include <borealis/ui/context_menu.hpp>
+#include <borealis/ui/dropdown_button.hpp>
+#include <borealis/ui/icon_button.hpp>
+#include <borealis/ui/list.hpp>
+#include <borealis/ui/modal.hpp>
+#include <borealis/ui/row.hpp>
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -128,7 +128,7 @@ struct UiSlot {
     UiWindowClosedFn onClosed = nullptr;
     void* onClosedUserData = nullptr;
     // Style payload
-    ui::DocumentScope styleScope = ui::DocumentScope::None;
+    ui::DocumentScope styleScope = ui::kScopeNone;
     std::string styleId;
     // Cached rendered values for element setters. These make the natural "set every update"
     // style cheap when the displayed value has not changed.
@@ -1425,22 +1425,22 @@ ModResult ui_register_styles(
     ui::DocumentScope docScope;
     switch (scope) {
     case UI_SCOPE_PRELAUNCH:
-        docScope = ui::DocumentScope::Prelaunch;
+        docScope = ui::kScopePrelaunch;
         break;
     case UI_SCOPE_WINDOW:
-        docScope = ui::DocumentScope::Window;
+        docScope = ui::kScopeWindow;
         break;
     case UI_SCOPE_MENU_BAR:
-        docScope = ui::DocumentScope::MenuBar;
+        docScope = ui::kScopeMenuBar;
         break;
     case UI_SCOPE_OVERLAY:
-        docScope = ui::DocumentScope::Overlay;
+        docScope = ui::kScopeOverlay;
         break;
     case UI_SCOPE_TOUCH_CONTROLS:
-        docScope = ui::DocumentScope::TouchControls;
+        docScope = ui::kScopeTouchControls;
         break;
     case UI_SCOPE_GRAPHICS_TUNER:
-        docScope = ui::DocumentScope::GraphicsTuner;
+        docScope = ui::kScopeGraphicsTuner;
         break;
     default:
         return MOD_INVALID_ARGUMENT;

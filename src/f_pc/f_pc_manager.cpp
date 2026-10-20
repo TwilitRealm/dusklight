@@ -52,9 +52,11 @@ BOOL fpcM_IsCreating(fpc_ProcID i_id) {
 void fpcM_Management(fpcM_ManagementFunc i_preExecuteFn, fpcM_ManagementFunc i_postExecuteFn) {
     ZoneScoped;
     MtxInit();
+#if !TARGET_PC
     if (!fapGm_HIO_c::isCaptureScreen()) {
         dComIfGd_peekZdata();
     }
+#endif
     fapGm_HIO_c::executeCaptureScreen();
 
     bool shutdownRet = dShutdownErrorMsg_c::execute();
@@ -107,6 +109,12 @@ void fpcM_Management(fpcM_ManagementFunc i_preExecuteFn, fpcM_ManagementFunc i_p
             if (!fapGm_HIO_c::isCaptureScreen() || fapGm_HIO_c::getCaptureScreenDivH() != 1) {
                 fpcDw_Handler((fpcDw_HandlerFuncFunc)fpcM_DrawIterater, (fpcDw_HandlerFunc)fpcM_Draw);
             }
+
+#if TARGET_PC
+            if (!fapGm_HIO_c::isCaptureScreen()) {
+                dComIfGd_peekZdata();
+            }
+#endif
 
             IF_DUSK(dComIfGp_drawSimpleModel());
 

@@ -962,16 +962,6 @@ u32 GXGetFifoSize(const GXFifoObj* fifo) {
     STUB_LOG();
     return 0;
 }
-u16 GXGetNumXfbLines(u16 efbHeight, f32 yScale) {
-    STUB_LOG();
-    return 0;
-}
-
-f32 GXGetYScaleFactor(u16 efbHeight, u16 xfbHeight) {
-    STUB_LOG();
-    return 0.0f;
-}
-
 void GXInitTexCacheRegion(GXTexRegion* region, GXBool is_32b_mipmap, u32 tmem_even,
                           GXTexCacheSize size_even, u32 tmem_odd, GXTexCacheSize size_odd) {
     STUB_LOG();

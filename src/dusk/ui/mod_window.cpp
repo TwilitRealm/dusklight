@@ -1,13 +1,13 @@
 #include "mod_window.hpp"
 
-#include "bool_button.hpp"
 #include "color_input.hpp"
 #include "file_button.hpp"
-#include "icon_button.hpp"
-#include "number_button.hpp"
-#include "string_button.hpp"
+#include "ui.hpp"
 
-#include "m_Do/m_Do_audio.h"
+#include <borealis/ui/bool_button.hpp>
+#include <borealis/ui/icon_button.hpp>
+#include <borealis/ui/number_button.hpp>
+#include <borealis/ui/string_button.hpp>
 
 namespace dusk::ui {
 
@@ -160,7 +160,7 @@ Component* build_mod_control(
                                     [shared, i] { return shared->getInt && shared->getInt() == i; },
                             })
                         .on_pressed([shared, i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             if (shared->setInt) {
                                 shared->setInt(i);
                             }

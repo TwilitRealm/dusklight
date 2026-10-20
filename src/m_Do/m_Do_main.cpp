@@ -157,7 +157,6 @@ bool launchUILoop() {
                 if (dusk::mods::svc::window_dispatch_event(event->sdl)) {
                     break;
                 }
-                dusk::mouse::handle_event(event->sdl);
                 dusk::ui::handle_event(event->sdl);
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
                 break;
@@ -238,18 +237,15 @@ void main01(void) {
                 goto eventsDone;
             case AURORA_PAUSED:
                 dusk::audio::SetPaused(true);
-                dusk::mouse::on_focus_lost();
                 break;
             case AURORA_UNPAUSED:
                 dusk::audio::SetPaused(false);
                 dusk::game_clock::reset();
-                dusk::mouse::on_focus_gained();
                 break;
             case AURORA_SDL_EVENT:
                 if (dusk::mods::svc::window_dispatch_event(event->sdl)) {
                     break;
                 }
-                dusk::mouse::handle_event(event->sdl);
                 dusk::ui::handle_event(event->sdl);
                 dusk::g_imguiConsole.HandleSDLEvent(event->sdl);
                 break;
@@ -312,6 +308,7 @@ void main01(void) {
             dusk::interp::begin_presentation(step);
             fpcM_DrawIterater((fpcM_DrawIteraterFunc)fpcM_Draw);
             cAPIGph_Painter();
+            dDlst_peekZ_c::capture();
             dusk::interp::end_presentation();
         } else {
             dusk::interp::begin_frame(0.0f);
@@ -326,6 +323,7 @@ void main01(void) {
             // EXECUTE GAME LOGIC & RENDER
             // This calls mDoGph_Painter -> JFWDisplay -> GX Functions
             fapGm_Execute();
+            dDlst_peekZ_c::capture();
             dusk::processCameraCommands();
 
             mDoAud_Execute();

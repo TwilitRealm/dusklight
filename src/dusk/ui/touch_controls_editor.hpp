@@ -1,8 +1,10 @@
 #pragma once
 
 #include "controls.hpp"
-#include "document.hpp"
 #include "touch_controls_common.hpp"
+#include "ui.hpp"
+
+#include <borealis/ui/document.hpp>
 
 #include <array>
 #include <cstddef>

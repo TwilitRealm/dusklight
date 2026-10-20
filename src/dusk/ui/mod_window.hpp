@@ -1,10 +1,11 @@
 #pragma once
 
-#include "dropdown_button.hpp"
-#include "pane.hpp"
-#include "window.hpp"
+#include "ui.hpp"
 
 #include <borealis/file_select.hpp>
+#include <borealis/ui/dropdown_button.hpp>
+#include <borealis/ui/pane.hpp>
+#include <borealis/ui/window.hpp>
 
 #include <climits>
 

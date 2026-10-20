@@ -1,12 +1,8 @@
 #include "settings.hpp"
 
-#include "bool_button.hpp"
 #include "controller_config.hpp"
 #include "graphics_tuner.hpp"
 #include "menu_bar.hpp"
-#include "modal.hpp"
-#include "number_button.hpp"
-#include "pane.hpp"
 #include "prelaunch.hpp"
 #include "saves_window.hpp"
 #include "touch_controls_editor.hpp"
@@ -29,6 +25,10 @@
 #include <aurora/lib/window.hpp>
 #include <borealis/file_select.hpp>
 #include <borealis/io.hpp>
+#include <borealis/ui/bool_button.hpp>
+#include <borealis/ui/modal.hpp>
+#include <borealis/ui/number_button.hpp>
+#include <borealis/ui/pane.hpp>
 #if BOREALIS_HAS_SENTRY
 #include <borealis/sentry.hpp>
 #endif
@@ -280,7 +280,7 @@ private:
 
 void show_data_folder_error_modal(std::string_view message) {
     auto dismiss = [](Modal& modal) {
-        mDoAud_seStartMenu(kSoundWindowClose);
+        play_nav_sound(NavSound::WindowClose);
         modal.pop();
     };
     push_document(std::make_unique<Modal>(Modal::Props{
@@ -312,7 +312,7 @@ void data_folder_dialog_callback(borealis::file_select::Result result) {
 
     std::string dataPathError;
     if (data::set_custom_data_path(result.locations.front(), &dataPathError)) {
-        mDoAud_seStartMenu(kSoundItemChange);
+        play_nav_sound(NavSound::ItemChange);
         return;
     }
 
@@ -540,7 +540,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
 #if DUSK_CAN_OPEN_DATA_FOLDER
                         pane.add_button("Open Data Folder").on_pressed([] {
                             if (data::open_data_path()) {
-                                mDoAud_seStartMenu(kSoundClick);
+                                play_nav_sound(NavSound::Click);
                             }
                         });
 #endif
@@ -558,7 +558,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
 #if defined(_WIN32)
                         pane.add_button("Portable Mode").on_pressed([] {
                             if (data::set_portable_data_path()) {
-                                mDoAud_seStartMenu(kSoundItemChange);
+                                play_nav_sound(NavSound::ItemChange);
                             }
                         });
 #endif
@@ -569,7 +569,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 })
                             .on_pressed([] {
                                 if (data::reset_data_path()) {
-                                    mDoAud_seStartMenu(kSoundItemChange);
+                                    play_nav_sound(NavSound::ItemChange);
                                 }
                             });
                         pane.add_rml("Data will be migrated automatically on restart.");
@@ -611,7 +611,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                                 },
                                         })
                             .on_pressed([language] {
-                                mDoAud_seStartMenu(kSoundItemChange);
+                                play_nav_sound(NavSound::ItemChange);
                                 getSettings().game.language.setValue(language);
                                 config::save();
                             });
@@ -633,7 +633,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 .isSelected = [backend] { return configured_backend() == backend; },
                             })
                             .on_pressed([backend] {
-                                mDoAud_seStartMenu(kSoundItemChange);
+                                play_nav_sound(NavSound::ItemChange);
                                 getSettings().backend.graphicsBackend.setValue(
                                     std::string{backend_id(backend)});
                                 config::save();
@@ -665,7 +665,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                     },
                             })
                             .on_pressed([i] {
-                                mDoAud_seStartMenu(kSoundItemChange);
+                                play_nav_sound(NavSound::ItemChange);
                                 getSettings().backend.cardFileType.setValue(i);
                                 config::save();
                             });
@@ -682,14 +682,14 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
         leftPane.add_section("Display");
 
         leftPane.register_control(leftPane.add_button("Toggle Fullscreen").on_pressed([] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             getSettings().video.enableFullscreen.setValue(!getSettings().video.enableFullscreen);
             VISetWindowFullscreen(getSettings().video.enableFullscreen);
             config::save();
         }),
             rightPane, [](Pane& pane) { pane.clear(); });
         leftPane.register_control(leftPane.add_button("Restore Default Window Size").on_pressed([] {
-            mDoAud_seStartMenu(kSoundItemChange);
+            play_nav_sound(NavSound::ItemChange);
             getSettings().video.enableFullscreen.setValue(false);
             VISetWindowFullscreen(false);
             VISetWindowSize(FB_WIDTH * 2, FB_HEIGHT * 2);
@@ -745,7 +745,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 [] { return !getSettings().video.enableFpsOverlay.getValue(); },
                         })
                     .on_pressed([] {
-                        mDoAud_seStartMenu(kSoundItemChange);
+                        play_nav_sound(NavSound::ItemChange);
                         getSettings().video.enableFpsOverlay.setValue(false);
                         config::save();
                     });
@@ -760,7 +760,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                     },
                             })
                         .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             getSettings().video.enableFpsOverlay.setValue(true);
                             getSettings().video.fpsOverlayCorner.setValue(i);
                             config::save();
@@ -861,7 +861,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 },
                         })
                         .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             getSettings().game.enableFrameInterpolation.setValue(static_cast<FrameInterpMode>(i));
                             presentation::update_frame_rate_preference();
                             config::save();
@@ -908,7 +908,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 },
                         })
                         .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             getSettings().game.disableLetterboxing.setValue(static_cast<LetterboxMode>(i));
                             config::save();
                         });
@@ -990,7 +990,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 },
                         })
                         .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             getSettings().game.touchTargeting.setValue(
                                 static_cast<TouchTargeting>(i));
                             config::save();
@@ -1120,7 +1120,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                             return setting.getValue() == static_cast<AudioOutputMode>(i);
                         },
                     }).on_pressed([i] {
-                        mDoAud_seStartMenu(kSoundItemChange);
+                        play_nav_sound(NavSound::ItemChange);
                         getSettings().audio.outputMode.setValue(static_cast<AudioOutputMode>(i));
                         config::save();
                         audio::Reinitialize();
@@ -1405,7 +1405,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 },
                         })
                         .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             getSettings().game.alwaysGreatspin.setValue(
                                 static_cast<AlwaysGreatspinMode>(i));
                             config::save();
@@ -1446,7 +1446,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 },
                         })
                         .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             getSettings().game.armorRupeeDrain.setValue(static_cast<MagicArmorMode>(i));
                             config::save();
                         });
@@ -1468,7 +1468,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
 #if DUSK_CAN_OPEN_DATA_FOLDER
         leftPane.register_control(
             leftPane.add_button("Open Data Folder").on_pressed([] {
-                mDoAud_seStartMenu(kSoundClick);
+                play_nav_sound(NavSound::Click);
                 data::open_data_path();
             }),
             rightPane, [](Pane& pane) {
@@ -1478,7 +1478,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             });
 #endif
         leftPane.register_control(leftPane.add_button("Restart to Main Menu").on_pressed([this] {
-            mDoAud_seStartMenu(kSoundClick);
+            play_nav_sound(NavSound::Click);
             pop();
             prelaunch_state().returnToPrelaunchOnReset = true;
             JUTGamePad::C3ButtonReset::sResetSwitchPushing = true;
@@ -1510,13 +1510,13 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             rightPane, [](Pane& pane) {
                 pane.clear();
                 pane.add_button("Select All").on_pressed([] {
-                    mDoAud_seStartMenu(kSoundItemChange);
+                    play_nav_sound(NavSound::ItemChange);
                     getSettings().game.enableAchievementToasts.setValue(true);
                     getSettings().game.enableControllerToasts.setValue(true);
                     config::save();
                 });
                 pane.add_button("Select None").on_pressed([] {
-                    mDoAud_seStartMenu(kSoundItemChange);
+                    play_nav_sound(NavSound::ItemChange);
                     getSettings().game.enableAchievementToasts.setValue(false);
                     getSettings().game.enableControllerToasts.setValue(false);
                     config::save();
@@ -1532,7 +1532,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                         },
                     })
                     .on_pressed([] {
-                        mDoAud_seStartMenu(kSoundItemChange);
+                        play_nav_sound(NavSound::ItemChange);
                         auto& v = getSettings().game.enableAchievementToasts;
                         v.setValue(!v.getValue());
                         config::save();
@@ -1544,7 +1544,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                             [] { return getSettings().game.enableControllerToasts.getValue(); },
                     })
                     .on_pressed([] {
-                        mDoAud_seStartMenu(kSoundItemChange);
+                        play_nav_sound(NavSound::ItemChange);
                         auto& v = getSettings().game.enableControllerToasts;
                         v.setValue(!v.getValue());
                         config::save();
@@ -1653,7 +1653,7 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
                                 },
                         })
                         .on_pressed([i] {
-                            mDoAud_seStartMenu(kSoundItemChange);
+                            play_nav_sound(NavSound::ItemChange);
                             getSettings().game.menuScalingMode.setValue(
                                 static_cast<MenuScaling>(i));
                             config::save();

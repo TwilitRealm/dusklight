@@ -535,7 +535,11 @@ void daObjKAM_c::Z_BufferChk() {
     if (currentProj.x > 0.0f && currentProj.x < Z_BUFFERCHK_X_MAX && currentProj.y > cameraHeight &&
         currentProj.y < Z_BUFFERCHK_Y_MAX - cameraHeight)
     {
+#if TARGET_PC
+        dComIfGd_peekZ(currentProj.x, currentProj.y, &field_0x9bc, fopAcM_GetID(this));
+#else
         dComIfGd_peekZ(currentProj.x, currentProj.y, &field_0x9bc);
+#endif
     }
     f32 near_ = dComIfGd_getView()->near_;
     f32 far_ = dComIfGd_getView()->far_;
