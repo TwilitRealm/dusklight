@@ -20,10 +20,17 @@ static int daE_HB_LEAF_Execute(e_hb_leaf_class* i_this) {
     mDoMtx_stack_c::transS(i_this->current.pos.x, i_this->current.pos.y, i_this->current.pos.z);
     mDoMtx_stack_c::YrotM(i_this->shape_angle.y);
     mDoMtx_stack_c::XrotM(i_this->shape_angle.x);
+    IF_DUSK(mDoMtx_stack_c::scaleM(i_this->scale.x, i_this->scale.y, i_this->scale.z);)
     i_this->mpMorf->getModel()->setBaseTRMtx(mDoMtx_stack_c::get());
     i_this->mpMorf->modelCalc();
 
     fopAc_ac_c* actor = fopAcM_SearchByID(i_this->field_0x5bc);
+#if TARGET_PC  // enemy attribute integration
+    if (actor != NULL) {
+        actor->scale = i_this->scale;
+    }
+
+#endif
     if (i_this->field_0x5ba == 0) {
         if (actor != NULL) {
             i_this->field_0x5ba++;
