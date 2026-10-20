@@ -268,6 +268,9 @@ void ModLoader::init_services() {
             &svc::g_logModule,
             &svc::g_resourceModule,
             &svc::g_fileModule,
+#if DUSK_MODS_IMGUI
+            &svc::g_imguiModule,
+#endif
             &svc::g_interpModule,
             &svc::g_httpModule,
             &svc::g_netModule,

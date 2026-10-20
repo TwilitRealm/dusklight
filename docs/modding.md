@@ -174,6 +174,9 @@ Available features:
 - `webgpu`: Allows importing the WebGPU API
   ([`webgpu/webgpu.h`](https://github.com/webgpu-native/webgpu-headers/blob/main/webgpu.h)). Must be enabled when using
   [GfxService](#gfxservice-modssvcgfxh).
+- `imgui`: Allows usage of Dear ImGui for debug UIs. Due to ABI stability concerns, this feature is *only* available 
+  when building against a local Dusklight build with e.g.
+  `-DDUSKLIGHT_DIR=E:\Projects\dusk -DDUSK_GAME_EXE=E:\Projects\dusk\cmake-build-debug-vcpkg\dusklight_imports.lib` to CMake.
 
 Building produces `my_mod.dusk` in `build/mods/`. Copy the `.dusk` into the user mods folder:
 
