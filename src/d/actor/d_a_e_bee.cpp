@@ -14,8 +14,30 @@
 #include "f_op/f_op_camera_mng.h"
 #include "SSystem/SComponent/c_math.h"
 #include "Z2AudioLib/Z2Instances.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 
-#if TARGET_PC
+#if TARGET_PC  // additional actor attribute integration
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace dusk::mods::svc::actor_attr {
+
+template <>
+struct EnemyAttributeOwner<e_bee_class> {
+    static fopAc_ac_c* get(e_bee_class* i_this) {
+
+        fopAc_ac_c* parent = fopAcM_SearchByID(i_this->parentActorID);
+        if (parent != NULL && fopAcM_GetName(parent) == fpcNm_E_NEST_e) {
+            return parent;
+        }
+
+        return i_this;
+
+}
+};
+
+}  // namespace dusk::mods::svc::actor_attr
 #include "dusk/interp/frame_interpolation.h"
 #endif
 
@@ -54,12 +76,14 @@ static int daE_Bee_Draw(e_bee_class* i_this) {
     return 1;
 }
 
-#if TARGET_PC
+#if TARGET_PC  // enemy attribute integration
 static void bee_interp(bee_s* i_bee) {
     if (!dusk::interp::is_enabled()) {
         return;
     }
+#endif
 
+#if TARGET_PC  // enemy attribute integration
     J3DModel* models[] = {
         i_bee->mpModel1,
         i_bee->mpModel2,
@@ -72,14 +96,16 @@ static void bee_interp(bee_s* i_bee) {
         models[i]->calc();
     }
 }
-#endif
 
+static void bee_mtxset(e_bee_class* i_this, bee_s* i_bee) {
+#else
 static void bee_mtxset(bee_s* i_bee) {
+#endif
     mDoMtx_stack_c::transS(i_bee->mPos.x, i_bee->mPos.y, i_bee->mPos.z);
     mDoMtx_stack_c::YrotM(i_bee->mAngle.y);
     mDoMtx_stack_c::XrotM(i_bee->mAngle.x);
     mDoMtx_stack_c::ZrotM(i_bee->mAngle.z);
-    f32 scale = l_HIO.mScale * i_bee->mScale;
+    f32 scale = DUSK_IF_ELSE(l_HIO.mScale * i_bee->mScale * actor_attr::enemy_size_multiplier(i_this), l_HIO.mScale * i_bee->mScale);
     mDoMtx_stack_c::scaleM(scale, scale, scale);
     if ((i_bee->mCounter & 1) != 0) {
         i_bee->mpModel1->setBaseTRMtx(mDoMtx_stack_c::get());
@@ -89,15 +115,26 @@ static void bee_mtxset(bee_s* i_bee) {
     IF_DUSK(bee_interp(i_bee));
 }
 
+#if TARGET_PC  // enemy attribute integration
+static void bee_ground_ang_set(e_bee_class* i_this, bee_s* i_bee) {
+#else
 static void bee_ground_ang_set(bee_s* i_bee) {
+#endif
     dBgS_LinChk lin_chk;
     cXyz vec4, vec2, vec3, vec1;
+#if TARGET_PC  // enemy attribute integration
+    const f32 size = actor_attr::enemy_size_multiplier(i_this);
+#endif
     vec1 = i_bee->mPos;
-    vec1.y += 30.0f;
+    vec1.y += DUSK_IF_ELSE(30.0f * size, 30.0f);
     mDoMtx_stack_c::transS(i_bee->mPos.x, i_bee->mPos.y, i_bee->mPos.z);
+#if TARGET_PC  // enemy attribute integration
+    mDoMtx_stack_c::transM(5.0f * size, -30.0f * size, 0.0f);
+#else
     mDoMtx_stack_c::transM(5.0f, -30.0f, 0.0f);
+#endif
     mDoMtx_stack_c::multVecZero(&vec2);
-    mDoMtx_stack_c::transM(-10.0f, 0.0f, 0.0f);
+    mDoMtx_stack_c::transM(DUSK_IF_ELSE(-10.0f * size, -10.0f), 0.0f, 0.0f);
     mDoMtx_stack_c::multVecZero(&vec3);
     s8 bvar1 = false;
     lin_chk.Set(&vec1, &vec2, NULL);
@@ -113,9 +150,13 @@ static void bee_ground_ang_set(bee_s* i_bee) {
         vec4 = vec2 - vec3;
         i_bee->mAngle.z = cM_atan2s(vec4.y, JMAFastSqrt(vec4.x * vec4.x + vec4.z * vec4.z));
     }
+#if TARGET_PC  // enemy attribute integration
+    mDoMtx_stack_c::transM(5.0f * size, 0.0f, 5.0f * size);
+#else
     mDoMtx_stack_c::transM(5.0f, 0.0f, 5.0f);
+#endif
     mDoMtx_stack_c::multVecZero(&vec2);
-    mDoMtx_stack_c::transM(0.0f, 0.0f, -10.0f);
+    mDoMtx_stack_c::transM(0.0f, 0.0f, DUSK_IF_ELSE(-10.0f * size, -10.0f));
     mDoMtx_stack_c::multVecZero(&vec3);
     bvar1 = false;
     lin_chk.Set(&vec1, &vec2, NULL);
@@ -154,10 +195,17 @@ static int bee_fly_action(e_bee_class* i_this, bee_s* i_bee) {
     
     if (i_bee->mAction == bee_s::ACT_FLY) {
         if (i_bee->mTimer == 0) {
+#if TARGET_PC  // enemy attribute integration
+            i_bee->mTimer = actor_attr::enemy_sync_u8_timer(i_this, cM_rndF(15.0f) + 15.0f);
+            i_bee->mTarget.x = cM_rndFX(actor_attr::enemy_size_value(i_this, 100.0f));
+            i_bee->mTarget.y = cM_rndFX(actor_attr::enemy_size_value(i_this, 50.0f));
+            i_bee->mTarget.z = cM_rndFX(actor_attr::enemy_size_value(i_this, 100.0f));
+#else
             i_bee->mTimer = cM_rndF(15.0f) + 15.0f;
             i_bee->mTarget.x = cM_rndFX(100.0f);
             i_bee->mTarget.y = cM_rndFX(50.0f);
             i_bee->mTarget.z = cM_rndFX(100.0f);
+#endif
             i_bee->mSpeedF = cM_rndF(5.0f) + 17.0f;
         }
         if (fopAcM_GetName(hit_actor) != fpcNm_ALINK_e) {
@@ -176,17 +224,23 @@ static int bee_fly_action(e_bee_class* i_this, bee_s* i_bee) {
             vec = hit_actor->current.pos - i_bee->mPos;
             vec.y += 150.0f;
             f32 dist = vec.abs();
-            if (i_this->mCcSetTimer == 0 && dist < 40.0f) {
+            if (i_this->mCcSetTimer == 0 && dist < DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 40.0f), 40.0f)) {
                 i_this->mCcSph.SetC(i_bee->mPos);
             }
             if (dist < 300.0f) {
                 daPy_getPlayerActorClass()->onBeeFollow();
             }
             vec += i_bee->mTarget;
-            f32 home_check = 30.0f;
+            f32 home_check = DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 30.0f), 30.0f);
             if (i_this->mHomeTimer == 0) {
+#if TARGET_PC  // enemy attribute integration
+                const s16 returnDelay = actor_attr::enemy_sync_timer(i_this, 10.0f);
+                if (i_bee->mHomeTimer > returnDelay) {
+                    i_bee->mHomeTimer = returnDelay;
+#else
                 if (i_bee->mHomeTimer > 10) {
                     i_bee->mHomeTimer = 10;
+#endif
                 }
                 home_check = 10000.0f;
             }
@@ -208,9 +262,16 @@ static int bee_fly_action(e_bee_class* i_this, bee_s* i_bee) {
     } else if (i_bee->mAction == bee_s::ACT_FLY_HOME_A) {
         vec = i_this->home.pos - i_bee->mPos;
         f32 home_dist = vec.abs();
+#if TARGET_PC  // enemy attribute integration
+        f32 home_check = std::max(i_this->scale.x, 1.0f) * actor_attr::enemy_size_value(i_this, 55.0f);
+        const f32 movement_step = actor_attr::enemy_move_step(i_this, i_bee->mSpeedF);
+        if (home_check < movement_step) {
+            home_check = movement_step;
+#else
         f32 home_check = i_this->scale.x * 55.0f;
         if (home_check < 55.0f) {
             home_check = 55.0f;
+#endif
         }
         if (home_dist < home_check) {
             i_bee->mAction = bee_s::ACT_HOME;
@@ -234,18 +295,22 @@ static int bee_fly_action(e_bee_class* i_this, bee_s* i_bee) {
 
     s16 angle_y = cM_ssin(i_bee->mCounter * 3500) * 1500.0f;
     s16 angle_x = cM_ssin(i_bee->mCounter * 3000) * 1500.0f;
-    cLib_addCalcAngleS2(&i_bee->mAngle.y, angle_y + cM_atan2s(vec.x, vec.z), 1, 0x1000);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.y, angle_y + cM_atan2s(vec.x, vec.z), 1, 0x1000), cLib_addCalcAngleS2(&i_bee->mAngle.y, angle_y + cM_atan2s(vec.x, vec.z), 1, 0x1000));
     f32 vec_xz = JMAFastSqrt(vec.x * vec.x + vec.z * vec.z);
-    cLib_addCalcAngleS2(&i_bee->mAngle.x, angle_x - cM_atan2s(vec.y, vec_xz), 1, 0x1000);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.x, angle_x - cM_atan2s(vec.y, vec_xz), 1, 0x1000), cLib_addCalcAngleS2(&i_bee->mAngle.x, angle_x - cM_atan2s(vec.y, vec_xz), 1, 0x1000));
     mDoMtx_YrotS(*calc_mtx, i_bee->mAngle.y);
     mDoMtx_XrotM(*calc_mtx, i_bee->mAngle.x);
     vec.x = 0.0f;
     vec.y = 0.0f;
     vec.z = i_bee->mSpeedF;
     MtxPosition(&vec, &i_bee->mSpeed);
-    i_bee->mPos += i_bee->mSpeed;
+    i_bee->mPos += DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, i_bee->mSpeed), i_bee->mSpeed);
     i_bee->mAngle.z = 0;
+#if TARGET_PC  // enemy attribute integration
+    bee_mtxset(i_this, i_bee);
+#else
     bee_mtxset(i_bee);
+#endif
     
     if (ccCylSet == 0) {
         ccCylSet += 1;
@@ -269,31 +334,53 @@ static void bee_nest_action(e_bee_class* i_this, bee_s* i_bee, s8 i_nestHealth) 
     if (i_bee->mMode == 0) {
         if (i_bee->mTimer == 0) {
             if (cM_rndF(1.0f) < 0.02f) {
-                i_bee->mTimer = cM_rndF(50.0f) + 30.0f;
+                i_bee->mTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(i_this, cM_rndF(50.0f) + 30.0f), cM_rndF(50.0f) + 30.0f);
                 i_bee->mMode = 2;
             } else {
+#if TARGET_PC  // enemy attribute integration
+                i_bee->mTimer = actor_attr::enemy_sync_u8_timer(i_this, cM_rndF(30.0f) + 15.0f);
+                const f32 nestRadius = actor_attr::enemy_size_value(i_this, 200.0f);
+                i_bee->mTarget.x = i_this->home.pos.x + cM_rndFX(nestRadius);
+                i_bee->mTarget.z = i_this->home.pos.z + cM_rndFX(nestRadius);
+#else
                 i_bee->mTimer = cM_rndF(30.0f) + 15.0f;
                 i_bee->mTarget.x = i_this->home.pos.x + cM_rndFX(200.0f);
                 i_bee->mTarget.z = i_this->home.pos.z + cM_rndFX(200.0f);
+#endif
                 i_bee->mMode = 1;
             }
         }
         i_bee->mSpeedF = 0.0f;
     } else if (i_bee->mMode == 1) {
+#if TARGET_PC  // enemy attribute integration
+        i_bee->mCounter += actor_attr::enemy_action_event_count(i_this, i_this->mCounter, 1);
+        actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.y, cM_atan2s(vec1.x, vec1.z), 2, 0x400);
+        if (i_bee->mTimer == 0 || vec1.abs() < actor_attr::enemy_size_value(i_this, 10.0f)) {
+#else
         i_bee->mCounter++;
         cLib_addCalcAngleS2(&i_bee->mAngle.y, cM_atan2s(vec1.x, vec1.z), 2, 0x400);
         if (i_bee->mTimer == 0 || vec1.abs() < 10.0f) {
+#endif
             i_bee->mMode = 0;
-            i_bee->mTimer = cM_rndF(15.0f) + 5.0f;
+            i_bee->mTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(i_this, cM_rndF(15.0f) + 5.0f), cM_rndF(15.0f) + 5.0f);
         }
         i_bee->mSpeedF = 2.0f;
     } else if (i_bee->mMode == 2) {
         i_bee->mIsFlying = 1;
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_calc2(i_this, &i_bee->mStartDistance, actor_attr::enemy_size_value(i_this, 50.0f), 0.1f, 5.0f);
+        actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.y, cM_atan2s(vec1.x, vec1.z), 2, 0x800);
+        if (actor_attr::enemy_action_countdown_event_count(i_this, i_bee->mTimer, 8) != 0) {
+            const f32 nestRadius = actor_attr::enemy_size_value(i_this, 200.0f);
+            i_bee->mTarget.x = i_this->home.pos.x + cM_rndFX(nestRadius);
+            i_bee->mTarget.z = i_this->home.pos.z + cM_rndFX(nestRadius);
+#else
         cLib_addCalc2(&i_bee->mStartDistance, 50.0f, 0.1f, 5.0f);
         cLib_addCalcAngleS2(&i_bee->mAngle.y, cM_atan2s(vec1.x, vec1.z), 2, 0x800);
         if ((i_bee->mTimer & 7) == 0) {
             i_bee->mTarget.x = i_this->home.pos.x + cM_rndFX(200.0f);
             i_bee->mTarget.z = i_this->home.pos.z + cM_rndFX(200.0f);
+#endif
         }
         if (i_bee->mTimer == 0) {
             i_bee->mMode = 3;
@@ -301,7 +388,7 @@ static void bee_nest_action(e_bee_class* i_this, bee_s* i_bee, s8 i_nestHealth) 
         i_bee->mSpeedF = 5.0f;
     } else if (i_bee->mMode == 3) {
         i_bee->mIsFlying = 1;
-        cLib_addCalc0(&i_bee->mStartDistance, 1.0f, 5.0f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc0(i_this, &i_bee->mStartDistance, 1.0f, 5.0f), cLib_addCalc0(&i_bee->mStartDistance, 1.0f, 5.0f));
         if (i_bee->mStartDistance <= 0.1f) {
             i_bee->mMode = 0;
         }
@@ -313,11 +400,18 @@ static void bee_nest_action(e_bee_class* i_this, bee_s* i_bee, s8 i_nestHealth) 
     vec1.x = 0.0f;
     vec1.z = i_bee->mSpeedF;
     MtxPosition(&vec1, &i_bee->mSpeed);
-    i_bee->mPos += i_bee->mSpeed;
+    i_bee->mPos += DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, i_bee->mSpeed), i_bee->mSpeed);
 
+#if TARGET_PC  // enemy attribute integration
+    const f32 nestRadius = actor_attr::enemy_size_value(i_this, 200.0f);
+    s16 angle_z = -(i_bee->mPos.x - i_this->home.pos.x) * 0x8000 / nestRadius;
+    s16 angle_x = (i_bee->mPos.z - i_this->home.pos.z) * 0x8000 / nestRadius;
+    vec1.y = i_this->scale.x * actor_attr::enemy_size_value(i_this, -51.0f) - i_bee->mStartDistance;
+#else
     s16 angle_z = -(i_bee->mPos.x - i_this->home.pos.x) * 0x8000 / 200.0f;
     s16 angle_x = (i_bee->mPos.z - i_this->home.pos.z) * 0x8000 / 200.0f;
     vec1.y = i_this->scale.x * -51.0f - i_bee->mStartDistance;
+#endif
     vec1.z = 0.0f;
     vec1.x = 0.0f;
     MtxScale(1.0f, 1.2f, 1.0f, 0);
@@ -328,12 +422,23 @@ static void bee_nest_action(e_bee_class* i_this, bee_s* i_bee, s8 i_nestHealth) 
     pos += i_this->home.pos;
     
     if (i_bee->mIsFlying == 0) {
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.x, angle_z, 2, 0x800);
+        actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.z, angle_x, 2, 0x800);
+#else
         cLib_addCalcAngleS2(&i_bee->mAngle.x, angle_z, 2, 0x800);
         cLib_addCalcAngleS2(&i_bee->mAngle.z, angle_x, 2, 0x800);
+#endif
     } else {
+#if TARGET_PC  // enemy attribute integration
+        i_bee->mCounter += actor_attr::enemy_action_event_count(i_this, i_this->mCounter, 1);
+        actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.x, 0, 1, 0x1000);
+        actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.z, 0x8000, 1, 0x1000);
+#else
         i_bee->mCounter++;
         cLib_addCalcAngleS2(&i_bee->mAngle.x, 0, 1, 0x1000);
         cLib_addCalcAngleS2(&i_bee->mAngle.z, 0x8000, 1, 0x1000);
+#endif
     }
     
     mDoMtx_stack_c::transS(pos.x, pos.y, pos.z);
@@ -341,7 +446,7 @@ static void bee_nest_action(e_bee_class* i_this, bee_s* i_bee, s8 i_nestHealth) 
     mDoMtx_stack_c::XrotM(i_bee->mAngle.z);
     mDoMtx_stack_c::YrotM(i_bee->mAngle.y);
     mDoMtx_stack_c::XrotM(0x8000);
-    f32 scale = l_HIO.mScale * i_bee->mScale;
+    f32 scale = DUSK_IF_ELSE(l_HIO.mScale * i_bee->mScale * actor_attr::enemy_size_multiplier(i_this), l_HIO.mScale * i_bee->mScale);
     mDoMtx_stack_c::scaleM(scale, scale, scale);
 
     if (i_bee->mIsFlying != 0) {
@@ -362,15 +467,15 @@ static void bee_nest_action(e_bee_class* i_this, bee_s* i_bee, s8 i_nestHealth) 
     if (i_nestHealth == 1) {
         i_bee->mAction = bee_s::ACT_FLY;
         i_bee->mPos = pos;
-        i_bee->mTimer = cM_rndF(50.0f);
+        i_bee->mTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(i_this, cM_rndF(50.0f)), cM_rndF(50.0f));
         i_bee->mSpeedF = 0.0f;
         i_bee->mMode = 0;
         i_bee->mStartDistance = 0.0f;
-        i_bee->mHomeTimer = cM_rndF(100.0f) + 400.0f;
+        i_bee->mHomeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(100.0f) + 400.0f), cM_rndF(100.0f) + 400.0f);
     } else if (i_nestHealth == 2) {
         i_bee->mAction = bee_s::ACT_START;
         i_bee->mPos = pos;
-        i_bee->mTimer = cM_rndF(30.0f) + 20.0f;
+        i_bee->mTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(i_this, cM_rndF(30.0f) + 20.0f), cM_rndF(30.0f) + 20.0f);
     } else {
         fopAc_ac_c* nest = fopAcM_SearchByID(i_this->parentActorID);
         if (nest == NULL) {
@@ -392,17 +497,28 @@ static void bee_nest_action(e_bee_class* i_this, bee_s* i_bee, s8 i_nestHealth) 
     }
 }
 
+#if TARGET_PC  // enemy attribute integration
+static void bee_fail(e_bee_class* i_this, bee_s* i_bee) {
+#else
 static void bee_fail(bee_s* i_bee) {
+#endif
     if (i_bee->mMode <= 1) {
+#if TARGET_PC  // enemy attribute integration
+        i_bee->mPos += actor_attr::enemy_move_step(i_this, i_bee->mSpeed);
+        i_bee->mSpeed.y += actor_attr::enemy_velocity_gravity_step(i_this, -3.0f);
+        actor_attr::enemy_angle_add(i_this, i_bee->mAngle.x , 0x2000);
+        actor_attr::enemy_angle_add(i_this, i_bee->mAngle.z , 0x1300);
+#else
         i_bee->mPos += i_bee->mSpeed;
         i_bee->mSpeed.y -= 3.0f;
         i_bee->mAngle.x += 0x2000;
         i_bee->mAngle.z += 0x1300;
+#endif
         dBgS_GndChk gnd_chk;
         cXyz vec = i_bee->mPos;
-        vec.y += 100.0f;
+        vec.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 100.0f), 100.0f);
         gnd_chk.SetPos(&vec);
-        f32 ground = dComIfG_Bgsp().GroundCross(&gnd_chk) + 3.0f;
+        f32 ground = dComIfG_Bgsp().GroundCross(&gnd_chk) + DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 3.0f), 3.0f);
         if (fabsf(ground - i_bee->mPos.y) > 1000.0f) {
             ground = i_bee->mPos.y;
         }
@@ -413,10 +529,14 @@ static void bee_fail(bee_s* i_bee) {
                 i_bee->mSpeed.x *= cM_rndF(0.1f) + 0.3f;
                 i_bee->mSpeed.z *= cM_rndF(0.1f) + 0.3f;
             } else {
+#if TARGET_PC  // enemy attribute integration
+                bee_ground_ang_set(i_this, i_bee);
+#else
                 bee_ground_ang_set(i_bee);
+#endif
                 i_bee->mSpeed.y = 0.0f;
                 if (!l_HIO.mNoKill) {
-                    i_bee->mTimer = cM_rndF(15.0f) + 15.0f;
+                    i_bee->mTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(i_this, cM_rndF(15.0f) + 15.0f), cM_rndF(15.0f) + 15.0f);
                 } else {
                     i_bee->mAction = bee_s::ACT_FLY;
                 }
@@ -424,24 +544,34 @@ static void bee_fail(bee_s* i_bee) {
             i_bee->mMode++;
         }
     } else if (i_bee->mTimer == 0) {
-        cLib_addCalc0(&i_bee->mScale, 1.0f, 0.1f);
+        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc0(i_this, &i_bee->mScale, 1.0f, 0.1f), cLib_addCalc0(&i_bee->mScale, 1.0f, 0.1f));
         if (i_bee->mScale < 0.01f) {
             i_bee->mAction = bee_s::ACT_DEAD;
         }
     }
+#if TARGET_PC  // enemy attribute integration
+    bee_mtxset(i_this, i_bee);
+#else
     bee_mtxset(i_bee);
+#endif
 }
 
 static void bee_start(e_bee_class* i_this, bee_s* i_bee) {
     cXyz vec = i_this->home.pos - i_bee->mPos;
-    vec.y += 30;
+    vec.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(i_this, 30.0f), 30);
     s16 angle_y = cM_ssin(i_bee->mCounter * 4500) * 4000.0f;
     s16 angle_x = cM_ssin(i_bee->mCounter * 5500) * 4000.0f;
-    cLib_addCalcAngleS2(&i_bee->mAngle.y, angle_y + cM_atan2s(vec.x, vec.z), 1, 0x1000);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.y, angle_y + cM_atan2s(vec.x, vec.z), 1, 0x1000), cLib_addCalcAngleS2(&i_bee->mAngle.y, angle_y + cM_atan2s(vec.x, vec.z), 1, 0x1000));
     f32 vec_xz = JMAFastSqrt(vec.x * vec.x + vec.z * vec.z);
+#if TARGET_PC  // enemy attribute integration
+    actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.x, angle_x - cM_atan2s(vec.y, vec_xz), 1, 0x1000);
+    i_bee->mCounter += actor_attr::enemy_action_event_count(i_this, i_this->mCounter, 1);
+    actor_attr::enemy_add_action_angle(i_this, &i_bee->mAngle.z, 0x8000, 4, 0x400);
+#else
     cLib_addCalcAngleS2(&i_bee->mAngle.x, angle_x - cM_atan2s(vec.y, vec_xz), 1, 0x1000);
     i_bee->mCounter++;
     cLib_addCalcAngleS2(&i_bee->mAngle.z, 0x8000, 4, 0x400);
+#endif
     i_bee->mSpeedF = 15.0f;
     mDoMtx_YrotS(*calc_mtx, i_bee->mAngle.y);
     mDoMtx_XrotM(*calc_mtx, i_bee->mAngle.x);
@@ -449,7 +579,7 @@ static void bee_start(e_bee_class* i_this, bee_s* i_bee) {
     vec.y = 0.0f;
     vec.z = i_bee->mSpeedF;
     MtxPosition(&vec, &i_bee->mSpeed);
-    i_bee->mPos += i_bee->mSpeed;
+    i_bee->mPos += DUSK_IF_ELSE(actor_attr::enemy_move_step(i_this, i_bee->mSpeed), i_bee->mSpeed);
 
     if (i_bee->mTimer == 0) {
         e_nest_class* nest = static_cast<e_nest_class*>(fopAcM_SearchByID(i_this->parentActorID));
@@ -461,12 +591,16 @@ static void bee_start(e_bee_class* i_this, bee_s* i_bee) {
             i_bee->mSpeedF = 0.0f;
             i_bee->mMode = 0;
             i_bee->mStartDistance = 0.0f;
-            i_bee->mHomeTimer = cM_rndF(55.0f) + 200.0f;
+            i_bee->mHomeTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, cM_rndF(55.0f) + 200.0f), cM_rndF(55.0f) + 200.0f);
         }
     }
 
     i_bee->mIsFlying = 1;
+#if TARGET_PC  // enemy attribute integration
+    bee_mtxset(i_this, i_bee);
+#else
     bee_mtxset(i_bee);
+#endif
 }
 
 static void bee_control(e_bee_class* i_this) {
@@ -584,7 +718,11 @@ static void bee_control(e_bee_class* i_this) {
                 bee_nest_action(i_this, bee, nest_health);
                 bees_in_nest++;
             } else if (bee->mAction <= bee_s::ACT_FLY_HOME_B) {
+#if TARGET_PC  // enemy attribute integration
+                bee->mCounter += actor_attr::enemy_action_event_count(i_this, i_this->mCounter, 1);
+#else
                 bee->mCounter++;
+#endif
                 if (bee_fly_action(i_this, bee)) {
                     a_this->current.pos = bee->mPos;
                     bees_flying++;
@@ -603,12 +741,21 @@ static void bee_control(e_bee_class* i_this) {
                         bee->mAngle.z = cM_rndF(0x10000);
                         bee->mTimer = 0;
                         bee->mSound.startSound(Z2SE_EN_BE_DEATH, 0, -1);
+#if TARGET_PC  // enemy attribute integration
+                        const f32 markScale = 0.35f * actor_attr::enemy_size_multiplier(i_this);
+                        cXyz hit_mark_scale(markScale, markScale, markScale);
+#else
                         cXyz hit_mark_scale(0.35f, 0.35f, 0.35f);
+#endif
                         dComIfGp_setHitMark(1, a_this, &bee->mPos, NULL, &hit_mark_scale, 0);
                     }
                 }
             } else if (bee->mAction == bee_s::ACT_FAIL) {
+#if TARGET_PC  // enemy attribute integration
+                bee_fail(i_this, bee);
+#else
                 bee_fail(bee);
+#endif
             } else if (bee->mAction == bee_s::ACT_START) {
                 bees_flying++;
                 bee_start(i_this, bee);
@@ -755,6 +902,7 @@ static cPhs_Step daE_Bee_Create(fopAc_ac_c* i_this) {
             _this->mParam2 = 0;
         }
         _this->mNumBees = _this->mParam0 + 1;
+        IF_DUSK(_this->mNumBees = actor_attr::enemy_health_value(_this, static_cast<f32>(_this->mNumBees));)
         if (_this->mNumBees > 0x40) {
             _this->mNumBees = 0x40;
         }
@@ -771,7 +919,7 @@ static cPhs_Step daE_Bee_Create(fopAc_ac_c* i_this) {
 
         if (_this->mParam1 == 1) {
             _this->scale.x = _this->mParam2 * 0.1f;
-            _this->home.pos.y += _this->scale.x * -80.0f;
+            _this->home.pos.y += _this->scale.x * DUSK_IF_ELSE(actor_attr::enemy_size_value(_this, -80.0f), -80.0f);
         }
 
         for (int i = 0; i < _this->mNumBees; i++) {
@@ -819,6 +967,10 @@ static cPhs_Step daE_Bee_Create(fopAc_ac_c* i_this) {
         };
         _this->mCcSph.Set(at_sph_src);
         _this->mCcSph.SetStts(&_this->mCcStts);
+#if TARGET_PC  // enemy attribute integration
+        _this->mCcSph.SetR(actor_attr::enemy_size_value(_this, 30.0f));
+        _this->mCcSph.SetAtAtp(actor_attr::enemy_attack_power_byte(_this, _this->mCcSph.GetAtAtp()));
+#endif
 
         daE_Bee_Execute(_this);
 

@@ -16,6 +16,48 @@
 #include "d/d_s_play.h"
 #include "Z2AudioLib/Z2Instances.h"
 #include "JSystem/JAudio2/JAUSectionHeap.h"
+#if TARGET_PC  // enemy attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace dusk::mods::svc::actor_attr {
+
+template <>
+struct EnemyActorAccessor<e_arrow_class> {
+    static fopAc_ac_c* get(e_arrow_class* i_this) {
+
+        return static_cast<fopAc_ac_c*>(i_this);
+
+}
+};
+
+template <>
+struct EnemyAttributeOwner<e_arrow_class> {
+    static fopAc_ac_c* get(e_arrow_class* i_this) {
+
+        fopAc_ac_c* actor = EnemyActorAccessor<e_arrow_class>::get(i_this);
+        fopAc_ac_c* parent = fopAcM_SearchByID(fopAcM_GetLinkId(actor));
+
+        if (parent != NULL && (fopAcM_GetName(parent) == fpcNm_E_RD_e || fopAcM_GetName(parent) == fpcNm_E_RDY_e)) {
+            return parent;
+        }
+
+        return actor;
+
+}
+};
+
+}  // namespace dusk::mods::svc::actor_attr
+
+static cXyz arrow_move_step(e_arrow_class* i_this) {
+
+    cXyz movement = actor_attr::enemy_move_step(i_this, i_this->speed);
+    movement.x += i_this->field_0x5d0;
+    movement.z += i_this->field_0x5d4;
+    return movement;
+}
+#endif
 
 static int daE_ARROW_Draw(e_arrow_class* i_this) {
     if (i_this->field_0xa14) {
@@ -43,6 +85,9 @@ static u8 const lit_3983[12] = {
 static void fire_eff_set(e_arrow_class* i_this) {
     cXyz sp38;
     cXyz sp44;
+#if TARGET_PC  // enemy attribute integration
+    const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(i_this);
+#endif
 
     cMtx_YrotS(*calc_mtx, i_this->shape_angle.y);
     cMtx_XrotM(*calc_mtx, i_this->shape_angle.x);
@@ -51,9 +96,9 @@ static void fire_eff_set(e_arrow_class* i_this) {
     sp38.y = 0.0f;
 
     if (i_this->mAction == ACTION_ARROW_BOUND) {
-        sp38.z = TREG_F(14) + 28.0f;
+        sp38.z = DUSK_IF_ELSE((TREG_F(14) + 28.0f) * sizeMultiplier, TREG_F(14) + 28.0f);
     } else {
-        sp38.z = TREG_F(14) + 20.0f;
+        sp38.z = DUSK_IF_ELSE((TREG_F(14) + 20.0f) * sizeMultiplier, TREG_F(14) + 20.0f);
     }
 
     MtxPosition(&sp38, &sp44);
@@ -70,9 +115,13 @@ static void fire_eff_set(e_arrow_class* i_this) {
         particle_names[0] = 0x8113;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    i_this->field_0x5d8 = arrow_move_step(i_this);
+#else
     i_this->field_0x5d8.x = i_this->speed.x + i_this->field_0x5d0;
     i_this->field_0x5d8.y = i_this->speed.y;
     i_this->field_0x5d8.z = i_this->speed.z + i_this->field_0x5d4;
+#endif
 
     if (i_this->mArrowType == ARROW_TYPE_FIRE) {
         i_this->field_0x5d8 *= 0.9f;
@@ -80,9 +129,13 @@ static void fire_eff_set(e_arrow_class* i_this) {
         i_this->field_0x5d8 *= 0.8f;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    cXyz effectScale = actor_attr::enemy_size_multiplier(i_this, 1.0f);
+
+#endif
     for (int i = 0; i < emitter_num; i++) {
         i_this->mFireEMKeys[i] = dComIfGp_particle_set(i_this->mFireEMKeys[i], particle_names[i],
-                                                       &sp44, &i_this->shape_angle, NULL);
+                                                       &sp44, &i_this->shape_angle, DUSK_IF_ELSE(&effectScale, NULL));
 
         if (i == 0) {
             JPABaseEmitter* emitter_p = dComIfGp_particle_getEmitter(i_this->mFireEMKeys[i]);
@@ -100,6 +153,9 @@ static void fire_eff_set(e_arrow_class* i_this) {
 
 static void hit_check(e_arrow_class* i_this) {
     dBgS_ObjGndChk_Spl ground_chk;
+#if TARGET_PC  // enemy attribute integration
+    const cXyz flightStep = actor_attr::enemy_move_step(i_this, i_this->speed);
+#endif
 
     cXyz gnd_chk_pos(i_this->current.pos);
     gnd_chk_pos.y += 200.0f;
@@ -115,7 +171,7 @@ static void hit_check(e_arrow_class* i_this) {
     dBgS_ArrowLinChk line_chk;
     cXyz line_chk_start(i_this->current.pos);
     for (int i = 0; i < 2; i++) {
-        line_chk_start -= i_this->speed;
+        line_chk_start -= DUSK_IF_ELSE(flightStep, i_this->speed);
     }
 
     line_chk.Set(&line_chk_start, &i_this->current.pos, i_this);
@@ -130,7 +186,7 @@ static void hit_check(e_arrow_class* i_this) {
             i_this->current.pos.y = -5975.0f;
         } else {
             i_this->mAction = ACTION_ARROW_BG;
-            i_this->current.pos -= i_this->speed * 0.35f;
+            i_this->current.pos -= DUSK_IF_ELSE(flightStep, i_this->speed) * 0.35f;
         }
 
         i_this->mMode = 0;
@@ -144,10 +200,14 @@ static void hit_check(e_arrow_class* i_this) {
         int poly_att0 = dComIfG_Bgsp().GetPolyAtt0(line_chk);
         dKy_pol_sound_get(&line_chk);
 
+#if TARGET_PC  // enemy attribute integration
+        i_this->field_0x5ce = actor_attr::enemy_sync_timer(i_this, poly_att0 == 5 ? 20.0f : 5.0f);
+#else
         i_this->field_0x5ce = 5;
         if (poly_att0 == 5) {
             i_this->field_0x5ce = 20;
         }
+#endif
 
         i_this->mSound.startCollisionSE(Z2SE_HIT_ARROW_STICK, dKy_pol_sound_get(&line_chk), NULL);
 
@@ -156,7 +216,51 @@ static void hit_check(e_arrow_class* i_this) {
             i_this->mStickSmokeEMKey, ID_ZI_J_DASHSMOKE_A, &i_this->current.pos,
             &i_this->tevStr, &i_this->shape_angle, &sp114, 0xFF, NULL, -1, NULL, NULL, NULL);
     } else {
+#if TARGET_PC  // enemy attribute integration
+        cXyz sp120 = i_this->current.pos + (flightStep * 0.5f);
+        cXyz arrowAtPos = sp120;
+        // Fast enemy arrows can move hundreds of units in one frame while the
+        // damaging sphere is only ~20 units at vanilla size.  Sampling that
+        // sphere at the authored midpoint can therefore tunnel straight
+        // through Link.
+        //
+        // Preserve the arrow's full randomized velocity.  At >1x action speed,
+        // place ONLY the damaging At sphere at the point on this frame's real
+        // travel segment that is closest to Link's body.  The point remains
+        // exactly on the arrow's path, so this does not widen the shot or slow
+        // it down; it just gives the collision system a sample where the arrow
+        // actually crosses Link.
+        if (actor_attr::enemy_action_time_speed(i_this) > 1.0f) {
+            daPy_py_c* player_p = static_cast<daPy_py_c*>(dComIfGp_getPlayer(0));
+
+            if (player_p != NULL) {
+                const cXyz segStart = i_this->current.pos;
+                const cXyz segDelta = flightStep;
+
+                // Aim the sweep test at Link's body center rather than his
+                // feet or eye point alone.
+                cXyz playerBody = player_p->current.pos;
+                playerBody.y = (player_p->current.pos.y + player_p->eyePos.y) * 0.5f;
+
+                const cXyz toPlayer = playerBody - segStart;
+                const f32 segLenSq = segDelta.x * segDelta.x + segDelta.y * segDelta.y + segDelta.z * segDelta.z;
+
+                if (segLenSq > 0.0001f) {
+                    f32 t = (toPlayer.x * segDelta.x + toPlayer.y * segDelta.y + toPlayer.z * segDelta.z) / segLenSq;
+
+                    if (t < 0.0f) {
+                        t = 0.0f;
+                    } else if (t > 1.0f) {
+                        t = 1.0f;
+                    }
+
+                    arrowAtPos = segStart + (segDelta * t);
+                }
+            }
+        }
+#else
         cXyz sp120 = i_this->current.pos + (i_this->speed * 0.5f);
+#endif
         i_this->mCcTgSph.SetC(sp120);
         dComIfG_Ccsp()->Set(&i_this->mCcTgSph);
 
@@ -188,7 +292,11 @@ static void hit_check(e_arrow_class* i_this) {
                 &i_this->current.pos, &i_this->shape_angle, &i_this->field_0x9d4,
                 &i_this->field_0x9c8);
 
+#if TARGET_PC  // enemy attribute integration
+            cXyz localOffset(0.0f, 0.0f, -30.0f * actor_attr::enemy_size_multiplier(i_this));
+#else
             static cXyz localOffset(0.0f, 0.0f, -30.0f);
+#endif
             mDoMtx_stack_c::transS(i_this->current.pos.x, i_this->current.pos.y,
                                    i_this->current.pos.z);
             mDoMtx_stack_c::ZXYrotM(i_this->shape_angle.x, i_this->shape_angle.y, 0);
@@ -208,7 +316,7 @@ static void hit_check(e_arrow_class* i_this) {
 
             dKy_Sound_set(i_this->current.pos, 3, fopAcM_GetID(i_this), 10);
         } else {
-            i_this->mCcAtSph.MoveCAt(sp120);
+            i_this->mCcAtSph.MoveCAt(DUSK_IF_ELSE(arrowAtPos, sp120));
             dComIfG_Ccsp()->Set(&i_this->mCcAtSph);
 
             if (i_this->mCcAtSph.ChkAtHit()) {
@@ -238,9 +346,9 @@ static void e_arrow_shot(e_arrow_class* i_this) {
         i_this->mMode = 1;
 
         if (i_this->mFlags & 0x10) {
-            i_this->mTimers[0] = 10000;
+            i_this->mTimers[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 10000), 10000);
         } else {
-            i_this->mTimers[0] = 100;
+            i_this->mTimers[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 100), 100);
         }
 
         i_this->shape_angle.z = cM_rndF(0xFFFF);
@@ -262,18 +370,30 @@ static void e_arrow_shot(e_arrow_class* i_this) {
                 s16 temp_r4 = cM_atan2s(sp30.x, sp30.z);
                 s16 temp_r0 = temp_r4 - i_this->current.angle.y;
                 if (temp_r0 < 0x1000 && temp_r0 > -0x1000) {
-                    cLib_addCalcAngleS2(&i_this->current.angle.y, temp_r4, 2, 25);
+                    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &i_this->current.angle.y, temp_r4, 2, 25), cLib_addCalcAngleS2(&i_this->current.angle.y, temp_r4, 2, 25));
                     f32 sq = JMAFastSqrt(sp30.x * sp30.x + sp30.z * sp30.z);
 
-                    cLib_addCalcAngleS2(&i_this->current.angle.x, -cM_atan2s(sp30.y, sq), 2, 25);
+                    DUSK_IF_ELSE(actor_attr::enemy_add_action_angle(i_this, &i_this->current.angle.x, -cM_atan2s(sp30.y, sq), 2, 25), cLib_addCalcAngleS2(&i_this->current.angle.x, -cM_atan2s(sp30.y, sq), 2, 25));
                 } else {
+#if TARGET_PC  // enemy attribute integration
+                    actor_attr::enemy_angle_add(i_this, i_this->current.angle.x , 65);
+#else
                     i_this->current.angle.x += 65;
+#endif
                 }
             } else {
+#if TARGET_PC  // enemy attribute integration
+                actor_attr::enemy_angle_add(i_this, i_this->current.angle.x , 65);
+#else
                 i_this->current.angle.x += 65;
+#endif
             }
         } else {
+#if TARGET_PC  // enemy attribute integration
+            actor_attr::enemy_angle_add(i_this, i_this->current.angle.x , 65);
+#else
             i_this->current.angle.x += 65;
+#endif
         }
 
         i_this->shape_angle.y = i_this->current.angle.y;
@@ -289,9 +409,9 @@ static void e_arrow_bg(e_arrow_class* i_this) {
     switch (i_this->mMode) {
     case 0:
         i_this->mMode = 1;
-        i_this->mTimers[0] = 100;
+        i_this->mTimers[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 100), 100);
     case 1:
-        if (checkItemGet(dItemNo_BOW_e, 1) && fopAcM_searchPlayerDistance(i_this) < 30.0f) {
+        if (checkItemGet(dItemNo_BOW_e, 1) && fopAcM_searchPlayerDistance(i_this) < DUSK_IF_ELSE(30.0f * actor_attr::enemy_size_multiplier(i_this), 30.0f)) {
             dComIfGp_setItemArrowNumCount(1);
             fopAcM_createItemForSimpleDemo(&i_this->current.pos, dItemNo_ARROW_1_e, -1, NULL, NULL, 0.0f,
                                            0.0f);
@@ -309,7 +429,7 @@ static void e_arrow_bg(e_arrow_class* i_this) {
 static void e_arrow_spin(e_arrow_class* i_this) {
     switch (i_this->mMode) {
     case 0:
-        i_this->mTimers[0] = 25;
+        i_this->mTimers[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 25), 25);
 
         if (cM_rndF(1.0f) > 0.5f) {
             i_this->mMode = 1;
@@ -317,11 +437,21 @@ static void e_arrow_spin(e_arrow_class* i_this) {
             i_this->mMode = 2;
         }
     case 1:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_angle_add(i_this, i_this->shape_angle.y , -0x400);
+#else
         i_this->shape_angle.y -= 0x400;
+#endif
     case 2:
+#if TARGET_PC  // enemy attribute integration
+        actor_attr::enemy_angle_add(i_this, i_this->shape_angle.y , 0x200);
+        actor_attr::enemy_angle_add(i_this, i_this->shape_angle.x , -0x1200);
+        actor_attr::enemy_angle_add(i_this, i_this->current.angle.x , 700);
+#else
         i_this->shape_angle.y += 0x200;
         i_this->shape_angle.x -= 0x1200;
         i_this->current.angle.x += 700;
+#endif
 
         if (i_this->mTimers[0] == 0) {
             fopAcM_delete(i_this);
@@ -357,7 +487,7 @@ static void e_arrow_demo_fire(e_arrow_class* i_this) {
             i_this->field_0xa0c = 0;
         }
 
-        i_this->mTimers[0] = 20;
+        i_this->mTimers[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 20), 20);
         case 1: {
             spB0.set(0, i_this->field_0xa0c, 0);
 
@@ -388,7 +518,7 @@ static void e_arrow_demo_fire(e_arrow_class* i_this) {
                          (fopAc_ac_c*)daPy_py_c::getMidnaActor()))
                 {
                     if (!dMsgObject_isTalkNowCheck()) {
-                        cLib_addCalc2(&i_this->field_0xa00.z, var_f31, 0.1f, i_this->field_0xa10);
+                        DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &i_this->field_0xa00.z, var_f31, 0.1f, i_this->field_0xa10), cLib_addCalc2(&i_this->field_0xa00.z, var_f31, 0.1f, i_this->field_0xa10));
                     }
                 }
 
@@ -404,7 +534,7 @@ static void e_arrow_demo_fire(e_arrow_class* i_this) {
                     }
                 }
 
-                cLib_addCalc2(&i_this->field_0xa10, 10.0f, 1.0f, 1.0f);
+                DUSK_IF_ELSE(actor_attr::enemy_add_action_calc2(i_this, &i_this->field_0xa10, 10.0f, 1.0f, 1.0f), cLib_addCalc2(&i_this->field_0xa10, 10.0f, 1.0f, 1.0f));
 
                 if (!dComIfGp_event_runCheck()) {
                     sp9C.y = 0.0f;
@@ -444,7 +574,11 @@ static void e_arrow_shield(e_arrow_class* i_this) {
     daAlink_getAlinkActorClass()->setArrowShieldPos(&a_this->current.pos, &a_this->shape_angle,
                                                     &i_this->field_0x9d4, &i_this->field_0x9c8);
 
+#if TARGET_PC  // enemy attribute integration
+    cXyz localOffset(0.0f, 0.0f, -30.0f * actor_attr::enemy_size_multiplier(i_this));
+#else
     static cXyz localOffset(0.0f, 0.0f, -30.0f);
+#endif
     mDoMtx_stack_c::transS(a_this->current.pos.x, a_this->current.pos.y, a_this->current.pos.z);
     mDoMtx_stack_c::ZXYrotM(a_this->shape_angle.x, a_this->shape_angle.y, 0);
     mDoMtx_stack_c::multVec(&localOffset, &a_this->current.pos);
@@ -462,7 +596,7 @@ static void e_arrow_demo_bound(e_arrow_class* i_this) {
         i_this->field_0xa0c = 12000;
         i_this->field_0xa10 = 2500.0f;
         i_this->mMode = 1;
-        i_this->mTimers[0] = 80;
+        i_this->mTimers[0] = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(i_this, 80), 80);
     }
 
     if (i_this->mTimers[0] == 0) {
@@ -470,7 +604,7 @@ static void e_arrow_demo_bound(e_arrow_class* i_this) {
     }
 
     if (i_this->field_0xa0c > 0) {
-        ANGLE_ADD(a_this->shape_angle.x, i_this->field_0xa10);
+        DUSK_IF_ELSE(actor_attr::enemy_angle_add(i_this, a_this->shape_angle.x, i_this->field_0xa10), ANGLE_ADD(a_this->shape_angle.x, i_this->field_0xa10));
 
         if (a_this->shape_angle.x > i_this->field_0xa0c ||
             a_this->shape_angle.x < (s16)-i_this->field_0xa0c)
@@ -552,9 +686,13 @@ static void action(e_arrow_class* i_this) {
     sp20.z = i_this->speedF;
     MtxPosition(&sp20, &i_this->speed);
 
+#if TARGET_PC  // enemy attribute integration
+    i_this->current.pos += arrow_move_step(i_this);
+#else
     i_this->current.pos.x += i_this->speed.x + i_this->field_0x5d0;
     i_this->current.pos.y += i_this->speed.y;
     i_this->current.pos.z += i_this->speed.z + i_this->field_0x5d4;
+#endif
 
     i_this->eyePos = i_this->current.pos;
 }
@@ -594,15 +732,26 @@ static int daE_ARROW_Execute(e_arrow_class* i_this) {
     if (i_this->field_0x5ce != 0) {
         i_this->field_0x5ce--;
 
+#if TARGET_PC  // enemy attribute integration
+        const f32 actionWobble = i_this->field_0x5ce * actor_attr::enemy_action_time_speed(i_this);
+        f32 temp_f1 = actionWobble * 50.0f;
+        var_r29 = temp_f1 * cM_ssin(actor_attr::enemy_action_phase_angle(i_this, i_this->field_0x5c0, 0x7000));
+        var_r28 = temp_f1 * cM_ssin(actor_attr::enemy_action_phase_angle(i_this, i_this->field_0x5c0, 0x7A00));
+#else
         f32 temp_f1 = i_this->field_0x5ce * 50.0f;
         var_r29 = temp_f1 * cM_ssin(i_this->field_0x5c0 * 0x7000);
         var_r28 = temp_f1 * cM_ssin(i_this->field_0x5c0 * 0x7A00);
+#endif
     } else {
         var_r28 = 0;
         var_r29 = 0;
     }
 
     mDoMtx_stack_c::transS(a_this->current.pos.x, a_this->current.pos.y, a_this->current.pos.z);
+#if TARGET_PC  // enemy attribute integration
+    const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(i_this);
+    mDoMtx_stack_c::scaleM(sizeMultiplier, sizeMultiplier, sizeMultiplier);
+#endif
     mDoMtx_stack_c::YrotM(a_this->shape_angle.y);
     mDoMtx_stack_c::XrotM(a_this->shape_angle.x);
     mDoMtx_stack_c::ZrotM(a_this->shape_angle.z);
@@ -674,7 +823,7 @@ static int daE_ARROW_Create(fopAc_ac_c* i_this) {
     }
 
     int phase_state = dComIfG_resLoad(&a_this->mPhase, a_this->mResName);
-#if TARGET_PC
+#if TARGET_PC  // enemy attribute integration
     static int s_create_frames = 0;
     static bool s_first_arrow = true;
     static fpc_ProcID s_last_scene_id = 0;
@@ -692,7 +841,7 @@ static int daE_ARROW_Create(fopAc_ac_c* i_this) {
     }
 #endif
     if (phase_state == cPhs_COMPLEATE_e) {
-#if TARGET_PC
+#if TARGET_PC  // enemy attribute integration
         s_create_frames = 0;
         s_first_arrow = false;
 #endif
@@ -747,6 +896,12 @@ static int daE_ARROW_Create(fopAc_ac_c* i_this) {
         a_this->mCcAtSph.SetStts(&a_this->mCcStts);
         a_this->mCcAtSph.SetAtHitCallback(atHit_CB);
 
+#if TARGET_PC  // enemy attribute integration
+        const f32 sizeMultiplier = actor_attr::enemy_size_multiplier(a_this);
+        a_this->mCcAtSph.SetR(20.0f * sizeMultiplier);
+        a_this->mCcAtSph.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, 1.0f));
+
+#endif
         if (a_this->mArrowType == ARROW_TYPE_FIRE) {
             a_this->mCcAtSph.SetAtMtrl(dCcD_MTRL_FIRE);
         }
@@ -755,11 +910,13 @@ static int daE_ARROW_Create(fopAc_ac_c* i_this) {
 
         a_this->mCcTgSph.Set(tg_sph_src);
         a_this->mCcTgSph.SetStts(&a_this->mCcStts);
+        IF_DUSK(a_this->mCcTgSph.SetR(35.0f * sizeMultiplier);)
 
         a_this->field_0x5c0 = cM_rndF(0xFFFF);
         if (a_this->mFlags & 0x10) {
             a_this->mCcFireEffSph.Set(fire_eff_sph_src);
             a_this->mCcFireEffSph.SetStts(&a_this->mCcStts);
+            IF_DUSK(a_this->mCcFireEffSph.SetAtAtp(actor_attr::enemy_attack_power_byte(a_this, 4.0f));)
         }
 
         mDoMtx_stack_c::scaleS(0.0f, 0.0f, 0.0f);

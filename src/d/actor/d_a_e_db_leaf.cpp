@@ -16,6 +16,8 @@ static int daE_DB_LEAF_Execute(e_db_leaf_class* i_this) {
     mDoMtx_stack_c::transS(i_this->current.pos.x, i_this->current.pos.y, i_this->current.pos.z);
     mDoMtx_stack_c::YrotM(i_this->shape_angle.y);
     mDoMtx_stack_c::XrotM(i_this->shape_angle.x);
+    // since were changing the leaf scale in d_a_e_db, we need it to actually reflect here
+    IF_DUSK(mDoMtx_stack_c::scaleM(i_this->scale.x, i_this->scale.y, i_this->scale.z);)
     i_this->mpMorf->getModel()->setBaseTRMtx(mDoMtx_stack_c::now);
     i_this->mpMorf->modelCalc();
     return 1;
