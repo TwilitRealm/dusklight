@@ -29,6 +29,9 @@
 #include "dusk/interp/menus.h"
 #include "dusk/interp/user_interface.h"
 #include "dusk/memory.h"
+#include "dusk/map_pointer.h"
+#include "dusk/menu_pointer.h"
+#include "dusk/settings.h"
 #include "dusk/version.hpp"
 #include "helpers/string.hpp"
 #endif
@@ -359,7 +362,7 @@ void dMenu_Fmap_c::_create() {
     JUT_ASSERT(603, mpMenuFmapMap != NULL);
     mpMenuFmapMap->_create(dMeter2Info_get2DWidth(), dMeter2Info_get2DHeight(),
                            dMeter2Info_get2DWidth(), dMeter2Info_get2DHeight(), mpFmapMapRes);
-    
+
     readFieldMapData((void**)&mpFieldDat, "dat/field.dat", false, false);
     decodeFieldMapData();
     readFieldMapData((void**)&mpPortalDat, "dat/portal.dat", false, false);
@@ -855,6 +858,13 @@ void dMenu_Fmap_c::all_map_init() {
 void dMenu_Fmap_c::all_map_proc() {
     mpStick->checkTrigger();
 
+#if TARGET_PC
+    const auto mapPointer = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
+    if (mapPointer.hover) {
+        mpDraw2DBack->allmap_move2(mpStick);
+    }
+#endif
+
     u8 region = mpDraw2DBack->getSelectRegion();
     bool region_change = false;
     if (mRegionNo != region) {
@@ -876,7 +886,7 @@ void dMenu_Fmap_c::all_map_proc() {
         mpDraw2DTop->setAButtonString(0, dMenu_Fmap2DTop_c::ALPHA_DEFAULT);
     }
 
-    if (dMw_A_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
+    if ((dMw_A_TRIGGER() IF_DUSK(|| mapPointer.clicked)) && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
         if (region == 0xff || !mpDraw2DBack->isShowRegion(region)) {
@@ -1053,12 +1063,19 @@ void dMenu_Fmap_c::region_map_proc() {
     mpDraw2DTop->setAButtonString(0x527, dMenu_Fmap2DTop_c::ALPHA_DEFAULT);
     r29 = true;
 
+#if TARGET_PC
+    const auto mapPointer = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
+    if (mapPointer.hover) {
+        mpDraw2DBack->regionMapMove(mpStick);
+    }
+#endif
+
     if (dMw_B_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
         setProcess(PROC_ZOOM_REGION_TO_ALL);
         mpMenuFmapMap->setFlashOff();
-    } else if (dMw_A_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
+    } else if ((dMw_A_TRIGGER() IF_DUSK(|| mapPointer.clicked)) && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
         if (r29) {
@@ -1176,6 +1193,13 @@ void dMenu_Fmap_c::portal_warp_map_init() {
 void dMenu_Fmap_c::portal_warp_map_proc() {
     mpStick->checkTrigger();
 
+#if TARGET_PC
+    const auto mapPointer = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
+    if (mapPointer.hover) {
+        portalWarpMapMove(mpStick);
+    }
+#endif
+
     if (dMw_B_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
@@ -1183,7 +1207,7 @@ void dMenu_Fmap_c::portal_warp_map_proc() {
         if (mErrorSound == true) {
             mErrorSound = false;
         }
-    } else if (dMw_A_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
+    } else if ((dMw_A_TRIGGER() IF_DUSK(|| mapPointer.clicked)) && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
         if (mPortalNo != 0xff) {
@@ -1381,6 +1405,14 @@ void dMenu_Fmap_c::spot_map_init() {
 }
 
 void dMenu_Fmap_c::spot_map_proc() {
+
+#if TARGET_PC
+    const auto mapPointer = dusk::map_pointer::fmap_pointer_drag(mpDraw2DBack);
+    if (mapPointer.dragging) {
+        mpDraw2DBack->stageMapDrag(mapPointer.deltaX, mapPointer.deltaZ);
+    }
+#endif
+
     if (dMw_B_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
@@ -1774,7 +1806,7 @@ void dMenu_Fmap_c::table_demo1_init() {
         if (mpRegionData[i] != NULL && mpStageData[i] != NULL) {
             int stay_no = dComIfGp_roomControl_getStayNo();
             icon.init(mpRegionData[i], mpStageData[i], 5, mStayStageNo, stay_no);
-            
+
             while (!icon.getValidData()) {
                 if (icon.isDrawDisp()) {
                     f32 pos_x, pos_z;
@@ -1945,7 +1977,7 @@ bool dMenu_Fmap_c::isClose() {
     IF_DUSK(resetZoomEnd());
     bool ret = true;
     bool bVar2 = false;
-    
+
     s16 undisplay_frame_num = (s16)g_fmapHIO.mUndisplayFrameNum;
     if (mDisplayFrame == undisplay_frame_num) {
         bVar2 = true;
@@ -2393,7 +2425,7 @@ bool dMenu_Fmap_c::readRoomData(char const* i_stageName, dMenu_Fmap_stage_data_c
     dMenu_Fmap_room_data_c* prev_room_data = NULL;
     i_stageData->setFmapRoomDataTop(NULL);
     dMenu_Fmap_stage_arc_data_c* room_data = NULL;
-    
+
     char stage_path[20];
     SAFE_SPRINTF(stage_path, "%s/stage.dat", i_stageName);
     if (readFieldMapData((void**)&room_data, stage_path, false, false)) {
@@ -2472,7 +2504,7 @@ bool dMenu_Fmap_c::readFieldMapData(void** o_data, char const* i_path, bool para
     if (param_2) {
         DCStoreRangeNoSync(*o_data, size);
     }
-    
+
     if (read_size == 0) {
         return false;
     } else {
@@ -2494,7 +2526,7 @@ void dMenu_Fmap_c::decodeFieldMapData() {
 
     for (int i = 0; i < region_data->mCount; i++) {
         mpDraw2DBack->setRegionTextureReadNum(i, regions[i].mTextureReadNum);
-        
+
         for (int j = 0; j < 8; j++) {
             if (j + 1 == regions[i].mTextureReadNum) {
                 bool local_3f = false;
@@ -2743,7 +2775,7 @@ void dMenu_Fmap_c::drawIcon(f32 param_0, bool param_1) {
     #endif
     mpDraw2DBack->setIcon2DPos(0x11, stage_name, pos.x, pos.z, cM_sht2d(angle),
                                is_portal_demo1, param_1);
-    
+
     if (!param_1) {
         if (mIsWarpMap == true && mpPortalDat != NULL) {
             dMenu_Fmap_portal_data_c* portal_dat = mpPortalDat;
@@ -2858,7 +2890,7 @@ bool dMenu_Fmap_c::searchIcon(u8 i_typeGroupNo, int i_swBit, f32* o_posX, f32* o
     icon.init(region_data, stage_data, i_typeGroupNo, tmp_r26, stay_no);
     // icon.init(getNowFmapRegionData(), getNowFmapStageData(), i_typeGroupNo,
     //           mStayStageNo, dComIfGp_roomControl_getStayNo());
-    
+
     while (!icon.getValidData()) {
         if (icon.isDrawDisp()) {
             int stage_no, room_no;
@@ -2889,7 +2921,7 @@ void dMenu_Fmap_c::drawIcon(u8 i_typeGroupNo, int param_1) {
     icon.init(region_data, stage_data, i_typeGroupNo, tmp_r30, stay_no);
     // icon.init(getNowFmapRegionData(), getNowFmapStageData(), i_typeGroupNo,
     //           mStayStageNo, dComIfGp_roomControl_getStayNo());
-    
+
     while (!icon.getValidData()) {
         if (icon.isDrawDisp()) {
             f32 pos_x, pos_z;
@@ -2979,7 +3011,7 @@ void dMenu_Fmap_c::arrowPosInit() {
             pos = dComIfGs_getPlayerFieldLastStayPos();
             SAFE_STRCPY(stage_name, dComIfGs_getPlayerFieldLastStayName());
         }
-        
+
         f32 fVar1 = 0.0f;
         if (mProcess == PROC_LIGHT_DEMO1) {
             f32 pos1_x, pos2_x, pos1_z, pos2_z;

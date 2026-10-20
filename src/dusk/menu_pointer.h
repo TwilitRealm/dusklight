@@ -17,6 +17,7 @@ enum class Context {
     Collection,
     Options,
     Dialog,
+    Map,
 };
 
 enum class Phase {
