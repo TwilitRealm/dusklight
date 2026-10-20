@@ -6,11 +6,29 @@
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
 #include "d/actor/d_a_b_zant_magic.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 #include "d/actor/d_a_b_zant.h"
 #include "d/d_com_inf_game.h"
 #include "d/actor/d_a_player.h"
 #include "SSystem/SComponent/c_math.h"
 #include <cmath>
+#if TARGET_PC  // additional actor attribute integration
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace dusk::mods::svc::actor_attr {
+template <> struct EnemyAttributeOwner<daB_ZANTM_c> {
+    static fopAc_ac_c* get(daB_ZANTM_c* i_this) {
+
+        fopAc_ac_c* parent = fopAcM_SearchByID(fopAcM_GetLinkId(i_this));
+        return parent != NULL && fopAcM_GetName(parent) == fpcNm_B_ZANT_e ? parent : i_this;
+
+}
+};
+}
+#endif
 
 int daB_ZANTM_c::draw() {
     g_env_light.settingTevStruct(0, &current.pos, &tevStr);
@@ -128,7 +146,7 @@ void daB_ZANTM_c::executeSmall() {
 
     switch (mMode) {
     case 0:
-        mAliveTimer = 900;
+        mAliveTimer = DUSK_IF_ELSE(actor_attr::enemy_sync_timer(this, 900), 900);
         mMode = 1;
         field_0x5e8 = 0.0f;
         
@@ -136,16 +154,16 @@ void daB_ZANTM_c::executeSmall() {
         target_pos.y += mPrm * 60.0f - 260.0f;
 
         if (dComIfGp_roomControl_getStayNo() != 55) {
-            cLib_chaseAngleS(&current.angle.y, cLib_targetAngleY(&current.pos, &target_pos), 0x2000);
+            DUSK_IF_ELSE(actor_attr::enemy_chase_action_angle(this, &current.angle.y, cLib_targetAngleY(&current.pos, &target_pos), 0x2000), cLib_chaseAngleS(&current.angle.y, cLib_targetAngleY(&current.pos, &target_pos), 0x2000));
         }
 
-        cLib_chaseAngleS(&current.angle.x, cLib_targetAngleX(&current.pos, &target_pos), 0x2000);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_angle(this, &current.angle.x, cLib_targetAngleX(&current.pos, &target_pos), 0x2000), cLib_chaseAngleS(&current.angle.x, cLib_targetAngleX(&current.pos, &target_pos), 0x2000));
         speedF = std::abs(magic_speed * cM_scos(current.angle.x));
         speed.y = magic_speed * cM_ssin(current.angle.x);
         Z2GetAudioMgr()->seStart(Z2SE_EN_ZAN_FIRE_OUT, &current.pos, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, false);
     case 1:
         Z2GetAudioMgr()->seStartLevel(Z2SE_EN_ZAN_FIRE, &current.pos, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, false);
-        cLib_chaseF(&field_0x5e8, 1.0f, 0.1f);
+        DUSK_IF_ELSE(actor_attr::enemy_chase_action_float(this, &field_0x5e8, 1.0f, 0.1f), cLib_chaseF(&field_0x5e8, 1.0f, 0.1f));
 
         if (mAliveTimer == 0 || mAcch.ChkWallHit() || mAcch.ChkGroundHit()) {
             speed.z = 0.0f;
@@ -178,21 +196,21 @@ void daB_ZANTM_c::executeSmall() {
 
 void daB_ZANTM_c::cc_set() {
     eyePos = current.pos;
-    eyePos.y += 30.0f;
+    eyePos.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 30.0f), 30.0f);
     
     attention_info.position = eyePos;
-    attention_info.position.y += 30.0f;
+    attention_info.position.y += DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 30.0f), 30.0f);
 
     mAtCollider.cM3dGCps::Set(old.pos, current.pos, 20.0f);
     mAtCollider.CalcAtVec();
     dComIfG_Ccsp()->Set(&mAtCollider);
 
     field_0x848.SetC(current.pos);
-    field_0x848.SetR(50.0f);
+    field_0x848.SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 50.0f), 50.0f));
     dComIfG_Ccsp()->Set(&field_0x848);
 
     mTgCollider.SetC(current.pos);
-    mTgCollider.SetR(50.0f);
+    mTgCollider.SetR(DUSK_IF_ELSE(actor_attr::enemy_size_value(this, 50.0f), 50.0f));
     dComIfG_Ccsp()->Set(&mTgCollider);
 }
 
@@ -205,7 +223,7 @@ int daB_ZANTM_c::execute() {
     setMagicEffect();
 
     mCcStts.Move();
-    fopAcM_posMoveF(this, mCcStts.GetCCMoveP());
+    DUSK_IF_ELSE(actor_attr::enemy_action_pos_move_f(this, mCcStts.GetCCMoveP()), fopAcM_posMoveF(this, mCcStts.GetCCMoveP()));
     mAcch.CrrPos(dComIfG_Bgsp());
 
     cc_set();
@@ -244,20 +262,41 @@ int daB_ZANTM_c::create() {
     fopAcM_SetMin(this, -400.0f, -400.0f, -400.0f);
     fopAcM_SetMax(this, 400.0f, 400.0f, 400.0f);
 
+#if TARGET_PC  // enemy attribute integration
+    health = actor_attr::enemy_health_value(this, 80);
+    field_0x560 = health;
+#else
     health = 80;
     field_0x560 = 80;
+#endif
 
     mCcStts.Init(0xFF, 0, this);
     mAtCollider.Set(cc_zant_src);
+#if TARGET_PC  // enemy attribute integration
+    mAcchCir.SetWall(actor_attr::enemy_size_value(this, 20.0f), actor_attr::enemy_size_value(this, 20.0f));
+#else
     mAcchCir.SetWall(20.0f, 20.0f);
+#endif
     mAtCollider.SetAtSpl(dCcG_At_Spl_UNK_0);
-    mAtCollider.SetAtAtp(2);
+    mAtCollider.SetAtAtp(DUSK_IF_ELSE(actor_attr::enemy_attack_power_byte(this, 2), 2));
     mAtCollider.SetStts(&mCcStts);
 
     field_0x848.Set(cc_zant_src2);
+#if TARGET_PC  // enemy attribute integration
+
+    field_0x848.SetR(actor_attr::enemy_size_value(this, field_0x848.GetR()));
+
+    field_0x848.SetAtAtp(actor_attr::enemy_attack_power_byte(this, field_0x848.GetAtAtp()));
+#endif
     field_0x848.SetStts(&mCcStts);
 
     mTgCollider.Set(cc_zant_src3);
+#if TARGET_PC  // enemy attribute integration
+
+    mTgCollider.SetR(actor_attr::enemy_size_value(this, mTgCollider.GetR()));
+
+    mTgCollider.SetAtAtp(actor_attr::enemy_attack_power_byte(this, mTgCollider.GetAtAtp()));
+#endif
     mTgCollider.SetStts(&mCcStts);
 
     gravity = 0.0f;
