@@ -108,7 +108,7 @@ void TObject::prepare(data::TParse_TBlock const& rBlock, TControl* pControl) {
                 break;
             }
 
-            TFunctionValue::TEProgress prog = (TFunctionValue::TEProgress)BSWAP32(*(TFunctionValue::TEProgress*)pContent);
+            TFunctionValue::TEProgress prog = (TFunctionValue::TEProgress)BSWAP32(*(u32*)pContent);
             pfvaRange->range_setProgress(prog);
         } break;
         case 0x14: {
@@ -121,7 +121,7 @@ void TObject::prepare(data::TParse_TBlock const& rBlock, TControl* pControl) {
                 break;
             }
 
-            TFunctionValue::TEAdjust adjust = (TFunctionValue::TEAdjust)BSWAP32(*(TFunctionValue::TEAdjust*)pContent);
+            TFunctionValue::TEAdjust adjust = (TFunctionValue::TEAdjust)BSWAP32(*(u32*)pContent);
             pfvaRange->range_setAdjust(adjust);
         } break;
         case 0x15: {
@@ -148,7 +148,7 @@ void TObject::prepare(data::TParse_TBlock const& rBlock, TControl* pControl) {
                 break;
             }
 
-            TFunctionValue::TEInterpolate interp = (TFunctionValue::TEInterpolate)BSWAP32(*(TFunctionValue::TEInterpolate*)pContent);
+            TFunctionValue::TEInterpolate interp = (TFunctionValue::TEInterpolate)BSWAP32(*(u32*)pContent);
             pfvaInterpolate->interpolate_set(interp);
         } break;
         default:
@@ -224,7 +224,7 @@ void TObject_composite::prepare_data_(const data::TParse_TParagraph::TData& rDat
     JGADGET_ASSERTWARN(310, u32Size== 8);
     JUT_ASSERT(311, pContent!=NULL);
 
-    data::TEComposite type = (data::TEComposite)BSWAP32(pContent->composite_type);
+    data::TEComposite type = (data::TEComposite)BSWAP32((u32)pContent->composite_type);
     const data::CompositeOperation* op = getCompositeOperation_(type);
     data::CompositeDataFunc pfn = op->getCompositeData;
     JUT_ASSERT(316, pfn!=NULL);
