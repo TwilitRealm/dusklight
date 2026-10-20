@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bit>
+#include <type_traits>
 
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"

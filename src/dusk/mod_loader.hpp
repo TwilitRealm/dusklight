@@ -347,7 +347,9 @@ private:
     bool m_startupComplete = false;
 
     LoadedMod* try_load_mod(const std::filesystem::path& modPath, bool fromDir,
-        uint32_t searchDirIndex, std::unique_ptr<ModBundle> bundle = {});
+        uint32_t searchDirIndex);
+    LoadedMod* try_load_mod(const std::filesystem::path& modPath, bool fromDir,
+        uint32_t searchDirIndex, std::unique_ptr<ModBundle> bundle);
     void load_native(LoadedMod& mod, const std::string& dllEntry,
         const std::vector<std::string>& runtimeEntries);
     bool load_native_if_present(LoadedMod& mod);
