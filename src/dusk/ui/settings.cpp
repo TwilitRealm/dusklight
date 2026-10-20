@@ -1304,6 +1304,8 @@ SettingsWindow::SettingsWindow(bool prelaunch) : mPrelaunch(prelaunch) {
             "Shows the aiming reticle for bow and slingshot.");
         addOption("No Hit Stun", getSettings().game.noHitStun,
             "Disables hit stun frames after attacks.");
+        addOption("Shorter Death Sequence", getSettings().game.fasterDeathSeq,
+            "Vastly shortens the death sequence");
 
         leftPane.add_section("Speedrunning");
         config_bool_select(leftPane, rightPane, getSettings().game.speedrunMode,

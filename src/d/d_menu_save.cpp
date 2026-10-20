@@ -1627,7 +1627,11 @@ void dMenu_save_c::endingDataCheck() {
 }
 
 void dMenu_save_c::retryQuestion0() {
+#if TARGET_PC
+    if (Z2GetAudioMgr()->checkBgmIDPlaying(Z2BGM_GAME_OVER) != true || dusk::getSettings().game.fasterDeathSeq) {
+#else
     if (Z2GetAudioMgr()->checkBgmIDPlaying(Z2BGM_GAME_OVER) != true) {
+#endif
         mYesNoCursor = CURSOR_YES;
         msgTxtSet(0x4BC, false);  // Retry?
         mMenuProc = PROC_RETRY_QUESTION1;
@@ -1653,7 +1657,7 @@ void dMenu_save_c::retryQuestion1() {
 void dMenu_save_c::retryQuestion2() {
     if (YesNoSelect()) {
         if (mYesNoCursor == CURSOR_YES) {
-            mWaitTimer = 15;
+            mWaitTimer = DUSK_IF_ELSE(dusk::getSettings().game.fasterDeathSeq ? 0 : 15, 15);
             mMenuProc = PROC_GAME_CONTINUE3;
         } else {
             field_0x2190 = 1;
@@ -1773,7 +1777,7 @@ void dMenu_save_c::msgTxtSet(u16 msgID, bool param_1) {
             check = false;
         } else if (field_0x2190 == 1) {
             check = mpScrnExplain->openExplain(msgID, 1, mYesNoCursor == CURSOR_NO, 0xFF, param_1);
-            mpScrnExplain->setKeyWaitTimer(30);
+            mpScrnExplain->setKeyWaitTimer(DUSK_IF_ELSE(dusk::getSettings().game.fasterDeathSeq ? 0 : 30, 30));
         } else {
             check = mpScrnExplain->openExplain(msgID, 0, 0, 0xFF, true);
         }

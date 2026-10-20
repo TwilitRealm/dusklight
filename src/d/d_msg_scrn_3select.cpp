@@ -1128,7 +1128,11 @@ void dMsgScrn3Select_c::changeProc() {
 
 void dMsgScrn3Select_c::closeProc() {
     mpSelectCursor->setAlphaRate(0.0f);
+#if TARGET_PC
+    mBckFrame -= dusk::getSettings().game.fasterDeathSeq ? 9.0f : 1.0f;
+#else
     mBckFrame--;
+#endif
 
     for (int i = 0; i < 3; i++) {
 #if TARGET_PC

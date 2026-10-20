@@ -227,6 +227,7 @@ struct UserSettings {
         ConfigVar<bool> enhancedMapMenus;
         ConfigVar<bool> aimingReticle;
         ConfigVar<bool> noHitStun;
+        ConfigVar<bool> fasterDeathSeq;
 
         // Preferences
         ConfigVar<bool> enableMirrorMode;

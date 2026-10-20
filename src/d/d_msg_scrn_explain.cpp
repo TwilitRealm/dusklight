@@ -352,7 +352,7 @@ void dMsgScrnExplain_c::move() {
 #if TARGET_PC
 void dMsgScrnExplain_c::presentAnims() {
     if (mStatus == STATUS_OPEN_e || mStatus == STATUS_CLOSE_e) {
-        dusk::vdt::advance_toward_frame(field_0x5a, mStatus == STATUS_OPEN_e ? 5.0f : 0.0f, 1.0f);
+        dusk::vdt::advance_toward_frame(field_0x5a, mStatus == STATUS_OPEN_e ? 5.0f : 0.0f, DUSK_IF_ELSE(dusk::getSettings().game.fasterDeathSeq ? 5.0f : 1.0f, 1.0f));
         field_0x48 = FB_WIDTH_BASE * getAlphaRatio();
         for (int i = 0; i < 2; i++) {
             mpRoot_c[i]->setAlphaRate(1.0f - getAlphaRatio());
