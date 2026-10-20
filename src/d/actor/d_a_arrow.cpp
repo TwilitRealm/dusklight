@@ -18,6 +18,8 @@
 #include "d/actor/d_a_horse.h"
 #include "d/actor/d_a_hozelda.h"
 #if TARGET_PC
+#include "d/actor/d_a_b_gnd.h"
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
 #include "dusk/achievements.h"
 #endif
 
@@ -290,6 +292,24 @@ void daArrow_c::arrowShooting() {
 
     speedF = 100.f;
     mStartPos = current.pos;
+
+#if TARGET_PC  // enemy attribute integration
+    if (mArrowType == 2 && !dComIfGp_event_runCheck()) {
+        auto* zelda = static_cast<daHoZelda_c*>(field_0xa08.getActor());
+        if (zelda != nullptr) {
+            auto* ganondorf = static_cast<b_gnd_class*>(zelda->mGndAcKeep.getActor());
+            if (ganondorf != nullptr && ganondorf->checkRide() && ganondorf->mDemoCamMode == 0 && ganondorf->mNoDrawTimer == 0 && dusk::mods::svc::actor_attr::enemy_size_multiplier(ganondorf) < 1.0f) {
+                const cXyz aim = ganondorf->eyePos - current.pos;
+                if (aim.abs() >= 1.0f) {
+                    current.angle.x = -aim.atan2sY_XZ();
+                    current.angle.y = aim.atan2sX_Z();
+                    shape_angle.x = -current.angle.x;
+                    shape_angle.y = current.angle.y;
+                }
+            }
+        }
+    }
+#endif
 
     f32 cos = cM_scos(current.angle.x);
     speed.x = cos * (field_0x99c * cM_ssin(current.angle.y));

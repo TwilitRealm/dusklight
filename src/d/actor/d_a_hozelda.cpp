@@ -9,6 +9,53 @@
 #include "d/actor/d_a_horse.h"
 #include "d/actor/d_a_b_gnd.h"
 #include "d/actor/d_a_arrow.h"
+#if TARGET_PC  // enemy attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#include <algorithm>
+#include <cmath>
+
+namespace {
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+b_gnd_class* hoZeldaMountedGanondorf(const daHoZelda_c* zelda) {
+    auto* ganondorf = static_cast<b_gnd_class*>(zelda->mGndAcKeep.getActor());
+    if (ganondorf == nullptr || !ganondorf->checkRide() || ganondorf->mNoDrawTimer != 0 || ganondorf->mDemoCamMode != 0 || dComIfGp_event_runCheck()) {
+        return nullptr;
+    }
+    return ganondorf;
+}
+
+f32 hoZeldaShotSpeedMultiplier(const daHoZelda_c* zelda) {
+    b_gnd_class* ganondorf = hoZeldaMountedGanondorf(zelda);
+    if (ganondorf == nullptr) {
+        return 1.0f;
+    }
+    // Zelda's firing clock follows faster Ganondorf rolls only. Size, stun,
+    // and rolls below vanilla speed do not change her draw/shoot timing.
+    return std::max(1.0f, actor_attr::resolve_multiplier(ganondorf, ACTOR_ATTRIBUTE_MOVEMENT_SPEED));
+}
+
+bool hoZeldaRandomizedMountedEncounter(const daHoZelda_c* zelda) {
+    b_gnd_class* ganondorf = hoZeldaMountedGanondorf(zelda);
+    return ganondorf != nullptr && (actor_attr::resolve_multiplier(ganondorf, ACTOR_ATTRIBUTE_MOVEMENT_SPEED) != 1.0f || actor_attr::enemy_size_multiplier(ganondorf) != 1.0f);
+}
+
+bool hoZeldaShotAnimation(u16 animation) {
+    return animation == 8 || animation == 9 || animation == 0xA || animation == 0x1A;
+}
+
+void hoZeldaSyncMountedPosition(daHoZelda_c* zelda, daHorse_c* horse) {
+    // These are the same ride offsets used by setMatrix. Targeting runs before
+    // setMatrix, so update the actor pose from Epona's current frame first.
+    static const Vec localHorseRidePos = {-5.894f, 52.61f, 4.079f};
+    static const Vec localFrontHorseRidePos = {-75.893997f, 57.61f, 4.079f};
+    const Vec* ride_pos = daPy_getLinkPlayerActorClass()->checkHorseRide() ? &localHorseRidePos : &localFrontHorseRidePos;
+    mDoMtx_multVec(horse->getRootMtx(), ride_pos, &zelda->current.pos);
+    zelda->shape_angle = horse->shape_angle;
+    zelda->current.angle.y = zelda->shape_angle.y;
+}
+}  // namespace
+#endif
 
 static const char l_arcName[] = "HoZelda";
 
@@ -319,9 +366,16 @@ int daHoZelda_c::setUpperAnime(u16 i_anmNo) {
     mUpperAnmID = i_anmNo;
     mAnmRatioPack[2].setRatio(0.0f);
     mAnmRatioPack[2].setAnmTransform(bck);
+#if TARGET_PC  // enemy attribute integration
+    const f32 shot_speed = hoZeldaShotAnimation(i_anmNo) ? hoZeldaShotSpeedMultiplier(this) : 1.0f;
+    mFrameCtrl[2].setFrameCtrl(bck->getAttribute(), 0, bck->getFrameMax(), shot_speed, 0.0f);
+    bck->setFrame(0.0f);
+    field_0x5c4->initOldFrameMorf(3.0f / shot_speed, 1, 23);
+#else
     mFrameCtrl[2].setFrameCtrl(bck->getAttribute(), 0, bck->getFrameMax(), 1.0f, 0.0f);
     bck->setFrame(0.0f);
     field_0x5c4->initOldFrameMorf(3.0f, 1, 23);
+#endif
     return 1;
 }
 
@@ -472,9 +526,21 @@ void daHoZelda_c::setAnm() {
             gnd_lockon = FALSE;
         }
 
-        if (anm_idx[0] == 0xE && field_0x6da == 0 && !mDamageInit && field_0x6dd == 0 && player->checkHorseRide() && ganondorf != NULL && ganondorf->checkPiyo() != 1 &&
+#if TARGET_PC  // enemy attribute integration
+		int bow_end_angle = mpHIO->m.bow_end_angle;
+        if (hoZeldaMountedGanondorf(this) != nullptr) {
+            const f32 size = std::clamp(actor_attr::enemy_size_multiplier(gnd_actor), 1.0f, 4.0f);
+            bow_end_angle += static_cast<int>((0x8000 - bow_end_angle) * ((size - 1.0f) / 3.0f));
+        }
+		if (anm_idx[0] == 0xE && field_0x6da == 0 && !mDamageInit && field_0x6dd == 0 && player->checkHorseRide() && ganondorf != NULL && ganondorf->checkPiyo() != 1 &&
+            ((gnd_seen_angleY < mpHIO->m.bow_start_angle && gnd_lockon) || (mBowMode != 0 && (bow_end_angle >= 0x8000 || gnd_seen_angleY < bow_end_angle) && (gnd_lockon || mArrowAcKeep.getActor() != NULL))))
+        {
+#else
+
+		if (anm_idx[0] == 0xE && field_0x6da == 0 && !mDamageInit && field_0x6dd == 0 && player->checkHorseRide() && ganondorf != NULL && ganondorf->checkPiyo() != 1 &&
             ((gnd_seen_angleY < mpHIO->m.bow_start_angle && gnd_lockon) || (mBowMode != 0 && gnd_seen_angleY < mpHIO->m.bow_end_angle && (gnd_lockon || mArrowAcKeep.getActor() != NULL))))
         {
+#endif
             mBowMode = 1;
         } else {
             mBowMode = 0;
@@ -532,7 +598,7 @@ void daHoZelda_c::setAnm() {
             if (mUpperAnmID == 9) {
                 if (anm_end) {
                     anm_idx[2] = 0x1A;
-                    mAnmTimer = 30;
+                    mAnmTimer = DUSK_IF_ELSE(static_cast<u8>(actor_attr::sync_timer(30, hoZeldaShotSpeedMultiplier(this))), 30);
                 }
             } else if (mUpperAnmID == 0xA) {
                 if (mAnmTimer == 0) {
@@ -547,7 +613,7 @@ void daHoZelda_c::setAnm() {
                 mSound.startCreatureSoundLevel(Z2SE_ZELDA_ARROW_READY, 0, mReverb);
                 if (anm_end) {
                     anm_idx[2] = 0xA;
-                    mAnmTimer = 30;
+                    mAnmTimer = DUSK_IF_ELSE(static_cast<u8>(actor_attr::sync_timer(30, hoZeldaShotSpeedMultiplier(this))), 30);
                 }
             } else if (mUpperAnmID == 0x1A) {
                 if (mAnmTimer == 0) {
@@ -685,7 +751,7 @@ void daHoZelda_c::deleteArrow() {
 }
 
 void daHoZelda_c::setBowBck(u16 i_anmNo) {
-    mBowBck.init((J3DAnmTransform*)dComIfG_getObjectRes(l_arcName, i_anmNo), 1, -1, 1.0f, 0, -1, 1);
+    mBowBck.init((J3DAnmTransform*)dComIfG_getObjectRes(l_arcName, i_anmNo), 1, -1, DUSK_IF_ELSE(hoZeldaShotSpeedMultiplier(this), 1.0f), 0, -1, 1);
     mBowAnmID = i_anmNo;
 }
 
@@ -848,19 +914,46 @@ void daHoZelda_c::searchBodyAngle() {
         cXyz sp14;
         mDoMtx_multVecZero(mpZeldaModel->getAnmMtx(1), &sp14);
 
+#if TARGET_PC  // enemy attribute integration
+        if (hoZeldaRandomizedMountedEncounter(this)) {
+            cXyz local_body_pos;
+            mDoMtx_stack_c::copy(mpZeldaModel->getBaseTRMtx());
+            mDoMtx_stack_c::inverse();
+            mDoMtx_stack_c::multVec(&sp14, &local_body_pos);
+            mDoMtx_stack_c::transS(current.pos);
+            mDoMtx_stack_c::ZXYrotM(shape_angle.x, shape_angle.y, shape_angle.z);
+            mDoMtx_stack_c::multVec(&local_body_pos, &sp14);
+        }
+#endif
         cXyz sp8 = gnd_actor->eyePos - sp14;
-        sp8.y -= 40.0f;
+        sp8.y -= DUSK_IF_ELSE(40.0f * actor_attr::enemy_size_multiplier(gnd_actor), 40.0f);
 
         if (sp8.abs() >= 1.0f) {
+#if TARGET_PC  // enemy attribute integration
+            const f32 ganondorf_size = actor_attr::enemy_size_multiplier(gnd_actor);
+            const s16 min_pitch = ganondorf_size < 1.0f ? -0x3FFF : -0x800;
+            const s16 max_pitch = ganondorf_size > 1.0f ? 0x3FFF : 0x2000;
+            angle_x_target = cLib_minMaxLimit<s16>(sp8.atan2sY_XZ(), min_pitch, max_pitch);
+#else
             angle_x_target = cLib_minMaxLimit<s16>(sp8.atan2sY_XZ(), -0x800, 0x2000);
+#endif
             angle_y_target =
                 cLib_minMaxLimit<s16>(sp8.atan2sX_Z() - shape_angle.y, -mpHIO->m.bow_search_y_angle,
                                       (s16)mpHIO->m.bow_search_y_angle);
         }
     }
 
+#if TARGET_PC  // enemy attribute integration
+    const f32 shot_speed = mBowMode != 0 ? hoZeldaShotSpeedMultiplier(this) : 1.0f;
+    const s16 turn_divisor = static_cast<s16>(std::max(1L, std::lround(4.0f / shot_speed)));
+    const s16 turn_step = static_cast<s16>(std::min(0x7FFFL, std::lround(0xC00 * shot_speed)));
+    const s16 turn_min = static_cast<s16>(std::min(0x7FFFL, std::lround(0x180 * shot_speed)));
+    cLib_addCalcAngleS(&mBodyAngle.x, angle_x_target, turn_divisor, turn_step, turn_min);
+    cLib_addCalcAngleS(&mBodyAngle.y, angle_y_target, turn_divisor, turn_step, turn_min);
+#else
     cLib_addCalcAngleS(&mBodyAngle.x, angle_x_target, 4, 0xC00, 0x180);
     cLib_addCalcAngleS(&mBodyAngle.y, angle_y_target, 4, 0xC00, 0x180);
+#endif
 }
 
 int daHoZelda_c::execute() {
@@ -880,6 +973,11 @@ int daHoZelda_c::execute() {
 
     daHoZelda_matAnm_c::decMorfFrame();
     setRideOffset();
+#if TARGET_PC  // enemy attribute integration
+    if (horse != NULL && hoZeldaRandomizedMountedEncounter(this)) {
+        hoZeldaSyncMountedPosition(this, horse);
+    }
+#endif
 
     if (mAnmTimer != 0) {
         mAnmTimer--;
