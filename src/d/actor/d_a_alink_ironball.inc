@@ -4,6 +4,29 @@
  */
 
 #include "d/actor/d_a_alink.h"
+#if TARGET_PC  // enemy attribute integration
+
+namespace {
+
+static fopAc_ac_c* getIronBallBlizzetaLockTarget() {
+    dAttention_c* attention = dComIfGp_getAttention();
+    if (attention == NULL || !attention->Lockon()) {
+        return NULL;
+    }
+
+    fopAc_ac_c* target = attention->LockonTarget(0);
+    if (target == NULL || fopAcM_GetName(target) != fpcNm_B_YO_e) {
+        return NULL;
+    }
+
+    // Use the vertical-aim Ball & Chain exception for Blizzeta for the
+    // entire fight, including phase 2.
+    return target;
+}
+
+}  // namespace
+
+#endif
 
 cXyz* daAlink_c::getIronBallCenterPos() {
     if (mEquipItem == dItemNo_IRONBALL_e) {
@@ -1015,10 +1038,46 @@ int daAlink_c::procIronBallThrow() {
 
     if (mItemVar0.field_0x3018 == 4 && framectrl->checkPass(6.0f)) {
         mItemVar0.field_0x3018 = 5;
+#if TARGET_PC  // enemy attribute integration
+
+        fopAc_ac_c* blizzeta = getIronBallBlizzetaLockTarget();
+        if (blizzeta != NULL) {
+            // Vanilla Ball & Chain release follows Link's body pitch, but
+            // ordinary L-targeting does not pitch this attack up/down toward
+            // the lock-on point.  For Blizzeta phase 1, aim the release
+            // velocity directly at the boss's attention/L-target position.
+            //
+            // Keep the original throw-speed magnitude. Only direction changes.
+            cXyz aim = blizzeta->attention_info.position - mIronBallCenterPos;
+
+            if (aim.abs2() > 0.001f) {
+                cXyz vanillaThrow(0.0f, mpHIO->mItem.mIronBall.m.mThrowSpeedY, mpHIO->mItem.mIronBall.m.mThrowSpeedZ);
+                const f32 throwSpeed = vanillaThrow.abs();
+
+                aim.normalizeZP();
+                *field_0x3848 = aim * throwSpeed;
+
+                // Match Link/chain pitch visually to the special trajectory.
+                mBodyAngle.x = aim.atan2sY_XZ();
+            } else {
+#endif
         mDoMtx_stack_c::ZXYrotS(mBodyAngle.x, shape_angle.y, 0);
         
         Vec throwVec = {0.0f, mpHIO->mItem.mIronBall.m.mThrowSpeedY, mpHIO->mItem.mIronBall.m.mThrowSpeedZ};
         mDoMtx_stack_c::multVec(&throwVec, field_0x3848);
+#if TARGET_PC  // enemy attribute integration
+            }
+        } else {
+            // Every non-Blizzeta target stays vanilla.
+            mDoMtx_stack_c::ZXYrotS(mBodyAngle.x, shape_angle.y, 0);
+            Vec throwVec = {
+                0.0f,
+                mpHIO->mItem.mIronBall.m.mThrowSpeedY,
+                mpHIO->mItem.mIronBall.m.mThrowSpeedZ
+            };
+            mDoMtx_stack_c::multVec(&throwVec, field_0x3848);
+        }
+#endif
         field_0x3022 = 0;
     }
 

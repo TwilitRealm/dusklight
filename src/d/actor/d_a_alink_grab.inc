@@ -7,6 +7,36 @@
 #include "d/actor/d_a_obj_swchain.h"
 #include "d/actor/d_a_obj_movebox.h"
 #include "d/actor/d_a_obj_gra2.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace {
+
+static f32 alink_grab_enemy_speed(fopAc_ac_c* actor) {
+    if (actor == NULL || fopAcM_GetGroup(actor) != fopAc_ENEMY_e) {
+        return 1.0f;
+    }
+
+    return actor_attr::resolve_multiplier(actor, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+}
+
+static actor_attr::ActionAnimationParams alink_grab_enemy_anm_params(fopAc_ac_c* actor, f32 vanillaMorph, f32 vanillaSpeed) {
+    return actor_attr::action_animation_params(vanillaMorph, vanillaSpeed, alink_grab_enemy_speed(actor));
+}
+
+static void alink_set_frame_rate_for_grabbed_enemy(daPy_frameCtrl_c* frameCtrl, fopAc_ac_c* actor, f32 vanillaRate
+) {
+    if (frameCtrl == NULL) {
+        return;
+    }
+
+    frameCtrl->setRate(vanillaRate * alink_grab_enemy_speed(actor));
+}
+
+}  // namespace
+#endif
 
 static bool daAlink_checkLightBallA(fopAc_ac_c* i_actor) {
     daObjCarry_c* carry = (daObjCarry_c*)i_actor;
@@ -728,8 +758,18 @@ int daAlink_c::procGrabReadyInit() {
         resetUpperAnime(UPPER_2, -1.0f);
     }
 
+#if TARGET_PC  // enemy attribute integration
+    fopAc_ac_c* grabActor = mGrabItemAcKeep.getActor();
+
+#endif
     if (checkGrabCarryActor()) {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm =
+            alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mFailAnm.mInterpolation, mpHIO->mGrab.m.mFailAnm.mSpeed);
+        setSingleAnime(ANM_CARRY, grabAnm.playbackSpeed, mpHIO->mGrab.m.mFailAnm.mStartFrame, 9, grabAnm.morph);
+#else
         setSingleAnime(ANM_CARRY, mpHIO->mGrab.m.mFailAnm.mSpeed, mpHIO->mGrab.m.mFailAnm.mStartFrame, 9, mpHIO->mGrab.m.mFailAnm.mInterpolation);
+#endif
         mProcVar3.field_0x300e = 1;
         field_0x347c = 1.0f / (9.0f - mpHIO->mGrab.m.mFailAnm.mStartFrame);
 
@@ -743,7 +783,12 @@ int daAlink_c::procGrabReadyInit() {
         field_0x33ec = 4.0f * ((var_f31 * mGrabItemAcKeep.getActor()->scale.x) - 1.0f);
     } else {
         field_0x33ec = 0.0f;
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mPrepareAnm.mInterpolation, mpHIO->mGrab.m.mPrepareAnm.mSpeed);
+        setSingleAnime(ANM_GRAB_UP_START, grabAnm.playbackSpeed, mpHIO->mGrab.m.mPrepareAnm.mStartFrame, mpHIO->mGrab.m.mPrepareAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnimeParam(ANM_GRAB_UP_START, &mpHIO->mGrab.m.mPrepareAnm);
+#endif
         field_0x347c = 1.0f / (mpHIO->mGrab.m.mPrepareAnm.mEndFrame - mpHIO->mGrab.m.mPrepareAnm.mStartFrame);
         mProcVar3.field_0x300e = 0;
     }
@@ -765,7 +810,12 @@ int daAlink_c::procGrabReady() {
 
     if (checkAnmEnd(&mUnderFrameCtrl[0])) {
         if (field_0x3198 != 0) {
+#if TARGET_PC  // enemy attribute integration
+            const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mRecoilAnm.mInterpolation, mpHIO->mGrab.m.mRecoilAnm.mSpeed);
+            setSingleAnime(ANM_PICK_UP_LARGE_START, grabAnm.playbackSpeed, mpHIO->mGrab.m.mRecoilAnm.mStartFrame, mpHIO->mGrab.m.mRecoilAnm.mCancelFrame, grabAnm.morph);
+#else
             setSingleAnime(ANM_PICK_UP_LARGE_START, mpHIO->mGrab.m.mRecoilAnm.mSpeed, mpHIO->mGrab.m.mRecoilAnm.mStartFrame, mpHIO->mGrab.m.mRecoilAnm.mCancelFrame, mpHIO->mGrab.m.mRecoilAnm.mInterpolation);
+#endif
             field_0x3198 = 0;
         } else {
             procGrabUpInit();
@@ -784,11 +834,21 @@ int daAlink_c::procGrabUpInit() {
     commonProcInit(PROC_GRAB_UP);
 
     if (checkGrabCarryActor()) {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, 0.0f, mpHIO->mGrab.m.mFailAnm.mSpeed);
+        setSingleAnime(ANM_CARRY, grabAnm.playbackSpeed,9.0f + mpHIO->mGrab.m.mFailAnm.mSpeed,mpHIO->mGrab.m.mFailAnm.mEndFrame,grabAnm.morph);
+#else
         setSingleAnime(ANM_CARRY, mpHIO->mGrab.m.mFailAnm.mSpeed, 9.0f + mpHIO->mGrab.m.mFailAnm.mSpeed, mpHIO->mGrab.m.mFailAnm.mEndFrame, 0.0f);
+#endif
         mProcVar3.field_0x300e = 1;
         setCarryArmAngle(1.0f, 0.0f);
     } else {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mLiftBackAnm.mInterpolation, mpHIO->mGrab.m.mLiftBackAnm.mSpeed);
+        setSingleAnime(ANM_GRAB_UP, grabAnm.playbackSpeed, mpHIO->mGrab.m.mLiftBackAnm.mStartFrame, mpHIO->mGrab.m.mLiftBackAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnimeParam(ANM_GRAB_UP, &mpHIO->mGrab.m.mLiftBackAnm);
+#endif
         mProcVar3.field_0x300e = 0;
         setCarryArmAngle(0.0f, 1.0f);
     }
@@ -854,14 +914,33 @@ int daAlink_c::procGrabMiss() {
 
 int daAlink_c::procGrabThrowInit(int param_0) {
     if (checkModeFlg(0x400)) {
+#if TARGET_PC  // enemy attribute integration
+        fopAc_ac_c* grabActor = mGrabItemAcKeep.getActor();
+
+#endif
         if (checkGrabHeavyActor()) {
+#if TARGET_PC  // enemy attribute integration
+            const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mIronBallThrowAnm.mInterpolation, mpHIO->mGrab.m.mIronBallThrowAnm.mSpeed);
+            setUpperAnime(dRes_ID_ALANM_BCK_HEAVYTHROW_e, UPPER_2, grabAnm.playbackSpeed, mpHIO->mGrab.m.mIronBallThrowAnm.mStartFrame, mpHIO->mGrab.m.mIronBallThrowAnm.mEndFrame, grabAnm.morph);
+#else
             setUpperAnimeParam(dRes_ID_ALANM_BCK_HEAVYTHROW_e, UPPER_2, &mpHIO->mGrab.m.mIronBallThrowAnm);
+#endif
             field_0x343c = 14.0f;
         } else if (checkGrabAnimeSide()) {
+#if TARGET_PC  // enemy attribute integration
+            const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mInterpolation, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mSpeed);
+            setUpperAnime(dRes_ID_ALANM_BCK_BOMBTHROW_e, UPPER_2, grabAnm.playbackSpeed, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mStartFrame, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mEndFrame, grabAnm.morph);
+#else
             setUpperAnimeParam(dRes_ID_ALANM_BCK_BOMBTHROW_e, UPPER_2, &mpHIO->mGrab.m.mCarryPlaceReverseAnm);
+#endif
             field_0x343c = 4.0f;
         } else {
+#if TARGET_PC  // enemy attribute integration
+            const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mLiftAnm.mInterpolation, mpHIO->mGrab.m.mLiftAnm.mSpeed);
+            setUpperAnime(dRes_ID_ALANM_BCK_GRABTHROW_e, UPPER_2, grabAnm.playbackSpeed, mpHIO->mGrab.m.mLiftAnm.mStartFrame, mpHIO->mGrab.m.mLiftAnm.mEndFrame, grabAnm.morph);
+#else
             setUpperAnimeParam(dRes_ID_ALANM_BCK_GRABTHROW_e, UPPER_2, &mpHIO->mGrab.m.mLiftAnm);
+#endif
             field_0x343c = 5.0f;
         }
 
@@ -875,8 +954,17 @@ int daAlink_c::procGrabThrowInit(int param_0) {
         return 0;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    fopAc_ac_c* grabActor = mGrabItemAcKeep.getActor();
+
+#endif
     if (checkGrabHeavyActor()) {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mIronBallThrowAnm.mInterpolation, mpHIO->mGrab.m.mIronBallThrowAnm.mSpeed);
+        setSingleAnime(ANM_THROW_HEAVY, grabAnm.playbackSpeed, mpHIO->mGrab.m.mIronBallThrowAnm.mStartFrame, mpHIO->mGrab.m.mIronBallThrowAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnimeParam(ANM_THROW_HEAVY, &mpHIO->mGrab.m.mIronBallThrowAnm);
+#endif
         field_0x343c = 14.0f;
         field_0x347c = mpHIO->mGrab.m.mIronBallThrowAnm.mCancelFrame;
         mProcVar2.field_0x300c = 2;
@@ -889,12 +977,23 @@ int daAlink_c::procGrabThrowInit(int param_0) {
         }
 
         setSingleAnimeBaseSpeed(ANM_ATN_WAIT_RIGHT, anm_speed, mpHIO->mBasic.m.mBasicInterpolation);
+#if TARGET_PC  // enemy attribute integration
+
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mInterpolation, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mSpeed);
+        setUpperAnime(dRes_ID_ALANM_BCK_BOMBTHROW_e, UPPER_0, grabAnm.playbackSpeed, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mStartFrame, mpHIO->mGrab.m.mCarryPlaceReverseAnm.mEndFrame, grabAnm.morph);
+#else
         setUpperAnimeParam(dRes_ID_ALANM_BCK_BOMBTHROW_e, UPPER_0, &mpHIO->mGrab.m.mCarryPlaceReverseAnm);
+#endif
         field_0x343c = 4.0f;
         field_0x347c = mpHIO->mGrab.m.mCarryPlaceReverseAnm.mCancelFrame;
         mProcVar2.field_0x300c = 1;
     } else {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mLiftAnm.mInterpolation, mpHIO->mGrab.m.mLiftAnm.mSpeed);
+        setSingleAnime(ANM_THROW, grabAnm.playbackSpeed, mpHIO->mGrab.m.mLiftAnm.mStartFrame, mpHIO->mGrab.m.mLiftAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnimeParam(ANM_THROW, &mpHIO->mGrab.m.mLiftAnm);
+#endif
         field_0x343c = 5.0f;
         field_0x347c = mpHIO->mGrab.m.mLiftAnm.mCancelFrame;
         mProcVar2.field_0x300c = 0;
@@ -920,6 +1019,12 @@ int daAlink_c::procGrabThrow() {
     cLib_chaseF(&mNormalSpeed, 0.0f, mpHIO->mMove.m.mDeceleration);
 
     if (framectrl->checkPass(field_0x343c)) {
+#if TARGET_PC  // enemy attribute integration
+        // Keep Link on the grabbed enemy's movement-speed clock for the
+        // ENTIRE throw animation.  setGrabItemThrow() releases the actor, but
+        // the remainder of Link's throw animation is still part of the same
+        // interaction and must finish at the inherited speed.
+#endif
         setGrabItemThrow();
     }
 
@@ -958,16 +1063,30 @@ int daAlink_c::procGrabPutInit() {
     field_0x33e8 = 0.0f;
     field_0x3478 = 23.0f;
 
+#if TARGET_PC  // enemy attribute integration
+    fopAc_ac_c* grabActor = mGrabItemAcKeep.getActor();
+
+#endif
     if (checkGrabCarryActor()) {
         field_0x3198 = 0;
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mCarryLiftAnm.mInterpolation, mpHIO->mGrab.m.mCarryLiftAnm.mSpeed);
+        setSingleAnime(ANM_CARRY, grabAnm.playbackSpeed, 9.0f, mpHIO->mGrab.m.mCarryLiftAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnime(ANM_CARRY, mpHIO->mGrab.m.mCarryLiftAnm.mSpeed, 9.0f, mpHIO->mGrab.m.mCarryLiftAnm.mEndFrame, mpHIO->mGrab.m.mCarryLiftAnm.mInterpolation);
+#endif
         mProcVar3.field_0x300e = 1;
         field_0x347c = 1.0f / (mpHIO->mGrab.m.mCarryLiftAnm.mEndFrame - 9.0f);
         field_0x3480 = 1.0f / (mpHIO->mGrab.m.mCarryLiftAnm.mEndFrame - field_0x3478);
     } else {
         mProcVar3.field_0x300e = 0;
         field_0x3198 = 0;
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mThrowAnm.mInterpolation, mpHIO->mGrab.m.mThrowAnm.mSpeed);
+        setSingleAnime(ANM_GRAB_UP, grabAnm.playbackSpeed, mpHIO->mGrab.m.mThrowAnm.mStartFrame, mpHIO->mGrab.m.mThrowAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnimeParam(ANM_GRAB_UP, &mpHIO->mGrab.m.mThrowAnm);
+#endif
         field_0x347c = 1.0f / (mpHIO->mGrab.m.mThrowAnm.mEndFrame - mpHIO->mGrab.m.mThrowAnm.mStartFrame);
     }
 
@@ -1093,7 +1212,14 @@ int daAlink_c::procGrabWait() {
 
 int daAlink_c::procGrabReboundInit(int param_0) {
     commonProcInit(PROC_GRAB_REBOUND);
+#if TARGET_PC  // enemy attribute integration
+
+    fopAc_ac_c* grabActor = mGrabItemAcKeep.getActor();
+    const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mCarryAnm.mInterpolation, mpHIO->mGrab.m.mCarryAnm.mSpeed);
+    setSingleAnime(ANM_PICK_UP_LARGE, grabAnm.playbackSpeed, mpHIO->mGrab.m.mCarryAnm.mStartFrame, mpHIO->mGrab.m.mCarryAnm.mEndFrame, grabAnm.morph);
+#else
     setSingleAnimeParam(ANM_PICK_UP_LARGE, &mpHIO->mGrab.m.mCarryAnm);
+#endif
 
     mNormalSpeed = 0.0f;
     field_0x3198 = param_0;
@@ -1117,7 +1243,11 @@ int daAlink_c::procGrabRebound() {
 
     if (field_0x3198 != 0) {
         if (field_0x2060->getOldFrameRate() < 0.1f) {
+#if TARGET_PC  // enemy attribute integration
+            setWaterInAnmRate(framectrl, mpHIO->mGrab.m.mCarryAnm.mSpeed * alink_grab_enemy_speed(grabActor));
+#else
             setWaterInAnmRate(framectrl, mpHIO->mGrab.m.mCarryAnm.mSpeed);
+#endif
             field_0x3198 = 0;
         }
     } else if (checkAnmEnd(framectrl) || (checkInputOnR() && (framectrl->getFrame() > mpHIO->mGrab.m.mCarryAnm.mCancelFrame))) {
@@ -1130,14 +1260,28 @@ int daAlink_c::procGrabRebound() {
 int daAlink_c::procGrabStandInit() {
     commonProcInit(PROC_GRAB_STAND);
 
+#if TARGET_PC  // enemy attribute integration
+    fopAc_ac_c* grabActor = mGrabItemAcKeep.getActor();
+
+#endif
     if (checkUnderMove0BckNoArc(ANM_CARRY)) {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, 0.0f, mpHIO->mGrab.m.mCarryLiftAnm.mSpeed);
+        setSingleAnime(ANM_CARRY, grabAnm.playbackSpeed, mpHIO->mGrab.m.mCarryLiftAnm.mStartFrame, (9.0f + mpHIO->mGrab.m.mCarryLiftAnm.mSpeed), grabAnm.morph);
+#else
         setSingleAnime(ANM_CARRY, mpHIO->mGrab.m.mCarryLiftAnm.mSpeed, mpHIO->mGrab.m.mCarryLiftAnm.mStartFrame, (9.0f + mpHIO->mGrab.m.mCarryLiftAnm.mSpeed), 0.0f);
+#endif
         field_0x3478 = mpHIO->mGrab.m.mCarryLiftAnm.mCancelFrame;
         field_0x347c = 1.0f / (9.0f - mpHIO->mGrab.m.mCarryLiftAnm.mStartFrame);
         mProcVar3.field_0x300e = 1;
         setCarryArmAngle(1.0f, 0.0f);
     } else {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mGrab.m.mStandReverseAnm.mInterpolation, mpHIO->mGrab.m.mStandReverseAnm.mSpeed);
+        setSingleAnime(ANM_GRAB_UP_START, grabAnm.playbackSpeed, mpHIO->mGrab.m.mStandReverseAnm.mStartFrame, mpHIO->mGrab.m.mStandReverseAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnimeParam(ANM_GRAB_UP_START, &mpHIO->mGrab.m.mStandReverseAnm);
+#endif
         field_0x3478 = mpHIO->mGrab.m.mStandReverseAnm.mCancelFrame;
         mProcVar3.field_0x300e = 0;
     }
@@ -1262,7 +1406,12 @@ int daAlink_c::procPickUpInit() {
         fopAcM_onSwitch(field_0x27f4, 63);
         var_r29 = FALSE;
     } else {
+#if TARGET_PC  // enemy attribute integration
+        const actor_attr::ActionAnimationParams grabAnm = alink_grab_enemy_anm_params(grabActor, mpHIO->mItem.mPickUp.m.mGrabAnm.mInterpolation, mpHIO->mItem.mPickUp.m.mGrabAnm.mSpeed);
+        setSingleAnime(ANM_PICK_UP, grabAnm.playbackSpeed, mpHIO->mItem.mPickUp.m.mGrabAnm.mStartFrame, mpHIO->mItem.mPickUp.m.mGrabAnm.mEndFrame, grabAnm.morph);
+#else
         setSingleAnimeParam(ANM_PICK_UP, &mpHIO->mItem.mPickUp.m.mGrabAnm);
+#endif
         mProcVar3.field_0x300e = 0;
         mProcVar4.field_0x3010 = 0;
         var_r29 = TRUE;
@@ -1300,9 +1449,20 @@ int daAlink_c::procPickUp() {
         onModeFlg(4);
         checkNextAction(1);
     } else if (framectrl->checkPass(9.0f)) {
+#if TARGET_PC  // enemy attribute integration
+        fopAc_ac_c* grabActor = mGrabItemAcKeep.getActor();
+        const bool restoreVanillaRate = grabActor != NULL && fopAcM_GetGroup(grabActor) == fopAc_ENEMY_e && alink_grab_enemy_speed(grabActor) != 1.0f;
+
+#endif
         mEquipItem = 0x102;
         mItemAcKeep = mGrabItemAcKeep;
         mGrabItemAcKeep.clearData();
+#if TARGET_PC  // enemy attribute integration
+
+        if (restoreVanillaRate) {
+            framectrl->setRate(mpHIO->mItem.mPickUp.m.mGrabAnm.mSpeed);
+        }
+#endif
         field_0x2f94 = 3;
         onResetFlg0(RFLG0_GRAB_UP_START);
     }
@@ -1624,11 +1784,32 @@ BOOL daAlink_c::checkGoatCatchActor(fopAc_ac_c* i_actor) {
 }
 
 f32 daAlink_c::getGoatCatchDistance2() {
+#if TARGET_PC  // enemy attribute integration
+    const f32 size_mul = actor_attr::enemy_size_multiplier(field_0x27f4);
+    f32 distance2 = SQUARE(300.0f * size_mul);
+
+    if (fopAcM_GetName(field_0x27f4) == fpcNm_B_MGN_e) {
+        distance2 = SQUARE(1000.0f * size_mul);
+
+        if (size_mul < 1.0f) {
+            const f32 grab_range_mul = size_mul < 1.0f ? 1.0f + (size_mul - 1.0f) * 0.6f : size_mul;
+            const f32 prompt_forward = 1500.0f * grab_range_mul;
+            const f32 prompt_side = 200.0f * grab_range_mul;
+            const f32 prompt_distance2 = SQUARE(prompt_forward) + SQUARE(prompt_side);
+            if (distance2 < prompt_distance2) {
+                distance2 = prompt_distance2;
+            }
+        }
+    }
+
+    return distance2;
+#else
     if (fopAcM_GetName(field_0x27f4) == fpcNm_B_MGN_e) {
         return SQUARE(1000.0f);
     }
 
     return SQUARE(300.0f);
+#endif
 }
 
 int daAlink_c::endPushPull() {
@@ -2213,6 +2394,9 @@ int daAlink_c::procGoatCatchInit(fopAc_ac_c* i_actor, f32 param_1) {
     field_0x2f98 = 4;
 
     setSingleAnimeBase(ANM_COW_CATCH_START);
+#if TARGET_PC  // enemy attribute integration
+    alink_set_frame_rate_for_grabbed_enemy(&mUnderFrameCtrl[0], i_actor, 1.0f);
+#endif
 
     s16 actor_name = fopAcM_GetName(i_actor);
     if (actor_name == fpcNm_OBJ_GRA_e) {
@@ -2350,6 +2534,9 @@ int daAlink_c::procGoatCatch() {
         f32 anm_frame = framectrl->getFrame();
         if (checkAnmEnd(framectrl)) {
             setSingleAnimeBase(ANM_COW_CATCH);
+#if TARGET_PC  // enemy attribute integration
+            alink_set_frame_rate_for_grabbed_enemy(framectrl, temp_r3, 1.0f);
+#endif
         }
 
         field_0x2f9d = 0x60;
@@ -2388,6 +2575,9 @@ int daAlink_c::procGoatCatch() {
         if (mNormalSpeed > 0.0f) {
             mNormalSpeed = 0.0f;
             setSingleAnimeBase(ANM_COW_PRESS);
+#if TARGET_PC  // enemy attribute integration
+            alink_set_frame_rate_for_grabbed_enemy(framectrl, temp_r3, 1.0f);
+#endif
             voiceStart(Z2SE_AL_V_LIFTUP_L);
         } else if (checkAnmEnd(framectrl) && checkGoatStopGame()) {
             dComIfGs_onTmpBit((u16)dSv_event_tmp_flag_c::tempBitLabels[35]);
@@ -2427,6 +2617,11 @@ int daAlink_c::procGoatCatch() {
 
             mProcVar2.field_0x300c = 1;
             setSingleAnimeBase(anm);
+#if TARGET_PC  // enemy attribute integration
+            // Do not restore vanilla rate here.  Even though the enemy has
+            // entered its throw state, Link must finish the throw animation
+            // at the enemy's inherited movement speed.
+#endif
             field_0x2f99 = 0xC;
             voiceStart(Z2SE_AL_V_THROW_GORON);
         }

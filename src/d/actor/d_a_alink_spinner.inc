@@ -4,23 +4,99 @@
  */
 
 #include "d/actor/d_a_alink.h"
+#if TARGET_PC  // enemy attribute integration
+#include "d/actor/d_a_b_ds.h"
+#endif
 #include "d/actor/d_a_spinner.h"
+#if TARGET_PC  // enemy attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+static f32 spinner_boss_room_speed_multiplier();
+#endif
 
 f32 daAlink_c::getSpinnerGravity() const {
+#if TARGET_PC  // enemy attribute integration
+    const f32 speed_multiplier = spinner_boss_room_speed_multiplier();
+    return mpHIO->mItem.mSpinner.m.mGravity * speed_multiplier * speed_multiplier;
+#else
     return mpHIO->mItem.mSpinner.m.mGravity;
+#endif
 }
 
 f32 daAlink_c::getSpinnerMaxFallSpeed() const {
+#if TARGET_PC  // enemy attribute integration
+    return mpHIO->mItem.mSpinner.m.mMaxFallSpeed * spinner_boss_room_speed_multiplier();
+#else
     return mpHIO->mItem.mSpinner.m.mMaxFallSpeed;
+#endif
 }
 
 f32 daAlink_c::getSpinnerJumpRate() const {
     return mpHIO->mItem.mSpinner.m.mJumpRate;
 }
 
+#if TARGET_PC  // enemy attribute integration
+static void* spinner_boss_search(void* i_actor, void* i_data) {
+    if (!fopAcM_IsActor(i_actor) || fopAcM_GetName(i_actor) != fpcNm_B_DS_e) {
+        return NULL;
+    }
+
+    fopAc_ac_c* actor = static_cast<fopAc_ac_c*>(i_actor);
+    u8 actorType = fopAcM_GetParamBit(actor, 0, 8);
+    if (actorType == 0xFF) {
+        actorType = daB_DS_c::TYPE_BATTLE_1;
+    }
+
+    return actorType == *static_cast<const u8*>(i_data) ? i_actor : NULL;
+}
+
+static fopAc_ac_c* spinner_find_active_boss() {
+    // During the phase transition both Stallord instances briefly exist, so
+    // prefer the newly created phase-two actor. Filtering by type also keeps
+    // B_DS projectile actors out of the attribute lookup.
+    u8 bossType = daB_DS_c::TYPE_BATTLE_2;
+    fopAc_ac_c* boss = static_cast<fopAc_ac_c*>(fpcM_Search(spinner_boss_search, &bossType));
+
+    if (boss == NULL) {
+        bossType = daB_DS_c::TYPE_BATTLE_1;
+        boss = static_cast<fopAc_ac_c*>(fpcM_Search(spinner_boss_search, &bossType));
+    }
+
+    return boss;
+}
+
+static f32 spinner_boss_speed_multiplier() {
+    fopAc_ac_c* boss = spinner_find_active_boss();
+    if (boss == NULL) {
+        return 1.0f;
+    }
+
+    u8 bossType = fopAcM_GetParamBit(boss, 0, 8);
+    if (bossType == 0xFF) {
+        bossType = daB_DS_c::TYPE_BATTLE_1;
+    }
+
+    // The spinner only follows Stallord's randomized movement speed during
+    // phase 2.  Phase 1 always keeps completely vanilla spinner timing/speed.
+    if (bossType != daB_DS_c::TYPE_BATTLE_2) {
+        return 1.0f;
+    }
+
+    return dusk::mods::svc::actor_attr::resolve_multiplier(boss, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+}
+
+static f32 spinner_boss_room_speed_multiplier() {
+    return daAlink_c::checkStageName("D_MN10A") ? spinner_boss_speed_multiplier() : 1.0f;
+}
+
+#endif
 s16 daAlink_c::getSpinnerRideMoveTime() {
     if (checkLv4BossRoom()) {
+#if TARGET_PC  // enemy attribute integration
+        return dusk::mods::svc::actor_attr::sync_timer(mpHIO->mItem.mSpinner.m.mBossRideMoveTime, spinner_boss_speed_multiplier());
+#else
         return mpHIO->mItem.mSpinner.m.mBossRideMoveTime;
+#endif
     }
 
     return mpHIO->mItem.mSpinner.m.mRideMoveTime;
@@ -28,30 +104,60 @@ s16 daAlink_c::getSpinnerRideMoveTime() {
 
 f32 daAlink_c::getSpinnerRideSpeedF() {
     if (checkLv4BossRoom()) {
+#if TARGET_PC  // enemy attribute integration
+        return mpHIO->mItem.mSpinner.m.mBossRideSpeed * spinner_boss_speed_multiplier();
+#else
         return mpHIO->mItem.mSpinner.m.mBossRideSpeed;
+#endif
     }
 
     return mpHIO->mItem.mSpinner.m.mRideSpeed;
 }
 
 f32 daAlink_c::getSpinnerRideDecSpeedMax() const {
+#if TARGET_PC  // enemy attribute integration
+    const f32 speed_multiplier = spinner_boss_room_speed_multiplier();
+    return mpHIO->mItem.mSpinner.m.mDecelSpeedMax * speed_multiplier * speed_multiplier;
+#else
     return mpHIO->mItem.mSpinner.m.mDecelSpeedMax;
+#endif
 }
 
 f32 daAlink_c::getSpinnerRideDecSpeedMin() const {
+#if TARGET_PC  // enemy attribute integration
+    const f32 speed_multiplier = spinner_boss_room_speed_multiplier();
+    return mpHIO->mItem.mSpinner.m.mDecelSpeedMin * speed_multiplier * speed_multiplier;
+#else
     return mpHIO->mItem.mSpinner.m.mDecelSpeedMin;
+#endif
 }
 
 f32 daAlink_c::getSpinnerRideDecSpeedRate() const {
+#if TARGET_PC  // enemy attribute integration
+    return dusk::mods::svc::actor_attr::action_fraction(mpHIO->mItem.mSpinner.m.mDecelRate, spinner_boss_room_speed_multiplier());
+#else
     return mpHIO->mItem.mSpinner.m.mDecelRate;
+#endif
 }
 
 s16 daAlink_c::getSpinnerRideRotAngleMax() const {
+#if TARGET_PC  // enemy attribute integration
+    const f32 speedMultiplier = spinner_boss_room_speed_multiplier();
+
+    return static_cast<s16>(mpHIO->mItem.mSpinner.m.mRideRotAngleMax * speedMultiplier);
+#else
     return mpHIO->mItem.mSpinner.m.mRideRotAngleMax;
+#endif
 }
 
 s16 daAlink_c::getSpinnerRideRotAngleMin() const {
+#if TARGET_PC  // enemy attribute integration
+    const f32 speedMultiplier = spinner_boss_room_speed_multiplier();
+
+    return static_cast<s16>(mpHIO->mItem.mSpinner.m.mRideRotAngleMin * speedMultiplier);
+#else
     return mpHIO->mItem.mSpinner.m.mRideRotAngleMin;
+#endif
 }
 
 void daAlink_c::onSpinnerPathForceRemove() {

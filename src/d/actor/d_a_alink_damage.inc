@@ -8,6 +8,9 @@
 #include "d/actor/d_a_horse.h"
 #include "d/actor/d_a_crod.h"
 #include "d/d_msg_object.h"
+#if TARGET_PC  // enemy attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 #ifdef TARGET_PC
 #include "d/actor/d_a_obj_carry.h"
 #include "dusk/achievements.h"
@@ -15,6 +18,29 @@
 
 #if DEBUG
 #include "d/d_s_menu.h"
+#endif
+#if TARGET_PC  // enemy attribute integration
+
+/*
+ * Link is a singleton, so these reaction-local values can live outside
+ * daAlink_c without changing its fixed engine layout. Ground/wolf damage needs
+ * the multiplier again on later frames for deceleration; swimming has its own
+ * vector and lifetime.
+ */
+static f32 l_enemyDamageKnockbackMultiplier = 1.0f;
+static f32 l_enemySwimKnockbackMultiplier = 1.0f;
+
+static f32 getEnemyPlayerKnockbackMultiplier(dCcD_GObjInf* i_hitObj) {
+    if (i_hitObj == NULL) {
+        return 1.0f;
+    }
+
+    return dusk::mods::svc::actor_attr::enemy_player_knockback_multiplier(i_hitObj->GetTgHitAc());
+}
+
+static f32 scaleEnemyPlayerKnockbackStep(const f32 vanillaStep, const f32 multiplier) {
+    return multiplier == 1.0f ? vanillaStep : vanillaStep * multiplier;
+}
 #endif
 
 s16 daAlink_c::getFreezeR() const {
@@ -910,6 +936,13 @@ int daAlink_c::procDamageInit(dCcD_GObjInf* i_tgObj, BOOL param_1) {
         mNormalSpeed = mpHIO->mMove.m.mMaxSpeed;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    l_enemyDamageKnockbackMultiplier = getEnemyPlayerKnockbackMultiplier(i_tgObj);
+    if (l_enemyDamageKnockbackMultiplier != 1.0f) {
+        mNormalSpeed *= l_enemyDamageKnockbackMultiplier;
+    }
+
+#endif
     daPy_frameCtrl_c* frame_ctrl = mUnderFrameCtrl;
     field_0x347c = M_PI / (frame_ctrl->getEnd() - frame_ctrl->getStart());
 
@@ -935,7 +968,11 @@ int daAlink_c::procDamage() {
     mBodyAngle.z = -mProcVar3.field_0x300e * var_f31;
     mBodyAngle.y = 0;
 
+#if TARGET_PC  // enemy attribute integration
+    cLib_chaseF(&mNormalSpeed, 0.0f, scaleEnemyPlayerKnockbackStep(mpHIO->mDamage.mDamNormal.m.mDeceleration, l_enemyDamageKnockbackMultiplier));
+#else
     cLib_chaseF(&mNormalSpeed, 0.0f, mpHIO->mDamage.mDamNormal.m.mDeceleration);
+#endif
 
     if (checkFreezeDamage()) {
         freezeTimerDamage();
@@ -1179,6 +1216,19 @@ int daAlink_c::procCoLargeDamageInit(int i_type, BOOL i_isLargeDmg, s16 param_2,
         current.pos.z += 35.0f * cM_scos(current.angle.y);
         speed.y = 0.0f;
     }
+#if TARGET_PC  // enemy attribute integration
+
+    const f32 playerKnockbackMultiplier = getEnemyPlayerKnockbackMultiplier(i_hitObj);
+    if (!is_rein_ride && playerKnockbackMultiplier != 1.0f) {
+        /* Scale speed and deceleration together: duration remains vanilla and
+           horizontal travel distance scales linearly with the setting. */
+        mNormalSpeed *= playerKnockbackMultiplier;
+        field_0x347c *= playerKnockbackMultiplier;
+
+        /* Keep the wall-impact threshold in the same scaled speed space. */
+        field_0x3478 *= playerKnockbackMultiplier;
+    }
+#endif
 
     mBodyAngle.set(0, 0, 0);
 

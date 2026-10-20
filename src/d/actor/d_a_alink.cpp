@@ -6,6 +6,9 @@
 #include "d/dolzel.h" // IWYU pragma: keep
 
 #include "d/actor/d_a_alink.h"
+#if TARGET_PC
+static const f32* volatile gBossMaxLengthAddress = nullptr;
+#endif
 #include "JSystem/J2DGraph/J2DAnmLoader.h"
 #include "JSystem/J3DGraphBase/J3DMaterial.h"
 #include "JSystem/J3DGraphLoader/J3DAnmLoader.h"
@@ -4127,11 +4130,12 @@ J3DModel* daAlink_c::initModel(J3DModelData* i_modelData, u32 i_mdlFlags, u32 i_
 #if TARGET_PC
         u8* imgData = tex->getImgDataPtr(texNo);
         if (mpWarpTexData == imgData)
-            warpMaterial = true;
 #else
         ResTIMG* timg = tex->getResTIMG(texNo);
         if (mpWarpTexData == (void*)((uintptr_t)timg + timg->imageOffset)) {
+#endif
             warpMaterial = true;
+#if !TARGET_PC
         }
 #endif
     }
@@ -6467,6 +6471,10 @@ void daAlink_c::setAtCollision() {
             f32 shootSpeed;
             if (checkLv7BossRoom()) {
                 shootSpeed = mpHIO->mItem.mHookshot.m.mBossShootSpeed;
+#if TARGET_PC
+                gBossMaxLengthAddress = &mpHIO->mItem.mHookshot.m.mBossMaxLength;
+#endif
+
                 maxLength = mpHIO->mItem.mHookshot.m.mBossMaxLength;
             } else {
                 shootSpeed = mpHIO->mItem.mHookshot.m.mShootSpeed;
@@ -13022,6 +13030,12 @@ void daAlink_c::posMove() {
     transAnimeProc(&sp108, temp_f30, temp_f29);
 
     s16 var_r26;
+#if TARGET_PC  // enemy attribute integration
+    if (!checkModeFlg(MODE_SWIMMING)) {
+        l_enemySwimKnockbackMultiplier = 1.0f;
+    }
+
+#endif
     if (checkModeFlg(MODE_SWIMMING)) {
         var_r26 = field_0x3080;
     } else if (!mLinkAcch.ChkGroundHit() || checkMagneBootsOn() ||
@@ -13099,7 +13113,13 @@ void daAlink_c::posMove() {
     }
 
     if (checkModeFlg(MODE_SWIMMING)) {
+#if TARGET_PC  // enemy attribute integration
+        if (cLib_chasePos(&field_0x3750, cXyz::Zero, scaleEnemyPlayerKnockbackStep(mpHIO->mDamage.mDamSwim.m.mDeceleration, l_enemySwimKnockbackMultiplier))) {
+            l_enemySwimKnockbackMultiplier = 1.0f;
+        }
+#else
         cLib_chasePos(&field_0x3750, cXyz::Zero, mpHIO->mDamage.mDamSwim.m.mDeceleration);
+#endif
         current.pos += field_0x3750;
 
         if (checkNoResetFlg0(FLG0_SWIM_UP) && mProcID != PROC_SWIM_DIVE) {
@@ -18201,14 +18221,13 @@ int daAlink_c::execute() {
             f32 cStickY = mDoCPd_c::getSubStickY(PAD_1);
             if (cStickY > 0.3f || cStickY < -0.3f) {
                 current.pos.y += moveSpeed * cStickY;
-            }
 #else
             if (mDoCPd_c::getHoldY(PAD_1)) {
                 current.pos.y += moveSpeed;
             } else if (mDoCPd_c::getHoldX(PAD_1)) {
                 current.pos.y -= moveSpeed;
-            }
 #endif
+            }
 
             current.pos.x += moveSpeed * mStickValue * cM_ssin(mMoveAngle);
             current.pos.z += moveSpeed * mStickValue * cM_scos(mMoveAngle);
