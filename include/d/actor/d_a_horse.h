@@ -242,8 +242,15 @@ public:
     u32 checkResetStateFlg0(daHorse_RFLG0 flag) const { return m_resetStateFlg0 & flag; }
     u32 checkEndResetStateFlg0(daHorse_ERFLG0 flag) const { return m_endResetStateFlg0 & flag; }
     u32 checkStateFlg0(daHorse_FLG0 flag) const { return m_stateFlg0 & flag; }
-    f32 getNormalMaxSpeedF() { return m_normalMaxSpeedF; }
-    f32 getLashMaxSpeedF() { return m_lashMaxSpeedF; }
+#if TARGET_PC
+    f32 getKingBulblinEncounterSpeedMultiplier() const;
+#endif
+    f32 getNormalMaxSpeedF() const {
+        return DUSK_IF_ELSE(m_normalMaxSpeedF * getKingBulblinEncounterSpeedMultiplier(), m_normalMaxSpeedF);
+    }
+    f32 getLashMaxSpeedF() const {
+        return DUSK_IF_ELSE(m_lashMaxSpeedF * getKingBulblinEncounterSpeedMultiplier(), m_lashMaxSpeedF);
+    }
     void changeDemoMoveAngle(s16 angle) { m_demoMoveAngle = angle; }
     void setDemoStickR(f32 stick) { m_demoStickR = stick; }
     void changeDemoMode(u32 param_0, int param_1) { m_demoMode = param_0; field_0x1728 = param_1; }
@@ -327,7 +334,9 @@ public:
     }
 
     void setSpeedF(f32 i_speed) { speedF = i_speed; }
-    void setWalkSpeedF() { speedF = field_0x1764; }
+    void setWalkSpeedF() {
+        speedF = DUSK_IF_ELSE(field_0x1764 * getKingBulblinEncounterSpeedMultiplier(), field_0x1764);
+    }
 
     MtxP getLeftStirrupMtx() { return m_model->getAnmMtx(0x17); }
     MtxP getRightStirrupMtx() { return m_model->getAnmMtx(0x19); }
