@@ -11,12 +11,13 @@
 #include <pad.h>
 
 #include <cmath>
+#include <algorithm>
+#include <array>
 
 namespace dusk::input {
 
 namespace {
-    cXyz currentColor = {0, 0, 0};
-    float lerpSpeed = 0.0f;
+    std::array<cXyz, PAD_MAX_CONTROLLERS> currentColor{};
 
     enum ColorVariations : u8 {
         NO_COLOR = 0,
@@ -98,33 +99,71 @@ namespace {
         return kColorTable[NO_COLOR].color;
     }
 
+    cXyz getColorFromHP() {
+        // HP in quarter-heart units (pieces)
+        const int currentHp = dComIfGs_getLife();
+        const int maxHp = dComIfGs_getMaxLifeGauge();
+
+        // Normalize to [0, 1]
+        float t = static_cast<float>(currentHp) / static_cast<float>(maxHp);
+        t = std::clamp(t, 0.0f, 1.0f);
+
+        const cXyz kRed = {255, 0, 0};   // 0% HP
+        const cXyz kGreen = {0, 255, 0}; // 100% HP
+
+        // Interpolate between red and green based on HP percentage
+        return LerpColor(kRed, kGreen, t);
+    }
 }  // namespace
 
 bool pad_has_led(const int port) noexcept {
-    if (port > PAD_MAX_CONTROLLERS || port < 0)
+    if (port >= PAD_MAX_CONTROLLERS || port < 0)
         return false;
 
     return PADHasLED(port);
 }
 
 void handleGamepadColor() {
-    auto [color, speed] = getColorSetting();
+    const ColorSetting gameStateColor = getColorSetting();
+    const cXyz hpColor = getColorFromHP();
     const cXyz additionalColor = getAdditionalColor();
-    cXyz finalColor = color + additionalColor;
-    lerpSpeed = speed / 30.0f;
+    const auto& settings = getSettings();
 
-    clamp(finalColor);
-    currentColor = LerpColor(currentColor, finalColor, lerpSpeed);
+    for (int port = 0; port < PAD_MAX_CONTROLLERS; ++port) {
+        const bool hasLed = pad_has_led(port);
+        const auto ledMode = settings.game.ledStatusMode[port].getValue();
 
-    for (int i = 0; i < 4; i++) {
-        if (pad_has_led(i) && getSettings().game.enableLED[i]) {
-            PADSetColor(
-                i,
-                static_cast<u8>(currentColor.x),
-                static_cast<u8>(currentColor.y),
-                static_cast<u8>(currentColor.z)
-            );
+        if (!hasLed) {
+            currentColor[port] = cXyz(0, 0, 0);
+            continue;
         }
+
+        switch (ledMode) {
+        case LedStatusMode::OFF:
+            currentColor[port] = cXyz(0, 0, 0);
+            PADSetColor(port, 0, 0, 0);
+            continue;
+        case LedStatusMode::PLAYER_HP: {
+            currentColor[port] = hpColor;
+            break;
+        }
+        case LedStatusMode::GAME_STATE: {
+            cXyz finalColor = gameStateColor.color + additionalColor;
+            const float lerpSpeed = gameStateColor.speed / 30.0f;
+            clamp(finalColor);
+            currentColor[port] = LerpColor(currentColor[port], finalColor, lerpSpeed);
+            break;
+        }
+        default:
+            continue;
+        }
+
+        PADSetColor(
+            port,
+            static_cast<u8>(currentColor[port].x),
+            static_cast<u8>(currentColor[port].y),
+            static_cast<u8>(currentColor[port].z)
+        );
     }
 }
 
