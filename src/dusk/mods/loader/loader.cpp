@@ -132,6 +132,9 @@ static void warn_unpublished_deferred_exports(const LoadedMod& mod) {
         }
     }
 }
+LoadedMod* ModLoader::try_load_mod(const fs::path& modPath, bool fromDir, uint32_t searchDirIndex) {
+    return try_load_mod(modPath, fromDir, searchDirIndex, {});
+}
 
 LoadedMod* ModLoader::try_load_mod(const fs::path& modPath, bool fromDir, uint32_t searchDirIndex,
     std::unique_ptr<ModBundle> bundle) {

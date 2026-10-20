@@ -29,7 +29,7 @@ if(APPLE AND NOT CMAKE_OSX_SYSROOT)
 endif()
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -545,6 +545,7 @@ if (DUSK_ENABLE_CODE_MODS AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR
     add_subdirectory(mods/cosmetics)
     add_subdirectory(mods/randomizer)
     add_subdirectory(mods/audio_mod)
+    add_subdirectory(mods/image_mod)
 endif ()
 
 if (APPLE)

@@ -1,0 +1,7 @@
+{
+  "id": "dev.twilitrealm.image_mod",
+  "name": "[Demo] Image Service Example",
+  "version": "1.0.0",
+  "author": "Twilit Realm",
+  "description": "Demo svc_image for loading PNG images"
+}
