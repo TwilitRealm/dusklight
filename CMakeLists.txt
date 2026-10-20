@@ -28,6 +28,22 @@ if(APPLE AND NOT CMAKE_OSX_SYSROOT)
             OUTPUT_STRIP_TRAILING_WHITESPACE)
 endif()
 
+if (MSVC)
+    # Edit & Continue
+    if ("${CMAKE_MSVC_DEBUG_INFORMATION_FORMAT}" STREQUAL "" AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "EditAndContinue")
+    endif ()
+
+    if (CMAKE_MSVC_DEBUG_INFORMATION_FORMAT STREQUAL "EditAndContinue")
+        add_link_options("/INCREMENTAL")
+    else ()
+        add_compile_options(/guard:cf)
+        add_link_options(/guard:cf)
+    endif ()
+
+    add_link_options(/CETCOMPAT)
+endif ()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -121,17 +137,6 @@ if (DUSK_ENABLE_CODE_MODS AND CMAKE_SYSTEM_NAME MATCHES "^(iOS|tvOS)$")
         message(FATAL_ERROR
                 "iOS/tvOS code mods require a single arm64 architecture; got "
                 "CMAKE_OSX_ARCHITECTURES='${CMAKE_OSX_ARCHITECTURES}'")
-    endif ()
-endif ()
-
-# Edit & Continue
-if (MSVC)
-    if ("${CMAKE_MSVC_DEBUG_INFORMATION_FORMAT}" STREQUAL "" AND CMAKE_BUILD_TYPE STREQUAL "Debug"
-            AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "EditAndContinue")
-    endif ()
-    if (CMAKE_MSVC_DEBUG_INFORMATION_FORMAT STREQUAL "EditAndContinue")
-        add_link_options("/INCREMENTAL")
     endif ()
 endif ()
 
