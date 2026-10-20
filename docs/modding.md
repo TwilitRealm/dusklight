@@ -1531,15 +1531,8 @@ typedef struct MyModService {
     ModResult (*do_thing)(ModContext* ctx, int value);
 } MyModService;
 
-#ifdef __cplusplus
-#include "mods/service.hpp"
-template <>
-struct mods::ServiceTraits<MyModService> {
-    static constexpr const char* id = MY_MOD_SERVICE_ID;
-    static constexpr uint16_t major_version = MY_MOD_SERVICE_MAJOR;
-    static constexpr uint16_t minor_version = MY_MOD_SERVICE_MINOR;
-};
-#endif
+MOD_DECLARE_SERVICE(MyModService, svc_my_mod, MY_MOD_SERVICE_ID, MY_MOD_SERVICE_MAJOR,
+    MY_MOD_SERVICE_MINOR);
 ```
 
 **Provider:**
