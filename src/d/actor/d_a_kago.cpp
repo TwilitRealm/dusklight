@@ -1,6 +1,6 @@
 /**
  * @file d_a_kago.cpp
- * 
+ *
 */
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
@@ -3530,7 +3530,7 @@ void daKago_c::action() {
 #endif
     mStickY = mDoCPd_c::getStickY(PAD_1);
 
-#ifdef TARGET_PC
+#if TARGET_PC
     if(dusk::getSettings().game.invertAirSwimX) {
         mStickX = -mStickX;
     }

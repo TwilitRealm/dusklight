@@ -100,7 +100,7 @@ void* JKRAram::run(void) {
     OSInitMessageQueue(&sMessageQueue, sMessageBuffer, 4);
     do {
         OSMessage msg;
-#ifdef TARGET_PC
+#if TARGET_PC
         if (!OSReceiveMessage(&sMessageQueue, &msg, OS_MESSAGE_BLOCK)) {
             break;
         }
@@ -118,7 +118,7 @@ void* JKRAram::run(void) {
             break;
         }
     } while (true);
-#ifdef TARGET_PC
+#if TARGET_PC
     return NULL;
 #endif
 }

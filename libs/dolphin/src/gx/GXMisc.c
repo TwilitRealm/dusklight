@@ -43,7 +43,7 @@ void GXFlush(void) {
     if (__GXData->dirtyState) {
         __GXSetDirtyState();
     }
-    
+
     GX_WRITE_U32(0);
     GX_WRITE_U32(0);
     GX_WRITE_U32(0);
@@ -135,7 +135,7 @@ void GXSetDrawDone(void) {
 
     CHECK_GXBEGIN(488, "GXSetDrawDone");
     enabled = OSDisableInterrupts();
-#ifdef TARGET_PC
+#if TARGET_PC
     // On PC there is no GX GPU, so draw is always immediately done.
     // Without the hardware finish interrupt, GXWaitDrawDone would deadlock.
     DrawDone = 1;
@@ -153,7 +153,7 @@ void GXWaitDrawDone(void) {
 
     CHECK_GXBEGIN(534, "GXWaitDrawDone");
 
-#ifdef TARGET_PC
+#if TARGET_PC
     // On PC there is no GX hardware — draw is always done immediately.
     DrawDone = 1;
     return;
@@ -168,7 +168,7 @@ void GXWaitDrawDone(void) {
 
 void GXDrawDone(void) {
     CHECK_GXBEGIN(566, "GXDrawDone");
-#ifdef TARGET_PC
+#if TARGET_PC
     // On PC, no GPU to wait for — return immediately.
     DrawDone = 1;
     return;

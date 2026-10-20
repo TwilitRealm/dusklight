@@ -91,7 +91,7 @@ public:
     /* 0x58 */ f32 mPositionX;
     /* 0x5C */ f32 mPositionY;
     /* 0x60 */ f32 mParam1;
-#ifdef TARGET_PC
+#if TARGET_PC
     f32 mBaseParam1;
 #endif
     /* 0x64 */ f32 mParam2;

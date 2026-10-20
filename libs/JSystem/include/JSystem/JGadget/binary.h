@@ -63,7 +63,7 @@ struct TParseValue_raw_ {
     typedef T ParseType;
     static T parse(const void* data) {
         T val = *(T*)data;
-#ifdef TARGET_PC
+#if TARGET_PC
         if constexpr (sizeof(T) > 1) {
             be_swap(val);
         }

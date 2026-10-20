@@ -112,7 +112,7 @@ public:
         mSerialNo = serial_no;
     }
 
-#ifdef TARGET_PC
+#if TARGET_PC
     void setFileName(const std::string& fileName);
     const char* getFileName();
 #endif
@@ -129,7 +129,7 @@ public:
     /* 0x1FEC */ s32 mNandState;
     /* 0x1FF0 */ u64 mSerialNo;
     /* 0x1FF8 */ u32 mDataVersion;
-#ifdef TARGET_PC
+#if TARGET_PC
     bool mInitialized;
     bool mReattachPending;
     std::string mFileName;
@@ -241,7 +241,7 @@ inline s32 mDoMemCd_checkNANDFile() {
 }
 #endif
 
-#ifdef TARGET_PC
+#if TARGET_PC
 inline void mDoMemCd_SetFileName(const std::string& fileName) {
     g_mDoMemCd_control.setFileName(fileName);
 }

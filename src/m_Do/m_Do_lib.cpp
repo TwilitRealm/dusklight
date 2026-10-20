@@ -12,12 +12,12 @@
 
 u32 mDoLib_setResTimgObj(ResTIMG const* i_img, TGXTexObj* o_texObj, u32 tlut_name,
                          TGXTlutObj* o_tlutObj) {
-#ifdef TARGET_PC
+#if TARGET_PC
     o_texObj->reset();
 #endif
     if (i_img->indexTexture) {
         JUT_ASSERT(44, o_tlutObj != NULL);
-#ifdef TARGET_PC
+#if TARGET_PC
         o_tlutObj->reset();
 #endif
         GXInitTlutObj(o_tlutObj, (void*)((u8*)i_img + i_img->paletteOffset),

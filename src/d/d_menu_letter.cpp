@@ -196,7 +196,7 @@ void dMenu_Letter_c::_create() {
 
     mpString = JKR_NEW dMsgString_c();
     JUT_ASSERT(245, mpString != NULL);
-    
+
     mpArrow = JKR_NEW dMsgScrnArrow_c();
     JUT_ASSERT(249, mpArrow != NULL);
 
@@ -599,7 +599,7 @@ void dMenu_Letter_c::read_open_init() {
     setBButtonString(0);
     mpBlackTex->setAlpha(0);
 
-    #ifdef TARGET_PC
+    #if TARGET_PC
         dusk::AchievementSystem::get().signal("open_letter");
     #endif
 }

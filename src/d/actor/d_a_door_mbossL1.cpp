@@ -1,6 +1,6 @@
 /**
  * @file d_a_door_mbossL1.cpp
- * 
+ *
 */
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
@@ -119,12 +119,12 @@ void dDoor_stop2_c::closeInit(fopAc_ac_c* param_1, u8 param_2) {
 int dDoor_stop2_c::closeProc(fopAc_ac_c* param_1) {
     if (field_0xb == 0) {
         return 1;
-    } 
+    }
     cLib_chaseF(&param_1->speedF, 60.0f, 6.0f);
     if (cLib_chaseF(&field_0x4, 0.0f, param_1->speedF)) {
         field_0xb = 0;
         return 2;
-    } 
+    }
     return 0;
 }
 
@@ -251,7 +251,7 @@ DUSK_CONST char* daMBdoorL1_c::getOpenAnm() {
     }
     if (getDoorType() == DOOR_TYPE_0) {
         return "oj_DoorOpC.bck";
-    } 
+    }
     return NULL;
 }
 
@@ -261,7 +261,7 @@ DUSK_CONST char* daMBdoorL1_c::getCloseAnm() {
     }
     if (getDoorType() == DOOR_TYPE_0) {
         return "oj_DoorCloseC.bck";
-    } 
+    }
     return NULL;
 }
 
@@ -520,7 +520,7 @@ int daMBdoorL1_c::create() {
     }
     if (fopAcM_entrySolidHeap(this, CheckCreateHeap, heapSize) == 0) {
         return cPhs_ERROR_e;
-    } 
+    }
     if (CreateInit()) {
         return cPhs_COMPLEATE_e;
     } else {
@@ -1318,7 +1318,7 @@ int daMBdoorL1_c::checkArea() {
         return 0;
     }
 
-#ifdef TARGET_PC
+#if TARGET_PC
     if ((s16)((s32)fabs(angle - 0x7fff - player->current.angle.y) & 0xffff) > 0x4000) {
 #else
     if ((s16)fabs((f64)(angle - 0x7fff - player->current.angle.y)) > 0x4000) {
@@ -1526,7 +1526,7 @@ int daMBdoorL1_c::checkMakeKey() {
     u8 swBit = door_param2_c::getSwbit(this);
     if (frontOption == 2 && !fopAcM_isSwitch(this, swBit)) {
         return 1;
-    } 
+    }
     return 0;
 }
 

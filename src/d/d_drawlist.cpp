@@ -1081,7 +1081,7 @@ void dDlst_shadowReal_c::reset() {
 }
 
 void dDlst_shadowReal_c::imageDraw(Mtx param_0) {
-#ifdef TARGET_PC
+#if TARGET_PC
     Mtx render_proj_mtx;
     if (dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 2), render_proj_mtx)) {
         GXSetProjection(render_proj_mtx, GX_ORTHOGRAPHIC);
@@ -1102,7 +1102,7 @@ void dDlst_shadowReal_c::imageDraw(Mtx param_0) {
         for (u16 j = 0; j < model_data->getShapeNum(); j++) {
             if (!model_data->getShapeNodePointer(j)->checkFlag(1)) {
                 shape_pkt = (*models)->getShapePacket(j);
-#ifdef TARGET_PC
+#if TARGET_PC
                 Mtx view_mtx;
                 if (dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 1), view_mtx)) {
                     shape_pkt->setBaseMtxPtr(&view_mtx);
@@ -1131,7 +1131,7 @@ void dDlst_shadowReal_c::draw() {
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
     GXSetCurrentMtx(GX_PNMTX0);
-#ifdef TARGET_PC
+#if TARGET_PC
     Mtx view_mtx, recv_proj_mtx;
     const auto have_view_mtx = dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 1), view_mtx);
     const auto have_recv_proj_mtx = dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 3), recv_proj_mtx);
@@ -1299,8 +1299,8 @@ u8 dDlst_shadowReal_c::setShadowRealMtx(cXyz* param_0, cXyz* param_1, f32 param_
     cMtx_lookAt(mViewMtx, &local_64, param_1, 0);
     C_MTXOrtho(mRenderProjMtx, param_2, -param_2, -param_2, param_2, 1.0f, 10000.0f);
     C_MTXLightOrtho(mReceiverProjMtx, param_2, -param_2, -param_2, param_2, 0.5f, -0.5f, 0.5f, 0.5f);
-    
-#ifdef TARGET_PC
+
+#if TARGET_PC
     const auto keybase = mpModels[0];
     dusk::interp::record_final_mtx(mViewMtx, getInterpKey(keybase, 1));
     dusk::interp::record_final_mtx(mRenderProjMtx, getInterpKey(keybase, 2));
@@ -1330,7 +1330,7 @@ u32 dDlst_shadowReal_c::set(u32 i_key, J3DModel* i_model, cXyz* param_2, f32 par
             }
         }
 
-#ifdef TARGET_PC
+#if TARGET_PC
         // provide a stable key for interpolation
         mpModels[0] = i_model;
 #endif
@@ -1509,7 +1509,7 @@ void dDlst_shadowControl_c::init() {
     for (int i = 0; i < 2; i++) {
         u16 size = l_realImageSize[i];
 
-#ifdef TARGET_PC
+#if TARGET_PC
         u32 buffer_size = 0x20; // No need to allocate memory for texture
 #else
         u32 buffer_size = GXGetTexBufferSize(size, size, 5, GX_DISABLE, 0);
@@ -1581,7 +1581,7 @@ void dDlst_shadowControl_c::imageDraw(Mtx param_0) {
     int tex = 0;
     u16 r27;
     u16 r26;
-#ifdef TARGET_PC
+#if TARGET_PC
     bool needsRestore = false;
 #endif
     for (; shadowReal; shadowReal = shadowReal->getZsortNext()) {
@@ -1589,7 +1589,7 @@ void dDlst_shadowControl_c::imageDraw(Mtx param_0) {
             if (chan == 0) {
                 r27 = GXGetTexObjWidth(&mShadowTexObj[tex]);
                 r26 = r27 * 2;
-#ifdef TARGET_PC
+#if TARGET_PC
                 GXCreateFrameBuffer(r26, r26);
                 needsRestore = true;
 #else
@@ -1621,7 +1621,7 @@ void dDlst_shadowControl_c::imageDraw(Mtx param_0) {
         GXPixModeSync();
         GXSetAlphaUpdate(GX_DISABLE);
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     if (needsRestore) {
         GXRestoreFrameBuffer();
     }
@@ -1648,14 +1648,14 @@ void dDlst_shadowControl_c::draw(Mtx param_0) {
     GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
     GXSetNumTevStages(1);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-#ifdef TARGET_PC
+#if TARGET_PC
     Mtx draw_mtx;
     if (dusk::interp::lookup_replacement(param_0, draw_mtx)) {
         GXLoadPosMtxImm(draw_mtx, GX_PNMTX0);
     } else {
 #endif
         GXLoadPosMtxImm(param_0, GX_PNMTX0);
-#ifdef TARGET_PC
+#if TARGET_PC
     }
 #endif
     GXColor matColor = {0, 0, 0, 0x20};

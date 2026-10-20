@@ -884,7 +884,7 @@ BOOL cDyl_IsInitialized() {
 
 BOOL cDyl_IsLinked(s16 i_ProfName) {
     JUT_ASSERT(183, cDyl_Initialized);
-    
+
 
     DynamicModuleControlBase* d = DMC[i_ProfName];
     BOOL rt;
@@ -967,7 +967,7 @@ static int cDyl_InitCallback(void* param_0) {
     DuskLog.debug("[DIAG] cDyl_InitCallback: START");
     JUT_ASSERT(335, !cDyl_Initialized);
 
-#ifdef TARGET_PC
+#if TARGET_PC
     // On PC, the profile list is statically linked (g_fpcPf_ProfileList_p in f_pc_profile.cpp).
     // Skip DVD-based REL loading and string table — OSLink/OSLinkFixed are stubs.
 #else
@@ -1050,7 +1050,7 @@ int cDylPhs::phase_03(void* param_0) {
 
 int cDylPhs::Link(request_of_phase_process_class* i_phase, s16 i_ProfName) {
     static request_of_phase_process_fn l_method[3] = {
-        (request_of_phase_process_fn)cDylPhs::phase_01, 
+        (request_of_phase_process_fn)cDylPhs::phase_01,
         (request_of_phase_process_fn)cDylPhs::phase_02,
         (request_of_phase_process_fn)cDylPhs::phase_03
     };

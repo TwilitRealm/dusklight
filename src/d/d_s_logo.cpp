@@ -23,7 +23,7 @@
 #include "m_Do/m_Do_main.h"
 #include "JSystem/JUtility/JUTConsole.h"
 
-#ifdef TARGET_PC
+#if TARGET_PC
 #include "dusk/game_mode.hpp"
 #include "dusk/language.hpp"
 #include "dusk/logging.h"
@@ -786,7 +786,7 @@ void dScnLogo_c::nextSceneChange() {
     if (!mDoRst::isReset()) {
         if (!isOpeningCut())
         {
-#ifdef TARGET_PC
+#if TARGET_PC
             // If we are requesting a save from the command line, load it here and set the scene to play instead of loading the LOGO SCENE
             if (dusk::SaveRequested >= 1 && dusk::SaveRequested <= 3) {
                 u8 buf[SAVEDATA_SIZE * 3];
@@ -816,13 +816,13 @@ void dScnLogo_c::nextSceneChange() {
                 }
 
                 dComIfGs_gameStart();
-            
+
                 fopScnM_ChangeReq(this, fpcNm_PLAY_SCENE_e, 0, 30);
-            
+
                 dKy_clear_game_init();
                 dComIfGs_resetDan();
                 dComIfGs_setRestartRoomParam(0);
-            
+
                 DuskLog.info("Loaded Save From Slot {}",dusk::SaveRequested);
                 dusk::SaveRequested = 0xff;
             } else if (dusk::SaveRequested == 0xff) {
@@ -833,7 +833,7 @@ void dScnLogo_c::nextSceneChange() {
             } else{
 #endif
                 dComIfG_changeOpeningScene(this, fpcNm_OPENING_SCENE_e);
-#ifdef TARGET_PC
+#if TARGET_PC
             }
 
             if (dusk::StageRequested.set) {

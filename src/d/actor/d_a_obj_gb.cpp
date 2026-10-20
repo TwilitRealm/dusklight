@@ -1,6 +1,6 @@
 /**
  * @file d_a_obj_gb.cpp
- * 
+ *
 */
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
@@ -111,7 +111,7 @@ static int bmd[2] = {
     6, 7,
 };
 
-#ifdef TARGET_PC
+#if TARGET_PC
 static int brk_res[2] = {
 #else
 static int brk[2] = {
@@ -149,7 +149,7 @@ static int useHeapInit(fopAc_ac_c* actor) {
         return 0;
     }
     J3DAnmTevRegKey* anmTevKey = (J3DAnmTevRegKey*)dComIfG_getObjectRes(
-#ifdef TARGET_PC
+#if TARGET_PC
         "Obj_gb", brk_res[i_this->field_0x57c]);
 #else
         "Obj_gb", brk[i_this->field_0x57c]);
@@ -170,7 +170,7 @@ static int daObj_Gb_Create(fopAc_ac_c* actor) {
     fopAcM_ct(actor, obj_gb_class);
     obj_gb_class* i_this = (obj_gb_class*)actor;
     int rv = dComIfG_resLoad(&i_this->mPhase, "Obj_gb");
-    
+
     if (rv == cPhs_COMPLEATE_e) {
         OS_REPORT("OBJ_GB PARAM %x\n", fopAcM_GetParam(i_this));
         i_this->field_0x57c = fopAcM_GetParam(i_this);

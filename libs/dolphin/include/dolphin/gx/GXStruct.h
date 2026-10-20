@@ -33,7 +33,7 @@ typedef struct _GXColorS10 {
 } GXColorS10;
 
 typedef struct _GXTexObj {
-#ifdef TARGET_PC
+#if TARGET_PC
     u32 dummy[22];  // Aurora's GXTexObj_ contains std::shared_ptr + many fields (~80 bytes)
 #else
     u32 dummy[8];
@@ -49,7 +49,7 @@ typedef struct _GXTexRegion {
 } GXTexRegion;
 
 typedef struct _GXTlutObj {
-#ifdef TARGET_PC
+#if TARGET_PC
     u32 dummy[4];   // Aurora's GXTlutObj_ contains std::shared_ptr (8+ bytes)
 #else
     u32 dummy[3];

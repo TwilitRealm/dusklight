@@ -43,7 +43,7 @@ void* JKRAramStream::run() {
 
     for (;;) {
         OSMessage message;
-#ifdef TARGET_PC
+#if TARGET_PC
         if (!OSReceiveMessage(&sMessageQueue, &message, OS_MESSAGE_BLOCK)) {
             break;
         }
@@ -61,7 +61,7 @@ void* JKRAramStream::run() {
             break;
         }
     }
-#ifdef TARGET_PC
+#if TARGET_PC
     return NULL;
 #endif
 }

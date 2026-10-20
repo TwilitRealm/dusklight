@@ -116,7 +116,7 @@ void renderingFmap_c::preDrawPath() {
     mUp.y = -1.0f;
     mUp.z = 0.0f;
     mDoMtx_lookAt(mViewMtx, &mEye, &mCenter, &mUp, 0);
-    
+
     GXLoadPosMtxImm(mViewMtx, GX_PNMTX0);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
@@ -438,7 +438,7 @@ void dMenu_FmapMap_c::setPointColor(f32 i_param) {
         PALETTE_17,
         PALETTE_18,
     };
-    
+
     GXColor color;
     if (mFlash && mRegionCursor == dComIfGp_getNowLevel() && mStartStageNo == mStageCursor) {
         for (int i = 0; i < 8; i++) {
@@ -718,7 +718,7 @@ const GXColor* dMenu_FmapMap_c::getColor(int param_0) {
 void dMenu_FmapMap_c::setTexture(u16 i_width, u16 i_height, u16 param_2, u16 param_3) {
     mMapImage_p = NULL;
     mResTIMG = NULL;
-#ifdef TARGET_PC
+#if TARGET_PC
     int size = 0x20; // No need to allocate memory for texture
 #else
     int size = GXGetTexBufferSize(i_width, i_height, GX_TF_C8, 0, 0);

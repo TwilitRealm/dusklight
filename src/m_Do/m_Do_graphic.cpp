@@ -1135,7 +1135,7 @@ static void drawDepth2(view_class* param_0, view_port_class* param_1, int param_
             GXSetTexCopyDst(halfWidth, halfHeight,
                             (GXTexFmt)mDoGph_gInf_c::getFrameBufferTimg()->format, GX_TRUE);
             GXCopyTex(frameBufferTex, GX_FALSE);
-#ifdef TARGET_PC
+#if TARGET_PC
             mDoGph_gInf_c::getFrameBufferTexObj()->reset();
             mDoGph_gInf_c::getZbufferTexObj()->reset();
 #endif
@@ -1305,7 +1305,7 @@ static void trimming(view_class* param_0, view_port_class* param_1) {
         #if TARGET_PC
         f32 sc_top = param_1->scissor.y_orig;
         f32 sc_bottom = sc_top + param_1->scissor.height;
-        
+
         f32 sc_left = 0.0f;
         f32 sc_right = param_1->width;
 
@@ -1412,7 +1412,7 @@ void mDoGph_drawFilterQuad(s8 param_0, s8 param_1) {
 
 void mDoGph_gInf_c::bloom_c::create() {
     if (m_buffer == NULL) {
-#ifdef TARGET_PC
+#if TARGET_PC
         m_buffer = (void*)1;
 #else
         u32 size = GXGetTexBufferSize(FB_WIDTH / 2, FB_HEIGHT / 2, GX_TF_RGBA8, GX_FALSE, 0);
@@ -1755,7 +1755,7 @@ void mDoGph_gInf_c::bloom_c::draw() {
             mDoGph_drawFilterQuad(4, 4);
         }
         if (enabled) {
-#ifdef TARGET_PC
+#if TARGET_PC
             GXCreateFrameBuffer(width, height);
 #else
             // Store off m_buffer to copy over again at the end.
@@ -1897,7 +1897,7 @@ void mDoGph_gInf_c::bloom_c::draw() {
             GXSetTexCopyDst(width / 4, height / 4, GX_TF_RGBA8, GX_FALSE);
             GXCopyTex(zBufferTex, GX_FALSE);
 
-#ifdef TARGET_PC
+#if TARGET_PC
             GXRestoreFrameBuffer();
 #else
             // Copy back m_buffer to screen.
@@ -1964,7 +1964,7 @@ static void retry_captue_frame(view_class* param_0, view_port_class* param_1, in
         var_r24 = width >> 1;
         var_r23 = height >> 1;
         GXSetTexCopySrc(x_orig, y_orig_pos, width, height);
-#ifdef TARGET_PC
+#if TARGET_PC
         GXSetTexCopyDst(width, height, (GXTexFmt)mDoGph_gInf_c::getFrameBufferTimg()->format, GX_FALSE);
 #else
         GXSetTexCopyDst(var_r24, var_r23, (GXTexFmt)mDoGph_gInf_c::getFrameBufferTimg()->format, GX_TRUE);
@@ -2271,7 +2271,7 @@ int mDoGph_Painter() {
             GXSetScissor(view_port->x_orig, view_port->y_orig, view_port->width,
                          view_port->height);
 
-#ifdef TARGET_PC
+#if TARGET_PC
             // FRAME INTERP NOTE: Call setViewMtx earlier so that it's interpolated in time for draw_info to use it
             j3dSys.setViewMtx(camera_p->view.viewMtx);
             JPADrawInfo draw_info(j3dSys.getViewMtx(), camera_p->view.fovy, camera_p->view.aspect);

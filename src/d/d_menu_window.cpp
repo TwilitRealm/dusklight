@@ -125,7 +125,7 @@ public:
 
     void setCaptureFlag() {
         mFlag = 1;
-    #ifdef TARGET_PC
+    #if TARGET_PC
         dusk::interp::request_presentation_sync();
     #endif
     }
@@ -1782,7 +1782,7 @@ static int dMw_Create(msg_class* i_this) {
 }
 
 static leafdraw_method_class l_dMw_Method = {
-    (process_method_func)dMw_Create, 
+    (process_method_func)dMw_Create,
     (process_method_func)dMw_Delete,
     (process_method_func)dMw_Execute,
     (process_method_func)dMw_IsDelete,

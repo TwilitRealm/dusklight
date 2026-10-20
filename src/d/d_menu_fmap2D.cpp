@@ -157,7 +157,7 @@ dMenu_Fmap2DBack_c::dMenu_Fmap2DBack_c() {
     field_0x1210 = 1.0;
     field_0x1214 = 1.0;
     mArrowDrawFlag = true;
-    
+
 #if DEBUG
     mAllPathShowFlag = g_fmapHIO.mDisplayAllPaths;
 #else
@@ -420,7 +420,7 @@ void dMenu_Fmap2DBack_c::draw() {
         mpPointParent->setAlphaRate(mArrowAlpha * mSpotTextureFadeAlpha);
 
         f32 drawX = mArrowPos2DX + mTransX;
-#ifdef TARGET_PC
+#if TARGET_PC
         if (dusk::getSettings().game.enableMirrorMode) {
             drawX = getMirrorPosX(drawX, 0.0f);
         }
@@ -1018,7 +1018,7 @@ void dMenu_Fmap2DBack_c::allmap_move2(STControl* param_0) {
             f32 delta_y = speed * cM_ssin(angle) IF_DUSK(* dusk::game_clock::original_frames());
             f32 delta_x = speed * cM_scos(angle) IF_DUSK(* dusk::game_clock::original_frames());
 
-#ifdef TARGET_PC
+#if TARGET_PC
             if (dusk::getSettings().game.enableMirrorMode) {
                 delta_y = -delta_y;
             }
@@ -1317,7 +1317,7 @@ f32 dMenu_Fmap2DBack_c::getSpotMapZoomRate() {
     f32 tmp4;
     f32 tmp1 = mTexMaxX - mTexMinX;
     f32 tmp2 = mTexMaxZ - mTexMinZ;
-    
+
     f32 tmp3 = tmp1;
     if (tmp3 < tmp2) {
         tmp3 = tmp2;
@@ -1637,7 +1637,7 @@ void dMenu_Fmap2DBack_c::worldOriginDraw() {
                 mDoGph_gInf_c::getMinXF() + mDoGph_gInf_c::getWidthF(),
                 local_48 - local_44 + (mDoGph_gInf_c::getMinXF() + mDoGph_gInf_c::getWidthF()),
                 JUtility::TColor(0, 255, 0, 255), 6);
-    
+
     J2DDrawLine(mDoGph_gInf_c::getMinXF(), local_48 + local_44 + -mDoGph_gInf_c::getMinXF(),
                 mDoGph_gInf_c::getMinXF() + mDoGph_gInf_c::getWidthF(),
                 local_48 + local_44 + -(mDoGph_gInf_c::getMinXF() + mDoGph_gInf_c::getWidthF()),
@@ -1840,7 +1840,7 @@ void dMenu_Fmap2DBack_c::calcBlink() {
     f32 tmp_selected_max = g_fmapHIO.mMapBlink[i].mSelectedRegion.mMax / 255.0f;
     f32 tmp_unselected_min = g_fmapHIO.mMapBlink[i].mUnselectedRegion.mMin / 255.0f;
     f32 tmp_unselected_max = g_fmapHIO.mMapBlink[i].mUnselectedRegion.mMax / 255.0f;
-                            
+
     f32 sp20 = g_fmapHIO.mMapBlink[i + 1].mSelectedRegion.mMin / 255.0f;
     f32 sp1C = g_fmapHIO.mMapBlink[i + 1].mSelectedRegion.mMax / 255.0f;
     f32 sp18 = g_fmapHIO.mMapBlink[i + 1].mUnselectedRegion.mMin / 255.0f;
@@ -2016,12 +2016,12 @@ void dMenu_Fmap2DBack_c::regionMapMove(STControl* i_stick) {
 
 void dMenu_Fmap2DBack_c::stageMapMove(STControl* i_stick, u8 param_1, bool param_2) {
     UNUSED(param_1);
-    
+
     f32 slow_bound = g_fmapHIO.mScrollSpeedSlowBound < g_fmapHIO.mScrollSpeedFastBound ?
     g_fmapHIO.mScrollSpeedSlowBound : g_fmapHIO.mScrollSpeedFastBound;
     f32 fast_bound = g_fmapHIO.mScrollSpeedSlowBound > g_fmapHIO.mScrollSpeedFastBound ?
     g_fmapHIO.mScrollSpeedSlowBound : g_fmapHIO.mScrollSpeedFastBound;
-    
+
     f32  min_x, min_y, max_x, max_y;
     f32 stick_value = i_stick->getValueStick();
     bool bVar6 = false;
@@ -2218,7 +2218,7 @@ void dMenu_Fmap2DBack_c::setArrowPos3D(u8 i_regionNo, char const* i_stageName, f
 void dMenu_Fmap2DBack_c::setArrowPos3DOffset(u8 i_regionNo, char const* i_stageName, f32 i_posX,
                                              f32 i_posZ, f32 param_4) {
     f32 offset_x, offset_z, pos2d_x, pos2d_y;
-    
+
     if (param_4 != 0.0f) {
         calcOffset(i_regionNo, i_stageName, &offset_x, &offset_z);
         f32 v = i_posX + offset_x - getRegionOriginX(i_regionNo);
@@ -2343,7 +2343,7 @@ dMenu_Fmap2DTop_c::dMenu_Fmap2DTop_c(JKRExpHeap* i_heap, STControl* i_stick) {
     mpArrowLAlpha[1] = JKR_NEW CPaneMgrAlpha(mpTitleScreen, MULTI_CHAR('yaji_05'), 0, NULL);
     mpArrowRAlpha[0] = JKR_NEW CPaneMgrAlpha(mpTitleScreen, MULTI_CHAR('yaji_06'), 0, NULL);
     mpArrowRAlpha[1] = JKR_NEW CPaneMgrAlpha(mpTitleScreen, MULTI_CHAR('yaji_07'), 0, NULL);
-    
+
     mpDpadAlpha = JKR_NEW CPaneMgrAlpha(mpTitleScreen, MULTI_CHAR('juji_c_n'), 2, NULL);
     mpDpadAlpha->setAlphaRate(0.0f);
     mpAnalogStickAlpha = JKR_NEW CPaneMgrAlpha(mpTitleScreen, 'as_n', 2, NULL);

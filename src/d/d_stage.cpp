@@ -314,7 +314,7 @@ int dStage_roomControl_c::loadRoom(int roomCount, u8* rooms, bool param_2) {
             return 0;
         }
     }
-    
+
     BOOL r26 = TRUE;
     for (int roomNo = 0; roomNo < ARRAY_SIZE(mStatus); roomNo++) {
         if (dStage_roomControl_c::checkStatusFlag(roomNo, 0x01)) {
@@ -328,7 +328,7 @@ int dStage_roomControl_c::loadRoom(int roomCount, u8* rooms, bool param_2) {
     if (!r26) {
         return FALSE;
     }
-    
+
     for (int i = 0; i < roomCount; i++) {
         int roomNo = dStage_roomRead_dt_c_GetLoadRoomIndex(rooms[i]);
         dStage_roomControl_c::setZoneCount(roomNo, 2);
@@ -363,7 +363,7 @@ int dStage_roomControl_c::loadRoom(int roomCount, u8* rooms, bool param_2) {
             }
         }
     }
-    
+
     return TRUE;
 }
 
@@ -1725,7 +1725,7 @@ static int dStage_playerInit(dStage_dt_c* i_stage, void* i_data, int num, void* 
 
         int i;
         for (i = 0; i < num; i++) {
-#ifdef TARGET_PC
+#if TARGET_PC
             // If, for whatever reason, we want to patch the point ID, we need to do it here.
             if (!dusk::mods::svc::stage_apply_actor_edits(player_data, nullptr, sizeof(*player_data), i_stage->getRoomNo())) {
                 player_data++;
@@ -1752,7 +1752,7 @@ static int dStage_playerInit(dStage_dt_c* i_stage, void* i_data, int num, void* 
         [](void* user, const void* record, size_t size) {
                 const stage_actor_data_class* i_record =  static_cast<const stage_actor_data_class*>(record);
                 auto* params = static_cast<newActors_userData*>(user);
-                
+
                 // We don't cast i_record->base.angle.z to a u8 here so we can register any spawn point within the s16 range
                 if (i_record->base.angle.z == params->pointNo && size == sizeof(stage_actor_data_class) && strncmp(i_record->name,"Link",7) == 0) {
                     std::memcpy(params->out_point, i_record, size);
@@ -1764,7 +1764,7 @@ static int dStage_playerInit(dStage_dt_c* i_stage, void* i_data, int num, void* 
             if (params.out_pointSet) {
                 player_data = &newPoint;
             } else {
-                // If the requested spawn point isn't found, print all valid points within the log 
+                // If the requested spawn point isn't found, print all valid points within the log
                 std::vector<s16> valid_points;
                 valid_points.reserve(num);
                 player_data = player->m_entries;

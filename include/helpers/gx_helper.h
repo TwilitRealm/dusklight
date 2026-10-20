@@ -24,7 +24,7 @@
 #define GX_DEBUG_GROUP(name, ...) name(__VA_ARGS__)
 #endif
 
-#ifdef TARGET_PC
+#if TARGET_PC
 class GXTexObjRAII : public GXTexObj {
 public:
     GXTexObjRAII() : GXTexObj() {}

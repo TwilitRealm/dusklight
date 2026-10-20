@@ -221,7 +221,7 @@ int daDsh_c::create() {
     // because mResLoader.load holds the pointer past create(), so we just overwrite slot 0
     // each call instead.
     static const char* l_resName[] = {l_arcName[mType], ""};
-#ifdef TARGET_PC
+#if TARGET_PC
     l_resName[0] = l_arcName[mType];
 #endif
 

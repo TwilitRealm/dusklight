@@ -241,7 +241,7 @@ extern u8 __OSReport_enable;
 #define OSRoundUp32B(x)   (((uintptr_t)(x) + 32 - 1) & ~(32 - 1))
 #define OSRoundDown32B(x) (((uintptr_t)(x)) & ~(32 - 1))
 
-#ifdef TARGET_PC
+#if TARGET_PC
 
 static inline void* OSPhysicalToCached(u32 paddr) {
     return reinterpret_cast<void*>(static_cast<uintptr_t>(paddr));

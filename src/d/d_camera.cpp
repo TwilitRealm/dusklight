@@ -11330,7 +11330,7 @@ cXyz dCamera_c::Center() {
     return mCenter + mShake.field_0x24;
 }
 
-#ifdef TARGET_PC
+#if TARGET_PC
 f32 get_target_trim_height(camera_process_class* i_this) {
     const auto camera = &i_this->mCamera;
     if (camera->mCurState != 2) {
@@ -11405,7 +11405,7 @@ static int camera_execute(camera_process_class* i_this) {
 
     store(i_this);
 
-#ifdef TARGET_PC
+#if TARGET_PC
     widezoom_correction(i_this, i_this->mCamera.TrimHeight());
 
     if (dusk::interp::is_enabled()) {

@@ -1,6 +1,6 @@
 /**
  * @file d_a_obj_brg.cpp
- * 
+ *
 */
 
 #include "d/dolzel_rel.h" // IWYU pragma: keep
@@ -363,7 +363,7 @@ static void control1(obj_brg_class* i_this, br_s* i_part) {
     cXyz sp84;
     cXyz sp90;
     cXyz sp9C;
-    
+
     i_part++;
 
     i_this->field_0xaf22 += i_this->field_0xaf26;
@@ -538,7 +538,7 @@ static void cut_control2(obj_brg_class* i_this, br_s* i_part) {
     cXyz sp94;
 
     cMtx_YrotS(*calc_mtx, i_this->home.angle.y);
-    
+
     sp7C.x = 0.0f;
     sp7C.y = 0.0f;
     sp7C.z = -1.0f;
@@ -1511,7 +1511,7 @@ static int CallbackCreateHeap(fopAc_ac_c* i_this) {
         modelData2 = (J3DModelData*)dComIfG_getObjectRes("Obj_brg", 8);
         JUT_ASSERT(0, modelData2 != NULL);
     }
-    
+
     br_s* part = a_this->mBr;
 
     for (int i = 0; i < a_this->field_0xb1ea; i++, part++) {
@@ -1591,7 +1591,7 @@ static int CallbackCreateHeap(fopAc_ac_c* i_this) {
 
         if (a_this->field_0xb1ed == 1) {
             part->field_0x0c8.x *= 1.5f;
-            part->field_0x0c8.y *= 1.5f; 
+            part->field_0x0c8.y *= 1.5f;
         } else if (a_this->field_0xb1ed == 2) {
             part->field_0x0c8.x *= 2.5f;
             part->field_0x0c8.y *= 2.5f;
@@ -1794,7 +1794,7 @@ static int daObj_Brg_Create(fopAc_ac_c* i_this) {
                 cXyz(334.0f, 85.0f, -16054.0f),
                 cXyz(334.0f, 150.0f, -16270.0f),
                 cXyz(334.0f, 216.0f, -16485.0f),
-#ifdef TARGET_PC
+#if TARGET_PC
                 // Avoids out-of-bounds index (n=22)
                 cXyz(0.f, 0.f, 0.f),
 #endif

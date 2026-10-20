@@ -39,7 +39,7 @@ public:
         width = (u16)getFbWidth();
         height = (u16)getEfbHeight();
     }
-#ifdef TARGET_PC
+#if TARGET_PC 
     u32 getRenderWidth() const { return mRenderWidth; }
     u32 getRenderHeight() const { return mRenderHeight; }
 #endif

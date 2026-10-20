@@ -7,7 +7,7 @@
 #include "f_op/f_op_overlap_req.h"
 #include "f_pc/f_pc_manager.h"
 
-#ifdef TARGET_PC
+#if TARGET_PC
 #include "dusk/game_mode.hpp"
 #include "dusk/speedrun.h"
 #endif
@@ -85,7 +85,7 @@ static int fopOvlpReq_phase_IsCreated(overlap_request_class* i_overlapReq) {
         if (process == NULL) {
             return cPhs_ERROR_e;
         }
-    
+
         i_overlapReq->overlap_task = process;
         return cPhs_NEXT_e;
     }

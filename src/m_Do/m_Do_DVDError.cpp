@@ -28,7 +28,7 @@ ATTRIBUTE_ALIGN(16) static u8 DvdErr_stack[stack_size];
 static OSAlarm Alarm;
 
 void mDoDvdErr_ThdInit() {
-#ifdef TARGET_PC
+#if TARGET_PC
     // Thread is not necessary on PC
     return;
 #endif

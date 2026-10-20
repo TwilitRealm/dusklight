@@ -19,7 +19,7 @@
 #endif
 #include "os_report.h"
 
-#ifdef TARGET_PC
+#if TARGET_PC
 #include "dusk/game_mode.hpp"
 #include "dusk/ui/prelaunch.hpp"
 #endif
@@ -109,7 +109,7 @@ void checkDiskCallback(s32 result, DVDCommandBlock* block) {
 }
 
 void mDoRst_resetCallBack(int port, void*) {
-#ifdef TARGET_PC
+#if TARGET_PC
     const dusk::gamemode::GameMode* gameMode =
         dusk::gamemode::getGameModeManager().getCurrentGameMode();
     if (gameMode) {
@@ -155,7 +155,7 @@ void mDoRst_resetCallBack(int port, void*) {
         }
     }
     mDoRst::onReset();
-#ifdef TARGET_PC
+#if TARGET_PC
     if (dusk::ui::prelaunch_state().returnToPrelaunchOnReset) {
         dusk::ui::return_to_prelaunch();
         dusk::ui::prelaunch_state().returnToPrelaunchOnReset = false;
