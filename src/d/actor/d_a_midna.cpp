@@ -17,6 +17,19 @@
 
 #if TARGET_PC
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
+
+#if TARGET_PC
+static f32 midna_beast_ganon_action_speed() {
+    fopAc_ac_c* beastGanon = (fopAc_ac_c*)fopAcM_SearchByName(fpcNm_B_MGN_e);
+
+    if (beastGanon == NULL) {
+        return 1.0f;
+    }
+
+    return dusk::mods::svc::actor_attr::resolve_multiplier(beastGanon, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+}
 #endif
 
 static f32 dummy_lit_3777(int idx, u8 foo) {
@@ -440,12 +453,11 @@ int daMidna_c::createHeap() {
                     }
                 }
             }
-        }
 #else
         if (mpDemoFCTongueBmd != NULL && !daAlink_c::initDemoBck(&mpDemoFCTmpBck, "demo00_Midna_cut00_FC_tmp.bck")) {
             return 0;
-        }
 #endif
+        }
 
         modelData =
             (J3DModelData*)dComIfG_getObjectRes(dStage_roomControl_c::getDemoArcName(), "demo00_Midna_cut00_BD_tmp.bmd");
@@ -2250,6 +2262,28 @@ void daMidna_c::setAnm() {
         }
 
         setUpperAnimeAndSe(anm);
+
+#if TARGET_PC
+        // Midna's Beast Ganon catch/throw sequence uses TWO animation clocks:
+        //   mpMorf    = base/body animation
+        //   mUpperBck = upper-body override
+        //
+        // setUpperAnimeAndSe() initializes mUpperBck at a hardcoded 1.0f.
+        // Keep BOTH clocks on Beast Ganon's movement-speed clock for the
+        // entire special interaction: catch start/end and throw start/end.
+        if (
+            anm == ANM_MGNCATCHST ||
+            anm == ANM_MGNCATCHED ||
+            anm == ANM_MGNTHROWLST ||
+            anm == ANM_MGNTHROWLED ||
+            anm == ANM_MGNTHROWRST ||
+            anm == ANM_MGNTHROWRED
+        ) {
+            const f32 actionSpeed = midna_beast_ganon_action_speed();
+            mpMorf->setPlaySpeed(actionSpeed);
+            mUpperBck.setPlaySpeed(actionSpeed);
+        }
+#endif
 
     } else if (
         mMotionNum == 0 &&

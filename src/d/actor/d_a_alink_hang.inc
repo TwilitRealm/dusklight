@@ -5,6 +5,9 @@
 
 #include "SSystem/SComponent/c_math.h"
 #include "d/actor/d_a_alink.h"
+#if TARGET_PC  // enemy attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 #include "d/d_com_inf_game.h"
 #include "d/actor/d_a_b_dr.h"
 #include "d/actor/d_a_b_dre.h"
@@ -18,10 +21,10 @@ f32 daAlink_c::getHangMoveAnmSpeed() {
         dusk::getSettings().game.fastClimbing ? 2.0f : mpHIO->mWallHang.mWallMove.m.mMinAnmSpeed,
         dusk::getSettings().game.fastClimbing ? 2.0f : mpHIO->mWallHang.mWallMove.m.mMaxAnmSpeed
     );
-    #else
+#else
     return getAnmSpeedStickRate(mpHIO->mWallHang.mWallMove.m.mMinAnmSpeed,
                                 mpHIO->mWallHang.mWallMove.m.mMaxAnmSpeed);
-    #endif
+#endif
 }
 
 int daAlink_c::getHangDirectionFromAngle() {
@@ -287,9 +290,9 @@ int daAlink_c::procHangStartInit() {
     if (checkHangFootWall()) {
         #if TARGET_PC
         if (!is_prev_hangReady && cM_rnd() < 0.7f && !dusk::getSettings().game.noMissClimbing) {
-        #else
+#else
         if (!is_prev_hangReady && cM_rnd() < 0.7f) {
-        #endif
+#endif
             setSingleAnimeParam(ANM_CLIMB_HANG_MISS, &mpHIO->mLadder.m.mWallAttachMissAnm);
             field_0x3478 = mpHIO->mLadder.m.mWallAttachMissAnm.mCancelFrame;
             voiceStart(Z2SE_AL_V_FOOT_MISS);
@@ -1064,7 +1067,24 @@ int daAlink_c::procBossBodyHang() {
                 setCutType(CUT_TYPE_NM_STAB);
                 mProcVar5.field_0x3012++;
 
+#if TARGET_PC  // enemy attribute integration
+                // The player has its own mounted-sword cutoff.  Keep it in
+                // sync with the boss-side randomized per-mount hit budget for
+                // BOTH Argorok and Morpheel; otherwise Link forces CUT_B after
+                // the vanilla fourth stab even when the boss allows more.
+                s16 rideHitLimit = 4;
+                if (field_0x32cc != 0) {
+                    daB_DR_c* argorok = (daB_DR_c*)boss;
+                    rideHitLimit = dusk::mods::svc::actor_attr::positive_s16(4.0f * JMAFastSqrt(dusk::mods::svc::actor_attr::enemy_health_amount(argorok, 1.0f)));
+                } else {
+                    b_ob_class* morpheel = (b_ob_class*)boss;
+                    rideHitLimit = dusk::mods::svc::actor_attr::positive_s16(4.0f * JMAFastSqrt(dusk::mods::svc::actor_attr::enemy_health_amount(morpheel, 1.0f)));
+                }
+
+                if (mProcVar5.field_0x3012 == rideHitLimit) {
+#else
                 if (mProcVar5.field_0x3012 == 4) {
+#endif
                     if (field_0x32cc != 0) {
                         setSingleAnimeBase(ANM_DRAGON_CUT_B);
                     } else {
@@ -1222,9 +1242,9 @@ f32 daAlink_c::getLadderMoveAnmSpeed() {
     return getAnmSpeedStickRate(mpHIO->mLadder.m.mMoveMinASpeed,
         #if TARGET_PC
         dusk::getSettings().game.fastClimbing ? 1.575f : mpHIO->mLadder.m.mMoveMaxSpeed
-        #else
+#else
         mpHIO->mLadder.m.mMoveMaxSpeed
-        #endif
+#endif
     );
 }
 
@@ -1323,9 +1343,9 @@ int daAlink_c::procLadderUpStartInit() {
     setSingleAnimeBaseSpeed(ANM_LADDER_UP_START,
         #if TARGET_PC
         dusk::getSettings().game.fastClimbing ? 1.8f : mpHIO->mLadder.m.mClimbUpStartASpeed,
-        #else
+#else
         mpHIO->mLadder.m.mClimbUpStartASpeed,
-        #endif
+#endif
         mpHIO->mLadder.m.mClimbUpStartInterp);
 
     field_0x2f99 = 0x10;
@@ -1379,9 +1399,9 @@ int daAlink_c::procLadderUpEndInit(BOOL param_0) {
     setSingleAnimeBaseSpeed(anm_id,
         #if TARGET_PC
         dusk::getSettings().game.fastClimbing ? 1.765f : mpHIO->mLadder.m.mClimbUpEndASpeed,
-        #else
+#else
         mpHIO->mLadder.m.mClimbUpEndASpeed,
-        #endif
+#endif
         mpHIO->mLadder.m.mClimbUpEndInterp);
 
     field_0x2f99 = 14;
@@ -1444,9 +1464,9 @@ int daAlink_c::procLadderDownStartInit() {
     setSingleAnimeBaseSpeed(ANM_LADDER_DOWN_START,
         #if TARGET_PC
         dusk::getSettings().game.fastClimbing ? 1.8f : mpHIO->mLadder.m.mClimbDownStartASpeed,
-        #else
+#else
         mpHIO->mLadder.m.mClimbDownStartASpeed,
-        #endif
+#endif
         mpHIO->mLadder.m.mClimbDownStartInterp);
 
     field_0x2f99 = 0x10;
@@ -1506,9 +1526,9 @@ int daAlink_c::procLadderDownEndInit(BOOL param_0) {
     setSingleAnimeBaseSpeed(anm_id,
         #if TARGET_PC
         dusk::getSettings().game.fastClimbing ? 1.8f : mpHIO->mLadder.m.mClimbDownEndASpeed,
-        #else
+#else
         mpHIO->mLadder.m.mClimbDownEndASpeed,
-        #endif
+#endif
         mpHIO->mLadder.m.mClimbDownEndInterp);
 
     field_0x2f99 = 14;
@@ -1644,9 +1664,9 @@ f32 daAlink_c::getClimbMoveUpDownAnmSpeed() {
     return getAnmSpeedStickRate(mpHIO->mLadder.m.mWallVerticalMinAnmSpeed,
         #if TARGET_PC
         dusk::getSettings().game.fastClimbing ? 1.875f : mpHIO->mLadder.m.mWallVerticalMaxAnmSpeed
-        #else
+#else
         mpHIO->mLadder.m.mWallVerticalMaxAnmSpeed
-        #endif
+#endif
    );
 }
 
@@ -1654,9 +1674,9 @@ f32 daAlink_c::getClimbMoveSideAnmSpeed() {
     return getAnmSpeedStickRate(mpHIO->mLadder.m.mWallHorizontalMinAnmSpeed,
         #if TARGET_PC
         dusk::getSettings().game.fastClimbing ? 2.0f : mpHIO->mLadder.m.mWallHorizontalMaxAnmSpeed
-        #else
+#else
         mpHIO->mLadder.m.mWallHorizontalMaxAnmSpeed
-        #endif
+#endif
     );
 }
 
@@ -2090,9 +2110,9 @@ int daAlink_c::procClimbUpStartInit(int param_0) {
 
     #if TARGET_PC
     if (param_0 || var_r29 || cM_rnd() < 0.3f || dusk::getSettings().game.noMissClimbing) {
-    #else
+#else
     if (param_0 || var_r29 || cM_rnd() < 0.3f) {
-    #endif
+#endif
         setSingleAnimeParam(ANM_CLIMB_HANG, &mpHIO->mLadder.m.mWallAttachAnm);
         field_0x3478 = mpHIO->mLadder.m.mWallAttachAnm.mCancelFrame;
         voiceStart(Z2SE_AL_V_JUMP_HANG);
@@ -2171,9 +2191,9 @@ int daAlink_c::procClimbDownStartInit(s16 param_0) {
 
     #if TARGET_PC
     if (cM_rnd() < 0.7f || dusk::getSettings().game.noMissClimbing) {
-    #else
+#else
     if (cM_rnd() < 0.7f) {
-    #endif
+#endif
         setSingleAnimeParam(ANM_CLIMB_HANG, &mpHIO->mLadder.m.mWallAttachAnm);
         field_0x3478 = mpHIO->mLadder.m.mWallAttachAnm.mCancelFrame;
         mProcVar0.field_0x3008 = 0;

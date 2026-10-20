@@ -7,6 +7,13 @@
 
 #include "d/actor/d_a_obj_lv4sand.h"
 #include "d/d_s_play.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "d/actor/d_a_b_ds.h"
+#include "d/actor/d_a_alink.h"
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+static f32 spinner_boss_room_speed_multiplier();
+#endif
 
 static DUSK_CONSTEXPR char DUSK_CONST* l_arcName = "P_L4Sand";
 
@@ -74,6 +81,7 @@ int daObjLv4Sand_c::Execute(Mtx** param_0) {
     *param_0 = &mBgMtx;
 
     if (fopAcM_isSwitch(this, 234)) {
+		IF_DUSK(mpBtk->setPlaySpeed(spinner_boss_room_speed_multiplier());)
         mpBtk->play();
         if (std::fabs(mHeight) < 3300.0f) {
             eyePos = current.pos;
@@ -111,8 +119,70 @@ void daObjLv4Sand_c::mode_init_move() {
     mMode = MODE_MOVE;
 }
 
+#if TARGET_PC  // enemy attribute integration
+static void* spinner_boss_search(void* i_actor, void* i_data) {
+
+    if (!fopAcM_IsActor(i_actor) || fopAcM_GetName(i_actor) != fpcNm_B_DS_e) {
+        return NULL;
+    }
+
+    fopAc_ac_c* actor = static_cast<fopAc_ac_c*>(i_actor);
+    u8 actorType = fopAcM_GetParamBit(actor, 0, 8);
+    if (actorType == 0xFF) {
+        actorType = daB_DS_c::TYPE_BATTLE_1;
+    }
+
+    return actorType == *static_cast<const u8*>(i_data) ? i_actor : NULL;
+}
+
+static fopAc_ac_c* spinner_find_active_boss() {
+
+    // During the phase transition both Stallord instances briefly exist, so
+    // prefer the newly created phase-two actor. Filtering by type also keeps
+    // B_DS projectile actors out of the attribute lookup.
+    u8 bossType = daB_DS_c::TYPE_BATTLE_2;
+    fopAc_ac_c* boss = static_cast<fopAc_ac_c*>(fpcM_Search(spinner_boss_search, &bossType));
+
+    if (boss == NULL) {
+        bossType = daB_DS_c::TYPE_BATTLE_1;
+        boss = static_cast<fopAc_ac_c*>(fpcM_Search(spinner_boss_search, &bossType));
+    }
+
+    return boss;
+}
+
+static f32 spinner_boss_speed_multiplier() {
+
+    fopAc_ac_c* boss = spinner_find_active_boss();
+    if (boss == NULL) {
+        return 1.0f;
+    }
+
+    return dusk::mods::svc::actor_attr::resolve_multiplier(boss, ACTOR_ATTRIBUTE_MOVEMENT_SPEED);
+}
+
+static f32 spinner_boss_room_speed_multiplier() {
+
+    return daAlink_c::checkStageName("D_MN10A") ? spinner_boss_speed_multiplier() : 1.0f;
+}
+#endif
+
+
+
+
 void daObjLv4Sand_c::mode_move() {
+#if TARGET_PC  // enemy attribute integration
+
+    const f32 speedMultiplier = spinner_boss_room_speed_multiplier();
+
+    const f32 targetSpeed = (8.5f + KREG_F(1)) * speedMultiplier;
+
+    const f32 acceleration = (0.3f + KREG_F(2)) * speedMultiplier * speedMultiplier;
+
+    cLib_chaseF(&speed.y, targetSpeed, acceleration);
+#else
     cLib_chaseF(&speed.y, 8.5f + KREG_F(1), 0.3f + KREG_F(2));
+#endif
     if (cLib_chaseF(&mHeight, -3500.0f, speed.y)) {
         mode_init_dead();
     }

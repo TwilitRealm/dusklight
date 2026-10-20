@@ -9,6 +9,9 @@
 #include "d/d_s_play.h"
 #include "d/d_path.h"
 #include "d/d_cc_uty.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+#endif
 
 class daLv6TogeTrap_HIO_c : public mDoHIO_entry_c {
 public:
@@ -30,6 +33,22 @@ public:
     /* 0x20 */ f32 return_accel;
     /* 0x24 */ f32 rotate_speed;
 };
+#if TARGET_PC  // additional actor attribute integration
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+
+namespace dusk::mods::svc::actor_attr {
+template <> struct EnemyAttributeOwner<daLv6TogeTrap_c> {
+    static fopAc_ac_c* get(daLv6TogeTrap_c* i_this) {
+
+        fopAc_ac_c* parent = fopAcM_SearchByID(i_this->parentActorID);
+        return parent != NULL && fopAcM_GetName(parent) == fpcNm_B_DS_e ? parent : i_this;
+
+}
+};
+
+}
+#endif
 
 daLv6TogeTrap_HIO_c::daLv6TogeTrap_HIO_c() {
     field_0x4 = 60;
@@ -305,7 +324,7 @@ int daLv6TogeTrap_c::Execute(Mtx** param_0) {
 
     mCcStts.Move();
 
-    field_0x600 += cM_deg2s(l_HIO.rotate_speed);
+    field_0x600 += cM_deg2s(DUSK_IF_ELSE(actor_attr::enemy_move_step(this, l_HIO.rotate_speed), l_HIO.rotate_speed));
     *param_0 = &mpModel->getBaseTRMtx();
     mSound.framework(0, dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
     setBaseMtx();
@@ -383,13 +402,13 @@ void daLv6TogeTrap_c::init_modeBound() {
 }
 
 void daLv6TogeTrap_c::modeBound() {
-    if (0.0f == cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, mMoveSpeed, 5.0f)) {
+    if (0.0f == DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x5b0, 1.0f, mMoveSpeed, 5.0f), cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, mMoveSpeed, 5.0f))) {
         init_modeBoundWait();
     }
 }
 
 void daLv6TogeTrap_c::init_modeBoundWait() {
-    field_0x60a = l_HIO.return_wait;
+    field_0x60a = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(this, l_HIO.return_wait), l_HIO.return_wait);
     mMode = 7;
 }
 
@@ -408,8 +427,14 @@ void daLv6TogeTrap_c::init_modeAcc() {
 }
 
 void daLv6TogeTrap_c::modeAcc() {
+#if TARGET_PC  // enemy attribute integration
+
+	const f32 targetSpeed = actor_attr::enemy_move_step(this, mMoveSpeed);
+
+    const f32 acceleration = actor_attr::enemy_move_acceleration(this, mMoveSpeed / l_HIO.return_accel);
+#endif
     BOOL temp_r30 = cLib_chaseF(&speedF, mMoveSpeed, mMoveSpeed / l_HIO.return_accel);
-    cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, fopAcM_GetSpeedF(this), 0.1f);
+    DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x5b0, 1.0f, fopAcM_GetSpeedF(this), 0.1f), cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, fopAcM_GetSpeedF(this), 0.1f));
 
     mDoAud_seStartLevel(Z2SE_OBJ_TOGE_SPIN, &current.pos, fopAcM_GetSpeedF(this), dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
 
@@ -451,7 +476,7 @@ void daLv6TogeTrap_c::init_modeBrk() {
 
 void daLv6TogeTrap_c::modeBrk() {
     cXyz sp14(current.pos);
-    f32 temp_f31 = cLib_addCalcPos(&current.pos, field_0x5b0, 0.1f, fopAcM_GetSpeedF(this), 0.5f);
+    f32 temp_f31 = DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x5b0, 0.1f, fopAcM_GetSpeedF(this), 0.5f), cLib_addCalcPos(&current.pos, field_0x5b0, 0.1f, fopAcM_GetSpeedF(this), 0.5f));
     f32 temp_f30 = (sp14 - current.pos).abs();
     mDoAud_seStartLevel(Z2SE_OBJ_TOGE_SPIN, &current.pos, temp_f30, dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
 
@@ -465,7 +490,7 @@ void daLv6TogeTrap_c::init_modeMove2() {
 }
 
 void daLv6TogeTrap_c::modeMove2() {
-    f32 temp_f31 = cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, mMoveSpeed, mMoveSpeed);
+    f32 temp_f31 = DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x5b0, 1.0f, mMoveSpeed, mMoveSpeed), cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, mMoveSpeed, mMoveSpeed));
     mDoAud_seStartLevel(Z2SE_OBJ_TOGE_SPIN, &current.pos, mMoveSpeed, dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
     if (temp_f31 == 0.0f) {
         init_modeWaitInit();
@@ -594,8 +619,14 @@ void daLv6TogeTrap_c::init_modeAccType2() {
 }
 
 void daLv6TogeTrap_c::modeAccType2() {
+#if TARGET_PC  // enemy attribute integration
+
+	const f32 targetSpeed = actor_attr::enemy_move_step(this, field_0x604);
+
+    const f32 acceleration = actor_attr::enemy_move_acceleration(this, field_0x604 / l_HIO.search_accel);
+#endif
     cLib_chaseF(&speedF, field_0x604, field_0x604 / l_HIO.search_accel);
-    f32 temp_f31 = cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, fopAcM_GetSpeedF(this), 0.1f);
+    f32 temp_f31 = DUSK_IF_ELSE(actor_attr::enemy_add_action_calc_pos(this, &current.pos, field_0x5b0, 1.0f, fopAcM_GetSpeedF(this), 0.1f), cLib_addCalcPos(&current.pos, field_0x5b0, 1.0f, fopAcM_GetSpeedF(this), 0.1f));
     mDoAud_seStartLevel(Z2SE_OBJ_TOGE_SPIN, &current.pos, fopAcM_GetSpeedF(this), dComIfGp_getReverb(fopAcM_GetRoomNo(this)));
 
     if (0.0f == temp_f31) {
@@ -616,7 +647,7 @@ void daLv6TogeTrap_c::modeAccType2() {
 
 void daLv6TogeTrap_c::init_modeWaitAttackType2() {
     fopAcM_SetSpeedF(this, 0.0f);
-    field_0x60a = l_HIO.search_wait;
+    field_0x60a = DUSK_IF_ELSE(actor_attr::enemy_sync_u8_timer(this, l_HIO.search_wait), l_HIO.search_wait);
     mMode = 11;
 }
 
@@ -648,7 +679,7 @@ void daLv6TogeTrap_c::modeRotate() {
     }
 
     f32 var_f31 = 360.0f * (mMoveSpeed / (M_PI * (2.0f * mRadius)));
-    shape_angle.y += mRotateDirection * cM_deg2s(var_f31);
+    shape_angle.y += mRotateDirection * cM_deg2s(DUSK_IF_ELSE(actor_attr::enemy_move_step(this, var_f31), var_f31));
 
     mDoMtx_stack_c::ZXYrotS(shape_angle.x, shape_angle.y, shape_angle.z);
     field_0x8c4.set(mRadius, 0.0f, 0.0f);

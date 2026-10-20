@@ -9,6 +9,11 @@
 #include "d/actor/d_a_obj_swspinner.h"
 #include "d/actor/d_a_b_ds.h"
 #include "d/d_s_play.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "dusk/mods/svc/actor_attribute_helpers.hpp"
+
+namespace actor_attr = dusk::mods::svc::actor_attr;
+#endif
 
 static DUSK_CONSTEXPR char DUSK_CONST* l_arcName = "P_L4Rwall";
 
@@ -156,34 +161,71 @@ void daObjLv4Wall_c::mode_move() {
         3.0f
     };
 
+#if TARGET_PC  // enemy attribute integration
+    daB_DS_c* boss = (daB_DS_c*)fpcM_Search(s_BossSearch, this);
+    const f32 stallordSpeed = boss != NULL ? actor_attr::enemy_action_speed_multiplier(boss) : 1.0f;
+
+    // Advance the rail's speed table on Stallord's action clock.
+    const f32 previousActionFrame = mMoveCounter * stallordSpeed;
+
+#endif
     mMoveCounter++;
     f32 prev_speed = speed.y;
+#if TARGET_PC  // enemy attribute integration
+    const f32 actionFrame = mMoveCounter * stallordSpeed;
+#endif
 
-    u32 spd_chkpoint = mMoveCounter / 30;
+    u32 spd_chkpoint = DUSK_IF_ELSE(static_cast<u32>(actionFrame / 30.0f), mMoveCounter / 30);
     if (spd_chkpoint > 15) {
         spd_chkpoint = 15;
     }
 
+#if TARGET_PC  // enemy attribute integration
+    const f32 targetSpeed = l_spd_tbl[spd_chkpoint + 1] * stallordSpeed;
+    // Scaling both curve time and target speed makes acceleration scale by speed squared.
+    const f32 speedStep = ((l_spd_tbl[spd_chkpoint + 1] - l_spd_tbl[spd_chkpoint]) / 30.0f) * stallordSpeed * stallordSpeed;
+    cLib_chaseF(&speed.y, targetSpeed, speedStep);
+#else
     cLib_chaseF(&speed.y, l_spd_tbl[spd_chkpoint + 1], (l_spd_tbl[spd_chkpoint + 1] - l_spd_tbl[spd_chkpoint]) / 30.0f);
+#endif
     BOOL is_target_height = cLib_chaseF(&mHeight, 3375.0f, speed.y);
 
+#if TARGET_PC  // enemy attribute integration
+    const f32 lowQuakeSpeed = 4.0f * stallordSpeed;
+    const f32 highQuakeSpeed = 10.0f * stallordSpeed;
+
+    if (previousActionFrame < 5.0f && actionFrame >= 5.0f) {
+#else
     if (mMoveCounter == 5) {
+#endif
         dComIfGp_getVibration().StartQuake(2, 0xF, cXyz(0.0f, 1.0f, 0.0f));
+#if TARGET_PC  // enemy attribute integration
+    } else if (actionFrame > 5.0f) {
+        if (prev_speed < lowQuakeSpeed && speed.y >= lowQuakeSpeed) {
+#else
     } else if (mMoveCounter > 5) {
         if (prev_speed < 4.0f && speed.y >= 4.0f) {
+#endif
             dComIfGp_getVibration().StartQuake(4, 0xF, cXyz(0.0f, 1.0f, 0.0f));
-        } else if (prev_speed < 10.0f && speed.y >= 10.0f) {
+        } else if (DUSK_IF_ELSE(prev_speed < highQuakeSpeed && speed.y >= highQuakeSpeed, prev_speed < 10.0f && speed.y >= 10.0f)) {
             dComIfGp_getVibration().StartQuake(8, 0xF, cXyz(0.0f, 1.0f, 0.0f));
-        } else if (prev_speed > 10.0f && speed.y <= 10.0f) {
+        } else if (DUSK_IF_ELSE(prev_speed > highQuakeSpeed && speed.y <= highQuakeSpeed, prev_speed > 10.0f && speed.y <= 10.0f)) {
             dComIfGp_getVibration().StartQuake(4, 0xF, cXyz(0.0f, 1.0f, 0.0f));
-        } else if (prev_speed > 4.0f && speed.y <= 4.0f) {
+        } else if (DUSK_IF_ELSE(prev_speed > lowQuakeSpeed && speed.y <= lowQuakeSpeed, prev_speed > 4.0f && speed.y <= 4.0f)) {
             dComIfGp_getVibration().StartQuake(2, 0xF, cXyz(0.0f, 1.0f, 0.0f));
         }
     }
 
     if (is_target_height) {
+#if TARGET_PC  // enemy attribute integration
+        if (boss != NULL) {
+#else
         daB_DS_c* boss = (daB_DS_c*)fpcM_Search(s_BossSearch, this);
+#endif
         boss->offDemo();
+#if TARGET_PC  // enemy attribute integration
+        }
+#endif
 
         fopAcM_seStart(this, Z2SE_OBJ_DS_CLMN_UP_ST, 0);
         dComIfGp_getVibration().StopQuake(0x1F);

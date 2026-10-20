@@ -6,11 +6,24 @@
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
 #include "d/actor/d_a_obj_swspinner.h"
+#if TARGET_PC  // additional actor attribute integration
+#include "d/actor/d_a_alink.h"
+#endif
 #include "f_pc/f_pc_name.h"
 
 static void* search_spinner_sub(void* i_actor, void* i_data) {
     daSpinner_c* spinner = (daSpinner_c*)i_actor;
     daObjSwSpinner_c* sw = (daObjSwSpinner_c*)i_data;
+#if TARGET_PC  // enemy attribute integration
+
+	// In the Stallord boss room, don't allow spinner switches to grab
+    // the spinner until phase 1 has been completed.
+    if (daAlink_c::checkStageName("D_MN10A") &&
+        fopAcM_isSwitch(sw, 234)) // this switch is active while the sand floor is.
+    {
+        return NULL;
+    }
+#endif
 
     if (spinner != NULL && fopAc_IsActor(spinner) && fpcM_GetProfName(spinner) == fpcNm_SPINNER_e) {
         if (spinner->current.pos.absXZ(sw->current.pos) < sw->GetR()) {
