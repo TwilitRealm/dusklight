@@ -300,7 +300,7 @@ JASWaveBank* JAUSection::newWaveBank(u32 bank_no, void const* param_1) {
     {
         TPushCurrentHeap push(getHeap_());
         s32 previousFree = getHeap_()->getFreeSize();
-        JASWaveBank* waveBank = JASWSParser::createWaveBank(param_1, getHeap_());
+        JASWaveBank* waveBank = JASWSParser::createWaveBank(param_1, getHeap_() IF_DUSK_ARG(bank_no));
         if (waveBank) {
             JUT_ASSERT(536, sectionHeap_->getWaveBankTable().getWaveBank( bank_no ) == NULL);
             sectionHeap_->getWaveBankTable().registWaveBank(bank_no, waveBank);

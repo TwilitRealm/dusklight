@@ -88,9 +88,9 @@ public:
     };
 
     static u32 getGroupCount(void const*);
-    static JASWaveBank* createWaveBank(void const*, JKRHeap*);
-    static JASBasicWaveBank* createBasicWaveBank(void const*, JKRHeap*);
-    static JASSimpleWaveBank* createSimpleWaveBank(void const*, JKRHeap*);
+    static JASWaveBank* createWaveBank(void const*, JKRHeap* IF_DUSK_ARG(u32 bank_no));
+    static JASBasicWaveBank* createBasicWaveBank(void const*, JKRHeap* IF_DUSK_ARG(u32 bank_no));
+    static JASSimpleWaveBank* createSimpleWaveBank(void const*, JKRHeap* IF_DUSK_ARG(u32 bank_no));
 
     static DUSK_GAME_DATA u32 sUsedHeapSize;
 };
