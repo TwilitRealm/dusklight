@@ -5,6 +5,10 @@
 #include "d/d_bg_s_acch.h"
 #include "d/d_cc_d.h"
 #include "d/d_cc_uty.h"
+#if TARGET_PC
+
+class mDoExt_McaMorfSO;
+#endif
 
 /**
  * @ingroup actors-enemies
