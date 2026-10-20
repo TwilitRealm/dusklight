@@ -1480,6 +1480,7 @@ set(DUSK_FILES
         src/dusk/logging.cpp
         src/dusk/menu_pointer.cpp
         src/dusk/menu_pointer.h
+        src/dusk/mods/loader/amsi.cpp
         src/dusk/mods/loader/bundle_disk.cpp
         src/dusk/mods/loader/bundle_zip.cpp
         src/dusk/mods/loader/context.cpp
