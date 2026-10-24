@@ -287,6 +287,11 @@ public:
     /* 0x2550 */ dDlst_shadowReal_c* mZsortNext;
 };  // Size: 0x2554
 
+#if TARGET_PC
+static const int REAL_SHADOW_MAX = 16; 
+static const int REAL_SHADOW_TEX_NUM = REAL_SHADOW_MAX / 4;
+#endif
+
 class dDlst_shadowControl_c {
 public:
     dDlst_shadowControl_c() { field_0x0 = 0; }
@@ -310,11 +315,15 @@ public:
     /* 0x00008 */ dDlst_shadowReal_c* field_0x8;
     /* 0x0000C */ dDlst_shadowSimple_c mSimple[128];
     /* 0x0340C */ int mNextID;
+    #if TARGET_PC
+    /* 0x03410 */ dDlst_shadowReal_c mReal[REAL_SHADOW_MAX];
+    /* 0x15EB0 */ TGXTexObj mShadowTexObj[REAL_SHADOW_MAX];
+    /* 0x15EF0 */ void* mShadowTexData[REAL_SHADOW_TEX_NUM];
+    int mTexResScale;
+    #else
     /* 0x03410 */ dDlst_shadowReal_c mReal[8];
     /* 0x15EB0 */ TGXTexObj mShadowTexObj[2];
     /* 0x15EF0 */ void* mShadowTexData[2];
-    #if TARGET_PC
-    int mTexResScale;
     #endif
 };
 
