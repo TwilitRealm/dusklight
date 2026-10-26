@@ -127,6 +127,34 @@ ModResult item_unobserve_gives(ModContext* context, ItemGiveHandle handle) {
     return item_give_remove_observer(*mod, handle);
 }
 
+ModResult item_observe_commit(
+    ModContext* context, ItemGiveObserveFn fn, void* userData, ItemGiveHandle* outHandle) {
+    if (outHandle != nullptr) {
+        *outHandle = 0;
+    }
+
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || fn == nullptr) {
+        return MOD_INVALID_ARGUMENT;
+    }
+
+    ItemGiveHandle handle = 0;
+    const auto result = item_commit_add_observer(*mod, fn, userData, handle);
+    if (outHandle != nullptr) {
+        *outHandle = handle;
+    }
+
+    return result;
+}
+
+ModResult item_unobserve_commit(ModContext* context, ItemGiveHandle handle) {
+    auto* mod = mod_from_context(context);
+    if (mod == nullptr || handle == 0) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    return item_commit_remove_observer(*mod, handle);
+}
+
 constexpr ItemService s_itemService{
     .header = SERVICE_HEADER(ItemService, ITEM_SERVICE_MAJOR, ITEM_SERVICE_MINOR),
     .set_check_override = item_set_check_override,
@@ -138,6 +166,8 @@ constexpr ItemService s_itemService{
     .observe_gives = item_observe_gives,
     .unobserve_gives = item_unobserve_gives,
     .resolve_check_full = item_resolve_check_full,
+    .observe_item_commit = item_observe_commit,
+    .unobserve_item_commit = item_unobserve_commit
 };
 
 }  // namespace

@@ -8,11 +8,12 @@
 
 #define ITEM_SERVICE_ID DUSKLIGHT_SERVICE_ID_PREFIX "item"
 #define ITEM_SERVICE_MAJOR 2u
-#define ITEM_SERVICE_MINOR 3u
+#define ITEM_SERVICE_MINOR 4u
 
 /* 0 is never a valid handle. */
 typedef uint64_t ItemCheckHandle;
 typedef uint64_t ItemGiveHandle;
+typedef uint64_t ItemCommitHandle;
 
 /*
  * Item check resolution and inventory grants.
@@ -106,6 +107,10 @@ typedef struct ItemService {
      * observers. */
     ModResult (*resolve_check_full)(ModContext* ctx, const char* name, uint8_t vanilla_item,
         ItemCheckResolution* out_resolution);
+
+    ModResult (*observe_item_commit)(ModContext* ctx, ItemGiveObserveFn fn, void* user_data, ItemGiveHandle* out_handle);
+    ModResult (*unobserve_item_commit)(ModContext* ctx, ItemGiveHandle handle);
+
 } ItemService;
 
 MOD_DECLARE_SERVICE(ItemService, svc_item, ITEM_SERVICE_ID, ITEM_SERVICE_MAJOR, ITEM_SERVICE_MINOR);

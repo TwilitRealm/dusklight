@@ -38,7 +38,7 @@ const char* item_give_name(uint32_t tag) {
     return s_giveNames[tag - 1].c_str();
 }
 
-struct GiveObserver {
+struct ObserverEntry {
     ItemGiveHandle handle = 0;
     ItemGiveObserveFn fn = nullptr;
     void* userData = nullptr;
@@ -50,12 +50,15 @@ struct PendingObserver {
     void* userData = nullptr;
 };
 
-std::unordered_map<LoadedMod*, std::vector<GiveObserver>> s_modObservers;
+std::unordered_map<LoadedMod*, std::vector<ObserverEntry>> s_modGiveObservers;
+std::unordered_map<LoadedMod*, std::vector<ObserverEntry>> s_modCommitObservers;
 ItemGiveHandle s_nextGiveHandle = 1;
-size_t s_observerCount = 0;
+ItemGiveHandle s_nextCommitHandle = 1;
+size_t s_giveObserverCount = 0;
+size_t s_commitObserverCount = 0;
 
 void notify_gives(const char* checkName, uint8_t itemNo, fopAc_ac_c* giver, ItemGiveOrigin origin) {
-    if (s_observerCount == 0) {
+    if (s_giveObserverCount == 0) {
         return;
     }
 
@@ -65,8 +68,8 @@ void notify_gives(const char* checkName, uint8_t itemNo, fopAc_ac_c* giver, Item
         if (!mod.active) {
             continue;
         }
-        const auto modIt = s_modObservers.find(&mod);
-        if (modIt == s_modObservers.end()) {
+        const auto modIt = s_modGiveObservers.find(&mod);
+        if (modIt == s_modGiveObservers.end()) {
             continue;
         }
         for (const auto& observer : modIt->second) {
@@ -91,6 +94,46 @@ void notify_gives(const char* checkName, uint8_t itemNo, fopAc_ac_c* giver, Item
                 fmt::format("Exception in item give observer: {}", e.what()));
         } catch (...) {
             fail_mod(*observer.mod, MOD_ERROR, "Unknown exception in item give observer");
+        }
+    }
+}
+
+void notify_commit(const char* checkName, uint8_t itemNo, fopAc_ac_c* giver) {
+    if (s_commitObserverCount == 0) {
+        return;
+    }
+
+    // Callbacks may change registrations, so copy them before invoking one.
+    std::vector<PendingObserver> observers;
+    for (auto& mod : ModLoader::instance().mods()) {
+        if (!mod.active) {
+            continue;
+        }
+        const auto modIt = s_modCommitObservers.find(&mod);
+        if (modIt == s_modCommitObservers.end()) {
+            continue;
+        }
+        for (const auto& observer : modIt->second) {
+            observers.push_back({.mod = &mod, .fn = observer.fn, .userData = observer.userData});
+        }
+    }
+
+    const ItemGiveInfo info{
+        .check_name = checkName,
+        .giver_actor = giver,
+        .item = itemNo
+    };
+    for (const auto& observer : observers) {
+        if (!observer.mod->active) {
+            continue;
+        }
+        try {
+            observer.fn(observer.mod->context.get(), &info, observer.userData);
+        } catch (const std::exception& e) {
+            fail_mod(*observer.mod, MOD_ERROR,
+                fmt::format("Exception in item commit observer: {}", e.what()));
+        } catch (...) {
+            fail_mod(*observer.mod, MOD_ERROR, "Unknown exception in item commit observer");
         }
     }
 }
@@ -252,6 +295,9 @@ ItemCheckResolution item_check_resolve(uint32_t giveTag, uint8_t itemNo, fopAc_a
 
 ItemCheckResult item_check_commit(uint32_t giveTag, uint8_t itemNo, fopAc_ac_c* giver) {
     const char* name = item_give_name(giveTag);
+
+    notify_commit(name, itemNo, giver);
+
     if (name == nullptr) {
         return {.tag = giveTag, .itemNo = itemNo, .displayItemNo = itemNo};
     }
@@ -419,31 +465,59 @@ ModResult item_give_enqueue(LoadedMod& mod, const char* checkName, uint8_t itemN
 
 ModResult item_give_add_observer(
     LoadedMod& mod, ItemGiveObserveFn fn, void* userData, ItemGiveHandle& outHandle) {
-    auto& observer = s_modObservers[&mod].emplace_back();
+    auto& observer = s_modGiveObservers[&mod].emplace_back();
     observer.handle = s_nextGiveHandle++;
     observer.fn = fn;
     observer.userData = userData;
     outHandle = observer.handle;
-    ++s_observerCount;
+    ++s_giveObserverCount;
     return MOD_OK;
 }
 
 ModResult item_give_remove_observer(LoadedMod& mod, ItemGiveHandle handle) {
-    const auto modIt = s_modObservers.find(&mod);
-    if (modIt == s_modObservers.end()) {
+    const auto modIt = s_modGiveObservers.find(&mod);
+    if (modIt == s_modGiveObservers.end()) {
         return MOD_INVALID_ARGUMENT;
     }
     const auto removed = std::erase_if(
         modIt->second, [&](const auto& observer) { return observer.handle == handle; });
-    s_observerCount -= removed;
+    s_giveObserverCount -= removed;
+    return removed != 0 ? MOD_OK : MOD_INVALID_ARGUMENT;
+}
+
+ModResult item_commit_add_observer(
+    LoadedMod& mod, ItemGiveObserveFn fn, void* userData, ItemGiveHandle& outHandle) {
+    auto& observer = s_modCommitObservers[&mod].emplace_back();
+    observer.handle = s_nextCommitHandle++;
+    observer.fn = fn;
+    observer.userData = userData;
+    outHandle = observer.handle;
+    ++s_commitObserverCount;
+    return MOD_OK;
+}
+
+ModResult item_commit_remove_observer(LoadedMod& mod, ItemGiveHandle handle) {
+    const auto modIt = s_modCommitObservers.find(&mod);
+    if (modIt == s_modCommitObservers.end()) {
+        return MOD_INVALID_ARGUMENT;
+    }
+    const auto removed = std::erase_if(
+        modIt->second, [&](const auto& observer) { return observer.handle == handle; });
+    s_commitObserverCount -= removed;
     return removed != 0 ? MOD_OK : MOD_INVALID_ARGUMENT;
 }
 
 void item_gives_remove_mod(LoadedMod& mod) {
-    if (const auto modIt = s_modObservers.find(&mod); modIt != s_modObservers.end()) {
-        s_observerCount -= modIt->second.size();
-        s_modObservers.erase(modIt);
+    if (const auto modIt = s_modGiveObservers.find(&mod); modIt != s_modGiveObservers.end()) {
+        s_giveObserverCount -= modIt->second.size();
+        s_modGiveObservers.erase(modIt);
     }
+
+    if (const auto modIt = s_modCommitObservers.find(&mod); modIt != s_modCommitObservers.end()) {
+        s_commitObserverCount -= modIt->second.size();
+        s_modCommitObservers.erase(modIt);
+    }
+
     std::erase_if(s_giveQueue, [&](const QueuedGive& give) { return give.owner == &mod; });
     if (s_inFlight && s_inFlightGive.owner == &mod) {
         // The event system already owns this grant, so it can no longer be canceled safely.

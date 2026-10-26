@@ -21,6 +21,8 @@ ModResult item_give_enqueue(LoadedMod& mod, const char* checkName, uint8_t itemN
 ModResult item_give_add_observer(
     LoadedMod& mod, ItemGiveObserveFn fn, void* userData, ItemGiveHandle& outHandle);
 ModResult item_give_remove_observer(LoadedMod& mod, ItemGiveHandle handle);
+ModResult item_commit_add_observer(LoadedMod& mod, ItemGiveObserveFn fn, void* userData, ItemGiveHandle& outHandle);
+ModResult item_commit_remove_observer(LoadedMod& mod, ItemGiveHandle handle);
 void item_gives_remove_mod(LoadedMod& mod);
 void item_gives_tick();
 void item_gives_clear();
