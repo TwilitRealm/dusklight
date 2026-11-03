@@ -307,6 +307,7 @@
           "value": true
         },
         "Rust_CARGO_TARGET": "aarch64-apple-ios",
+        "AURORA_SDL3_REF": "refs/tags/release-3.4.20",
         "BUILD_SHARED_LIBS": {
           "type": "BOOL",
           "value": false
