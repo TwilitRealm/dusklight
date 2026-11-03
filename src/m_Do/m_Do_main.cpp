@@ -85,12 +85,14 @@
 #include <borealis/aurora_log.h>
 #include <borealis/cli.hpp>
 #include <borealis/crash.hpp>
+#include <borealis/file_select.hpp>
 #include <borealis/io.hpp>
 #include <borealis/sentry.hpp>
 #include <borealis/task.hpp>
 #include <borealis/version.h>
 #include <cxxopts.hpp>
 #include <dolphin/dvd.h>
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <tracy/Tracy.hpp>
 
@@ -148,6 +150,16 @@ s32 LOAD_COPYDATE(void*) {
 
 AuroraInfo auroraInfo;
 
+static bool waitForFileDialog() {
+#if defined(__APPLE__) && TARGET_OS_IOS
+    if (borealis::file_select::busy()) {
+        SDL_WaitEventTimeout(nullptr, 16);
+        return true;
+    }
+#endif
+    return false;
+}
+
 bool launchUILoop() {
     while (dusk::IsRunning && !dusk::IsGameLaunched) {
         const AuroraEvent* event = aurora_update();
@@ -169,6 +181,10 @@ bool launchUILoop() {
             }
 
             event++;
+        }
+
+        if (waitForFileDialog()) {
+            continue;
         }
 
         if (!aurora_begin_frame()) {
@@ -271,6 +287,10 @@ void main01(void) {
         }
 
         eventsDone:;
+
+        if (waitForFileDialog()) {
+            continue;
+        }
 
         if (!aurora_begin_frame()) {
             DuskLog.debug("aurora_begin_frame returned false, skipping draw this frame");
