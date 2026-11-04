@@ -84,21 +84,24 @@ jobs:
 
   build-apple:
     name: Build Apple (${{matrix.name}})
-    runs-on: macos-latest
+    runs-on: ${{matrix.runner}}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: AppleClang macOS arm64
             platform: macos
+            runner: macos-latest
             preset: x-macos-ci-arm64
             artifact_name: macos-appleclang-arm64
           - name: AppleClang macOS x86_64
             platform: macos
+            runner: macos-latest
             preset: x-macos-ci-x86_64
             artifact_name: macos-appleclang-x86_64
           - name: AppleClang iOS arm64
             platform: ios
+            runner: xcode-27
             preset: x-ios-ci
             artifact_name: ios-appleclang-arm64
           # - name: AppleClang tvOS arm64
