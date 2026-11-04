@@ -1,0 +1,254 @@
+{
+  "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+  "format": 1,
+  "name": "Dusklight",
+  "repo": "TwilitRealm/dusklight",
+  "game": {
+    "kind": "iso",
+    "label": "Your Twilight Princess GameCube or Wii disc image (.iso or .rvz), any region except Wii Korea"
+  },
+  "start": {
+    "program": [
+      "dusklight.exe"
+    ],
+    "args": [
+      "--dvd",
+      "{game}"
+    ]
+  },
+  "config": [
+    {
+      "id": "main",
+      "format": "json",
+      "file": [
+        {
+          "path": "{install}/data/config.json",
+          "if": "{install}/data/config.json"
+        },
+        {
+          "path": "{config}/TwilitRealm/Dusklight/config.json",
+          "if": "{config}/TwilitRealm/Dusklight/config.json"
+        },
+        {
+          "path": "{config}/TwilitRealm/Dusk/config.json",
+          "if": "{config}/TwilitRealm/Dusk/config.json"
+        },
+        {
+          "path": "{config}/TwilitRealm/Dusklight/config.json"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "id": "fullscreen",
+      "label": "Full screen",
+      "help": "",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "video.enableFullscreen": "false"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "video.enableFullscreen": "true"
+          }
+        }
+      ],
+      "defaults": {
+        "video.enableFullscreen": "false"
+      }
+    },
+    {
+      "id": "vsync",
+      "label": "V-Sync",
+      "help": "Matches the picture to your monitor to stop tearing.",
+      "choices": [
+        {
+          "label": "On",
+          "set": {
+            "video.enableVsync": "true"
+          }
+        },
+        {
+          "label": "Off",
+          "set": {
+            "video.enableVsync": "false"
+          }
+        }
+      ],
+      "defaults": {
+        "video.enableVsync": "true"
+      }
+    },
+    {
+      "id": "aspect",
+      "label": "Screen shape",
+      "help": "Keep the original 4:3 picture, or fill the whole window.",
+      "choices": [
+        {
+          "label": "Fill the window",
+          "set": {
+            "video.lockAspectRatio": "false"
+          }
+        },
+        {
+          "label": "Original (4:3)",
+          "set": {
+            "video.lockAspectRatio": "true"
+          }
+        }
+      ],
+      "defaults": {
+        "video.lockAspectRatio": "false"
+      }
+    },
+    {
+      "id": "resolution",
+      "label": "Resolution",
+      "help": "How sharp the 3D picture is drawn.",
+      "choices": [
+        {
+          "label": "Match the window",
+          "set": {
+            "game.internalResolutionScale": "0"
+          }
+        },
+        {
+          "label": "1x (original)",
+          "set": {
+            "game.internalResolutionScale": "1"
+          }
+        },
+        {
+          "label": "2x",
+          "set": {
+            "game.internalResolutionScale": "2"
+          }
+        },
+        {
+          "label": "3x",
+          "set": {
+            "game.internalResolutionScale": "3"
+          }
+        },
+        {
+          "label": "4x",
+          "set": {
+            "game.internalResolutionScale": "4"
+          }
+        }
+      ],
+      "defaults": {
+        "game.internalResolutionScale": "0"
+      }
+    },
+    {
+      "id": "fps",
+      "label": "Frame rate",
+      "help": "Higher rates add in-between frames for smoother motion; may cause small visual glitches.",
+      "choices": [
+        {
+          "label": "Original",
+          "set": {
+            "game.enableFrameInterpolation": "0"
+          }
+        },
+        {
+          "label": "Unlocked, capped",
+          "set": {
+            "game.enableFrameInterpolation": "1"
+          }
+        },
+        {
+          "label": "Unlocked, no cap",
+          "set": {
+            "game.enableFrameInterpolation": "2"
+          }
+        }
+      ],
+      "defaults": {
+        "game.enableFrameInterpolation": "0"
+      }
+    },
+    {
+      "id": "fps_cap",
+      "label": "Frame rate cap",
+      "when": {
+        "game.enableFrameInterpolation": "1"
+      },
+      "choices": [
+        {
+          "label": "30 fps",
+          "set": {
+            "video.maxFrameRate": "30"
+          }
+        },
+        {
+          "label": "60 fps",
+          "set": {
+            "video.maxFrameRate": "60"
+          }
+        },
+        {
+          "label": "90 fps",
+          "set": {
+            "video.maxFrameRate": "90"
+          }
+        },
+        {
+          "label": "120 fps",
+          "set": {
+            "video.maxFrameRate": "120"
+          }
+        },
+        {
+          "label": "144 fps",
+          "set": {
+            "video.maxFrameRate": "144"
+          }
+        },
+        {
+          "label": "165 fps",
+          "set": {
+            "video.maxFrameRate": "165"
+          }
+        },
+        {
+          "label": "180 fps",
+          "set": {
+            "video.maxFrameRate": "180"
+          }
+        },
+        {
+          "label": "240 fps",
+          "set": {
+            "video.maxFrameRate": "240"
+          }
+        },
+        {
+          "label": "360 fps",
+          "set": {
+            "video.maxFrameRate": "360"
+          }
+        },
+        {
+          "label": "540 fps",
+          "set": {
+            "video.maxFrameRate": "540"
+          }
+        },
+        {
+          "label": "Custom (in-game)",
+          "set": {}
+        }
+      ],
+      "defaults": {
+        "video.maxFrameRate": "240"
+      }
+    }
+  ]
+}
