@@ -22,6 +22,13 @@ done
 cp -r platforms/freedesktop/{16x16,32x32,48x48,64x64,128x128,256x256,512x512,1024x1024} build/appdir/usr/share/icons/hicolor
 cp platforms/freedesktop/dev.twilitrealm.dusk.desktop build/appdir/usr/share/applications
 
+image="Dusklight-${APP_VERSION}-$(uname -m).AppImage"
+python3 ci/write-recomplauncher.py linux build/appdir/recomplauncher.json --appimage "$image"
+
 cd build/install
-VERSION="$APP_VERSION" NO_STRIP=1 "$linuxdeploy" \
+VERSION="$APP_VERSION" LDAI_OUTPUT="$image" NO_STRIP=1 "$linuxdeploy" \
   -l "$lib_dir/libusb-1.0.so" --appdir "$build_dir/appdir" --output appimage
+
+# Keep a matching adjacent profile for older launchers.
+cp "$build_dir/appdir/recomplauncher.json" recomplauncher.json
+tar -czf "${image%.AppImage}-recomplauncher.tar.gz" "$image" recomplauncher.json

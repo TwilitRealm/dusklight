@@ -79,6 +79,7 @@ jobs:
           name: dusklight-${{env.APP_VERSION}}-linux-${{matrix.preset}}-${{matrix.artifact_arch}}
           path: |
             build/install/Dusklight-*.AppImage
+            build/install/Dusklight-*-recomplauncher.tar.gz
             build/install/debug.tar.*
             build/install/sdk/
 
@@ -147,12 +148,17 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{matrix.preset}}
 
+      - name: Generate RecompLauncher profile
+        if: matrix.platform == 'macos'
+        run: python3 ci/write-recomplauncher.py macos build/install/recomplauncher.json
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: dusklight-${{env.APP_VERSION}}-${{matrix.artifact_name}}
           path: |
             build/install/Dusklight.app
+            build/install/recomplauncher.json
             build/install/debug.tar.*
             build/install/sdk/
 
@@ -287,12 +293,16 @@ jobs:
       - name: Build
         run: cmake --build --preset x-windows-ci-${{matrix.preset}}
 
+      - name: Generate RecompLauncher profile
+        run: python ci/write-recomplauncher.py windows build/install/recomplauncher.json
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: dusklight-${{env.APP_VERSION}}-win32-msvc-${{matrix.artifact_arch}}
           path: |
             build/install/*.exe
+            build/install/recomplauncher.json
             build/install/*.dll
             build/install/res/
             build/install/mods/
