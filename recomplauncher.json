@@ -250,5 +250,25 @@
         "video.maxFrameRate": "240"
       }
     }
+  ],
+  "saves": [
+    "{install}/data/USA",
+    "{install}/data/EUR",
+    "{install}/data/JAP",
+    "{install}/data/MemoryCard*.raw",
+    "{install}/data/*.gci",
+    "{install}/data/states.json",
+    "{config}/TwilitRealm/Dusklight/USA",
+    "{config}/TwilitRealm/Dusklight/EUR",
+    "{config}/TwilitRealm/Dusklight/JAP",
+    "{config}/TwilitRealm/Dusklight/MemoryCard*.raw",
+    "{config}/TwilitRealm/Dusklight/*.gci",
+    "{config}/TwilitRealm/Dusklight/states.json",
+    "{config}/TwilitRealm/Dusk/USA",
+    "{config}/TwilitRealm/Dusk/EUR",
+    "{config}/TwilitRealm/Dusk/JAP",
+    "{config}/TwilitRealm/Dusk/MemoryCard*.raw",
+    "{config}/TwilitRealm/Dusk/*.gci",
+    "{config}/TwilitRealm/Dusk/states.json"
   ]
 }
