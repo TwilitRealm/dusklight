@@ -92,7 +92,6 @@
 #include <borealis/version.h>
 #include <cxxopts.hpp>
 #include <dolphin/dvd.h>
-#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
 #include <tracy/Tracy.hpp>
 
@@ -101,6 +100,7 @@
 #include <thread>
 
 #ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
 #include <TargetConditionals.h>
 #endif
 
@@ -153,7 +153,7 @@ AuroraInfo auroraInfo;
 static bool waitForFileDialog() {
 #if defined(__APPLE__) && TARGET_OS_IOS
     if (borealis::file_select::busy()) {
-        SDL_WaitEventTimeout(nullptr, 16);
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.016, false);
         return true;
     }
 #endif

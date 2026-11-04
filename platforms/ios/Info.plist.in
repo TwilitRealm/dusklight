@@ -55,8 +55,6 @@
     <string>${DEPLOYMENT_TARGET}</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.adventure-games</string>
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
     <key>UIRequiresFullScreen</key>
@@ -82,8 +80,6 @@
     <key>UIFileSharingEnabled</key>
     <true/>
     <key>LSSupportsOpeningDocumentsInPlace</key>
-    <true/>
-    <key>LSSupportsGameMode</key>
     <true/>
     <key>NSAppTransportSecurity</key>
     <dict>
