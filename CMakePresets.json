@@ -30,7 +30,7 @@
         "CMAKE_CXX_COMPILER_LAUNCHER": "sccache",
         "BOREALIS_ENABLE_SENTRY": {
           "type": "BOOL",
-          "value": true
+          "value": false
         },
         "BOREALIS_SENTRY_DSN": "$env{SENTRY_DSN}",
         "BOREALIS_SENTRY_ENVIRONMENT": "production",
