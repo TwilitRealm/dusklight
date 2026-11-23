@@ -81,6 +81,7 @@ extern const ServiceModule g_httpModule;
 extern const ServiceModule g_netModule;
 extern const ServiceModule g_websocketModule;
 extern const ServiceModule g_hookModule;
+extern const ServiceModule g_imageModule;
 extern const ServiceModule g_overlayModule;
 extern const ServiceModule g_textureModule;
 extern const ServiceModule g_configModule;

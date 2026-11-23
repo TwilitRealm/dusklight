@@ -273,6 +273,7 @@ void ModLoader::init_services() {
             &svc::g_netModule,
             &svc::g_websocketModule,
             &svc::g_hookModule,
+            &svc::g_imageModule,
             &svc::g_overlayModule,
             &svc::g_textureModule,
             &svc::g_configModule,

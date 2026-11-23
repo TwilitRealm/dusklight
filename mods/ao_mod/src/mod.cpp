@@ -10,7 +10,7 @@
 
 #include "mods/service.hpp"
 #include "mods/svc/camera.h"
-#include "mods/svc/config.h"
+#include "mods/svc/config.hpp"
 #include "mods/svc/gfx.h"
 #include "mods/svc/log.h"
 #include "mods/svc/resource.h"
@@ -35,12 +35,12 @@ IMPORT_SERVICE(CameraService, svc_camera);
 
 namespace {
 
-ConfigVarHandle g_cvarEnabled = 0;
-ConfigVarHandle g_cvarQuality = 0;
-ConfigVarHandle g_cvarRadius = 0;
-ConfigVarHandle g_cvarIntensity = 0;
-ConfigVarHandle g_cvarHalfRes = 0;
-ConfigVarHandle g_cvarDebugView = 0;
+mods::config::Handle<bool> g_cvarEnabled;
+mods::config::Handle<int64_t> g_cvarQuality;
+mods::config::Handle<int64_t> g_cvarRadius;
+mods::config::Handle<int64_t> g_cvarIntensity;
+mods::config::Handle<bool> g_cvarHalfRes;
+mods::config::Handle<int64_t> g_cvarDebugView;
 
 GfxComputeTypeHandle g_computeType = 0;
 GfxDrawTypeHandle g_drawType = 0;
@@ -145,22 +145,6 @@ struct CompositePayload {
 
 static_assert(sizeof(CompositePayload) <= GFX_INLINE_DRAW_PAYLOAD_SIZE);
 static_assert(std::is_trivially_copyable_v<CompositePayload>);
-
-int64_t get_int_option(ConfigVarHandle handle, int64_t fallback) {
-    int64_t value = fallback;
-    if (handle == 0 || svc_config->get_int(mod_ctx, handle, &value) != MOD_OK) {
-        return fallback;
-    }
-    return value;
-}
-
-bool get_bool_option(ConfigVarHandle handle, bool fallback) {
-    bool value = fallback;
-    if (handle == 0 || svc_config->get_bool(mod_ctx, handle, &value) != MOD_OK) {
-        return fallback;
-    }
-    return value;
-}
 
 // XeGTAO/Bevy quality presets: slices x (samples per slice side * 2).
 void quality_counts(int64_t quality, float& sliceCount, float& samplesPerSliceSide) {
@@ -590,7 +574,7 @@ void on_draw(
 // Game thread, after opaque scene draws and before translucent/fog overlay lists.
 void on_scene_after_opaque(ModContext*, const GfxStageContext* stageCtx, void*) {
     tick_retired_targets();
-    if (!get_bool_option(g_cvarEnabled, true)) {
+    if (!g_cvarEnabled.get().value_or(true)) {
         return;
     }
     if (stageCtx == nullptr || stageCtx->struct_size < sizeof(GfxStageContext) ||
@@ -624,7 +608,7 @@ void on_scene_after_opaque(ModContext*, const GfxStageContext* stageCtx, void*) 
         return;
     }
 
-    const bool halfRes = get_bool_option(g_cvarHalfRes, false);
+    const bool halfRes = g_cvarHalfRes.get().value_or(false);
     const uint32_t divisor = halfRes ? 2 : 1;
     const uint32_t width = resolved.width / divisor;
     const uint32_t height = resolved.height / divisor;
@@ -643,14 +627,14 @@ void on_scene_after_opaque(ModContext*, const GfxStageContext* stageCtx, void*) 
     uniforms.depth_scale[0] = static_cast<float>(resolved.width) / uniforms.size[0];
     uniforms.depth_scale[1] = static_cast<float>(resolved.height) / uniforms.size[1];
     uniforms.effect_radius =
-        static_cast<float>(std::clamp<int64_t>(get_int_option(g_cvarRadius, 70), 10, 500));
+        static_cast<float>(std::clamp<int64_t>(g_cvarRadius.get().value_or(70), 10, 500));
     uniforms.intensity =
-        static_cast<float>(std::clamp<int64_t>(get_int_option(g_cvarIntensity, 100), 0, 100)) /
+        static_cast<float>(std::clamp<int64_t>(g_cvarIntensity.get().value_or(100), 0, 100)) /
         100.0f;
     quality_counts(
-        get_int_option(g_cvarQuality, 2), uniforms.slice_count, uniforms.samples_per_slice_side);
+        g_cvarQuality.get().value_or(2), uniforms.slice_count, uniforms.samples_per_slice_side);
     const uint32_t debugMode =
-        static_cast<uint32_t>(std::clamp<int64_t>(get_int_option(g_cvarDebugView, 0), 0, 4));
+        static_cast<uint32_t>(std::clamp<int64_t>(g_cvarDebugView.get().value_or(0), 0, 4));
     uniforms.debug_view = debugMode;
 
     GfxRange uniformRange{0, 0};
@@ -702,7 +686,7 @@ ModResult build_controls_tab(
     (void)right;
 
     svc_ui->pane_add_section(mod_ctx, left, "Ambient Occlusion");
-    add_toggle(left, "Enabled", g_cvarEnabled, "Enables the GTAO pass.");
+    add_toggle(left, "Enabled", g_cvarEnabled.handle, "Enables the GTAO pass.");
 
     static const char* kQualityOptions[] = {"Low", "Medium", "High", "Ultra"};
     UiControlDesc control = UI_CONTROL_DESC_INIT;
@@ -710,7 +694,7 @@ ModResult build_controls_tab(
     control.label = "Quality";
     control.help_rml = "Horizon slices and samples per pixel (XeGTAO presets: 4/8/18/54 spp).";
     control.binding = UI_BINDING_CONFIG_VAR;
-    control.config_var = g_cvarQuality;
+    control.config_var = g_cvarQuality.handle;
     control.options = kQualityOptions;
     control.option_count = 4;
     add_control(left, control);
@@ -720,7 +704,7 @@ ModResult build_controls_tab(
     control.label = "Radius";
     control.help_rml = "Occlusion sampling radius in world units.";
     control.binding = UI_BINDING_CONFIG_VAR;
-    control.config_var = g_cvarRadius;
+    control.config_var = g_cvarRadius.handle;
     control.min = 10;
     control.max = 500;
     control.step = 10;
@@ -731,14 +715,14 @@ ModResult build_controls_tab(
     control.label = "Intensity";
     control.help_rml = "How strongly occlusion darkens the scene.";
     control.binding = UI_BINDING_CONFIG_VAR;
-    control.config_var = g_cvarIntensity;
+    control.config_var = g_cvarIntensity.handle;
     control.min = 0;
     control.max = 100;
     control.step = 5;
     control.suffix = "%";
     add_control(left, control);
 
-    add_toggle(left, "Half Resolution", g_cvarHalfRes,
+    add_toggle(left, "Half Resolution", g_cvarHalfRes.handle,
         "Computes AO at half resolution and upscales; faster, slightly softer.");
 
     static const char* kDebugOptions[] = {"Off", "AO", "Normals", "Depth", "Staircase"};
@@ -751,7 +735,7 @@ ModResult build_controls_tab(
                        "depth is near-black with thin triangle edges, quantized depth lights "
                        "up across surfaces.";
     control.binding = UI_BINDING_CONFIG_VAR;
-    control.config_var = g_cvarDebugView;
+    control.config_var = g_cvarDebugView.handle;
     control.options = kDebugOptions;
     control.option_count = 5;
     add_control(left, control);
@@ -783,7 +767,7 @@ ModResult build_panel(ModContext*, UiElementHandle panel, void*, ModError*) {
     control.kind = UI_CONTROL_TOGGLE;
     control.label = "Enabled";
     control.binding = UI_BINDING_CONFIG_VAR;
-    control.config_var = g_cvarEnabled;
+    control.config_var = g_cvarEnabled.handle;
     add_control(panel, control);
 
     control = UI_CONTROL_DESC_INIT;
@@ -791,30 +775,6 @@ ModResult build_panel(ModContext*, UiElementHandle panel, void*, ModError*) {
     control.label = "Open Controls";
     control.on_pressed = on_open_controls;
     add_control(panel, control);
-    return MOD_OK;
-}
-
-ModResult register_bool_option(
-    const char* name, bool defaultValue, ConfigVarHandle& outHandle, ModError* error) {
-    ConfigVarDesc cvarDesc = CONFIG_VAR_DESC_INIT;
-    cvarDesc.name = name;
-    cvarDesc.type = CONFIG_VAR_BOOL;
-    cvarDesc.default_bool = defaultValue;
-    if (svc_config->register_var(mod_ctx, &cvarDesc, &outHandle) != MOD_OK) {
-        return mods::set_error(error, MOD_ERROR, "failed to register AO option");
-    }
-    return MOD_OK;
-}
-
-ModResult register_int_option(
-    const char* name, int64_t defaultValue, ConfigVarHandle& outHandle, ModError* error) {
-    ConfigVarDesc cvarDesc = CONFIG_VAR_DESC_INIT;
-    cvarDesc.name = name;
-    cvarDesc.type = CONFIG_VAR_INT;
-    cvarDesc.default_int = defaultValue;
-    if (svc_config->register_var(mod_ctx, &cvarDesc, &outHandle) != MOD_OK) {
-        return mods::set_error(error, MOD_ERROR, "failed to register AO option");
-    }
     return MOD_OK;
 }
 
@@ -837,29 +797,15 @@ MOD_EXPORT ModResult mod_initialize(ModError* error) {
         return mods::set_error(error, result, "failed to load AO shaders");
     }
 
-    result = register_bool_option("effectEnabled", false, g_cvarEnabled, error);
-    if (result != MOD_OK) {
-        return result;
-    }
-    result = register_int_option("quality", 2, g_cvarQuality, error);
-    if (result != MOD_OK) {
-        return result;
-    }
-    result = register_int_option("radius", 70, g_cvarRadius, error);
-    if (result != MOD_OK) {
-        return result;
-    }
-    result = register_int_option("intensity", 100, g_cvarIntensity, error);
-    if (result != MOD_OK) {
-        return result;
-    }
-    result = register_bool_option("halfRes", false, g_cvarHalfRes, error);
-    if (result != MOD_OK) {
-        return result;
-    }
-    result = register_int_option("debugMode", 0, g_cvarDebugView, error);
-    if (result != MOD_OK) {
-        return result;
+    try {
+        g_cvarEnabled = mods::config::register_var("effectsEnabled", false).value();
+        g_cvarQuality = mods::config::register_var("quality", 2).value();
+        g_cvarRadius = mods::config::register_var("radius", 70).value();
+        g_cvarIntensity = mods::config::register_var("intensity", 100).value();
+        g_cvarHalfRes = mods::config::register_var("halfRes", false).value();
+        g_cvarDebugView = mods::config::register_var("debugMode", 0).value();
+    } catch (std::bad_expected_access<ModResult> const&) {
+        return mods::set_error(error, MOD_ERROR, "failed to register AO option");
     }
 
     if (svc_gfx->get_device_info(mod_ctx, &g_deviceInfo) != MOD_OK) {
@@ -956,8 +902,12 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
         wgpuTextureRelease(g_hilbertLut);
         g_hilbertLut = nullptr;
     }
-    g_cvarEnabled = g_cvarQuality = g_cvarRadius = g_cvarIntensity = 0;
-    g_cvarHalfRes = g_cvarDebugView = 0;
+    g_cvarDebugView = {};
+    g_cvarQuality = {};
+    g_cvarRadius = {};
+    g_cvarIntensity = {};
+    g_cvarHalfRes = {};
+    g_cvarEnabled = {};
     g_computeType = g_drawType = 0;
     g_afterOpaqueHook = 0;
     g_controlsWindow = 0;
